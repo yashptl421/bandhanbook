@@ -1,0 +1,20 @@
+package com.bandhanbook.app.config.currentUserConfig;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.reactive.config.WebFluxConfigurer;
+import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
+
+@Configuration
+public class WebFluxConfig implements WebFluxConfigurer {
+
+    private final CurrentUserArgumentResolver resolver;
+
+    public WebFluxConfig(CurrentUserArgumentResolver resolver) {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public void configureArgumentResolvers(ArgumentResolverConfigurer configurer) {
+        configurer.addCustomResolver(resolver);
+    }
+}

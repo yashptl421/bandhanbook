@@ -1,0 +1,31 @@
+server:
+  port: 8083
+spring:
+  application:
+    name: bandhanbook
+
+  data:
+    mongodb:
+      uri: mongodb+srv://gulshanyuvasoft198:uJIUXiOsoOczGejq@cluster0.hw9ikzu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0  #?retryWrites=true&w=majority
+      auto-index-creation: true
+# Optional: logging for Mongo queries
+logging:
+  level:
+    org:
+      springframework:
+        data:
+          mongodb:
+            core:
+              MongoTemplate: DEBUG
+jwt:
+  secret: ypatel
+  expiration: 86400
+  # expiration refresh token
+  refreshExpiration: 172800
+
+#Swagger Config
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
