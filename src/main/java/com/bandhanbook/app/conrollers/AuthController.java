@@ -1,8 +1,10 @@
 package com.bandhanbook.app.conrollers;
 
 
+import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.LoginRequest;
+import com.bandhanbook.app.payload.request.RefreshRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
 import com.bandhanbook.app.payload.response.LoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
@@ -18,8 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.LOGGED_IN;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.USER_REGISTERED;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 
 @Slf4j
@@ -55,26 +56,29 @@ public class AuthController {
         )));
     }
 
+    @Operation(summary = "Logout from Application")
+    @PostMapping("/logout")
+    public Mono<ResponseEntity<ApiResponse<Void>>> logout(@CurrentUser Users users) {
+        return userService.logout(users).thenReturn(ResponseEntity.ok(ApiResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message(LOGGED_OUT).build()));
+        /*return userService.logout(request.getRefreshToken())
+                .thenReturn(ResponseEntity.ok().build());*/
+    }
+
+    @PostMapping("/refresh")
+    public Mono<ResponseEntity<ApiResponse<LoginResponse>>> refresh(@RequestBody RefreshRequest request) {
+        return userService.refreshToken(request.getRefreshToken())
+                .map(res -> ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
+                        .status(HttpStatus.OK.value())
+                        .data(res)
+                        .build()
+                ));
+    }
+
     @Operation(summary = "Get All users")
     @GetMapping
     public Mono<Users> getUsers() {
-
         return Mono.just(userService.getUsers());
     }
-  /*  @Operation(summary = "Register a new user", description = "Registers a new user with the provided details.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "User created successfully", content = @Content(mediaType = "application/json",
-                    schema = @Schema(implementation = UserRegisterRequest.class)))
-            ,
-            @ApiResponse(responseCode = "500", description = "Internal Server Error", content = @Content(mediaType = "application/json",
-                    schema = @Schema(implementation = UserRegisterRequest.class)))})
-    @PostMapping({"/signup", "/register"})
-    public Mono<UserRegisterResponse> register(@Valid @RequestBody UserRegisterRequest userRegisterRequest,   @RequestAttribute("user") Users authUser){
-        return userService.register(userRegisterRequest)
-                .map(user -> new UserRegisterResponse("Create user: " + userRegisterRequest.getFullName() + " successfully."))
-                .onErrorResume(error -> Mono.just(new UserRegisterResponse(error.getMessage() !=null ? error.getMessage(): "Error occurred while register the user." )))
-                .log();
-
-
-    }*/
 }

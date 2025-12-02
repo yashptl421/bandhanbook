@@ -10,9 +10,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
-@Getter
-@Setter
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -34,13 +35,11 @@ public class Users {
     private String email;
 
     @Builder.Default
-    private String token = null;
-
-    @Builder.Default
     private String password = null;
 
     @Field("role")
-    private String role;
+    @Singular
+    private List<String> roles = new ArrayList<>();
 
     @Field("created_at")
     @CreatedDate
@@ -57,4 +56,11 @@ public class Users {
     @Field("isBlocked")
     @Builder.Default
     private boolean locked = false;
+
+    @Builder.Default
+    private String token = null;
+
+    private LocalDateTime expiryDate;
+
+    private boolean revoked;
 }

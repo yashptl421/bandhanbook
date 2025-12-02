@@ -5,6 +5,7 @@ import com.bandhanbook.app.security.userprinciple.UserDetailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextImpl;
@@ -13,6 +14,8 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -31,14 +34,21 @@ public class JwtAuthenticationWebFilter implements WebFilter {
         }
 
         String token = authHeader.substring(7);
+        if (!jwtService.validateToken(token)) {
+            return chain.filter(exchange); // or return unauthorized
+        }
 
         return jwtService.extractUsername(token)
                 .flatMap(userService::findByUsername)
                 .flatMap(user -> {
+                    List<String> roles = jwtService.getRoles(token);
 
+                    var authorities = roles.stream()
+                            .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                            .toList();
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(
-                                    user, null, user.getAuthorities());
+                                    user, null, authorities);
 
                     SecurityContext context = new SecurityContextImpl(auth);
 

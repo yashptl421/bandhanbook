@@ -15,13 +15,13 @@ public interface UserRepository extends ReactiveMongoRepository<Users, String> {
 
     */
 
-    Mono<Users> getUserByPhoneNumberAndRole(String phone_number, String role);
+   // Mono<Users> getUserByPhoneNumberAndRole(String phone_number, String role);
 
     Mono<Users> findByEmail(String email);
 
-    Mono<Boolean> existsByPhoneNumberAndRole(String phone_number, String role);
+    Mono<Boolean> existsByPhoneNumber(String phone_number);
 
-    Mono<Boolean> existsByEmailAndRole(String email, String role);
+    Mono<Boolean> existsByEmail(String email);
 
     Mono<Users> findByPhoneNumber(String phone_number);
 }

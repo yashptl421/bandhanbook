@@ -14,7 +14,10 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import javax.crypto.SecretKey;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +26,8 @@ public class JwtService {
 
     @Value("${jwt.secret}")
     private String jwtSecret;
+    @Value("${jwt.refresh_secret}")
+    private String REFRESH_SECRET;
     @Value("${jwt.expiration}")
     private int jwtExpiration;
     @Value("${jwt.refreshExpiration}")
@@ -30,7 +35,7 @@ public class JwtService {
 
     /* public String generateToken(Users user) {
          logger.info("Token created for userId {}", user.getId());
-         return Jwts.builder()
+         return Jwt.builder()
                  .subject(user.getId())
                  .claim("role", user.getRole())
                  .issuedAt(new Date())
@@ -40,19 +45,19 @@ public class JwtService {
      }*/
     public String generateToken(UserPrinciple user) {
         return Jwts.builder()
-                        .subject(user.getUsername())
-                        .claim("role", user.getUsers().getRole())
-                        .issuedAt(new Date())
-                        .expiration(new Date(new Date().getTime() + jwtExpiration * 1000L))
-                        .signWith(getSigningKey())
-                        .compact();
+                .subject(user.getUsername())
+                .claim("role", user.getUsers().getRoles())
+                .issuedAt(new Date())
+                .expiration(new Date(new Date().getTime() + jwtExpiration * 1000L))
+                .signWith(getSigningKey(jwtSecret))
+                .compact();
 
     }
 
     public boolean validateToken(String token) {
         try {
             Jwts.parser()
-                    .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
+                    .verifyWith(getSigningKey(jwtSecret))
                     .build()
                     .parseSignedClaims(token);
             return true;
@@ -61,13 +66,13 @@ public class JwtService {
         }
     }
 
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+    private SecretKey getSigningKey(String secret) {
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
     // Validate & Parse
     public Claims parseToken(String token) {
-        return (Claims) Jwts.parser().verifyWith(getSigningKey())              // NEW API
+        return (Claims) Jwts.parser().verifyWith(getSigningKey(jwtSecret))              // NEW API
                 .build().parse(token).getPayload();
     }
 
@@ -82,11 +87,32 @@ public class JwtService {
     public Mono<String> extractUsername(String token) {
         return Mono.fromCallable(() ->
                 Jwts.parser()
-                        .verifyWith(getSigningKey())
+                        .verifyWith(getSigningKey(jwtSecret))
                         .build()
                         .parseSignedClaims(token)
                         .getPayload()
                         .getSubject()
         ).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    public String generateRefreshToken(String userName) {
+        return Jwts.builder()
+                .subject(userName)
+                .issuedAt(new Date())
+                .expiration(Date.from(Instant.now().plus(30, ChronoUnit.DAYS)))
+                .signWith(getSigningKey(REFRESH_SECRET))
+                .compact();
+    }
+
+    public Claims validateRefreshToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey(REFRESH_SECRET))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public List<String> getRoles(String token) {
+        return parseToken(token).get("role", List.class);
     }
 }

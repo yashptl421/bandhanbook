@@ -131,14 +131,14 @@ public class OrganizationService {
         String role = RoleNames.Organization.name();
 
         return userRepository
-                .existsByPhoneNumberAndRole(organizationRequest.getPhoneNumber(), role)
+                .existsByPhoneNumber(organizationRequest.getPhoneNumber())
                 .flatMap(exists -> {
                     if (exists) {
                         return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
                     }
                     return Mono.empty();
                 }).then(userRepository
-                        .existsByEmailAndRole(organizationRequest.getEmail(), role)
+                        .existsByEmail(organizationRequest.getEmail())
                         .flatMap(exists -> {
                             if (exists) {
                                 return Mono.error(new PhoneNumberNotFoundException(EMAIL_EXISTS));
@@ -148,7 +148,6 @@ public class OrganizationService {
 
                 .then(Mono.defer(() -> {
                     Users user = getOrgRequestUser(organizationRequest, role);
-                    System.out.println(user.getRole());
                     return userRepository.save(user)
                             .flatMap(savedUser -> {
                                 Organization org = modelMapper.map(organizationRequest, Organization.class);
@@ -169,7 +168,7 @@ public class OrganizationService {
         return organizationRepository.findById(id).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).flatMap(existingOrg -> userRepository.findById(existingOrg.getUserId()).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).flatMap(existingUser -> {
 
             // STEP 1 — validate duplicate phone (but ignore same user)
-            Mono<Void> phoneCheck = userRepository.existsByPhoneNumberAndRole(organizationRequest.getPhoneNumber(), existingUser.getRole()).flatMap(exists -> {
+            Mono<Void> phoneCheck = userRepository.existsByPhoneNumber(organizationRequest.getPhoneNumber()).flatMap(exists -> {
                 if (exists && !organizationRequest.getPhoneNumber().equals(existingUser.getPhoneNumber())) {
                     return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
                 }
@@ -177,7 +176,7 @@ public class OrganizationService {
             });
 
             // STEP 2 — validate duplicate email (but ignore same user)
-            Mono<Void> emailCheck = userRepository.existsByEmailAndRole(organizationRequest.getEmail(), existingUser.getRole()).flatMap(exists -> {
+            Mono<Void> emailCheck = userRepository.existsByEmail(organizationRequest.getEmail()).flatMap(exists -> {
                 if (exists && !organizationRequest.getEmail().equals(existingUser.getEmail())) {
                     return Mono.error(new PhoneNumberNotFoundException(EMAIL_EXISTS));
                 }
@@ -236,8 +235,8 @@ public class OrganizationService {
                 .phoneNumber(request.getPhoneNumber())
                 .email(request.getEmail())
                 .fullName(request.getFullName())
-                .role(role).
-                build();
+                .role(role)
+                .build();
     }
 
     private Mono<PricingPlans> getPlanById(String id) {
