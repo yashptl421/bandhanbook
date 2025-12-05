@@ -1,5 +1,6 @@
 package com.bandhanbook.app.security.userprinciple;
 
+import com.bandhanbook.app.exception.CommontException;
 import com.bandhanbook.app.exception.EmailNotFoundException;
 import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
 import com.bandhanbook.app.repository.UserRepository;
@@ -9,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.BLOCKED;
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.INVALID_CREDENTIALS;
 
 @Service
@@ -19,6 +21,20 @@ public class UserDetailService implements ReactiveUserDetailsService {
     @Override
     public Mono<UserDetails> findByUsername(String userName) {
         // Check if input is email
+        return findUser(userName).map(users -> {
+            if (!users.isAccountNonLocked()) {
+                throw new CommontException(BLOCKED);
+            }
+
+            if (!users.isEnabled()) {
+                throw new CommontException("You have removed your account, Please contact to agent or administrator to activate it.");
+            }
+            return users;
+        });
+    }
+
+    private Mono<UserDetails> findUser(String userName) {
+
         if (userName.contains("@")) {
             return userRepository.findByEmail(userName)
                     .switchIfEmpty(Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS)))
@@ -38,5 +54,9 @@ public class UserDetailService implements ReactiveUserDetailsService {
  */
     public Mono<UserPrinciple> findByEmail(String email) {
         return findByUsername(email).cast(UserPrinciple.class);
+    }
+
+    public Mono<UserPrinciple> findByPhoneNumber(String phoneNumber) {
+        return findByUsername(phoneNumber).cast(UserPrinciple.class);
     }
 }

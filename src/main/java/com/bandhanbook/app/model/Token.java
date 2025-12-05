@@ -11,7 +11,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -22,13 +21,21 @@ public class Token {
     @Id
     private String id;
     @Indexed(unique = true)
+    @Field("phone_number")
     private String phoneNumber;
+    private String role;
+    @Field("last_sent_at")
+    private Instant lastSentAt;
+    @Field("window_start")
+    private Instant windowStart;
+    @Field("request_count_in_window")
+    private int requestCountInWindow;
+    @Field("failed_attempts")
+    @Builder.Default
+    private int failedAttempts = 0;
     private String email;
     private String otp;
-    @Field("role")
-    private String role;
     @Field("created_at")
     @Indexed(expireAfter = "300s")
     private Instant createdAt;
-
 }

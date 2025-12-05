@@ -1,6 +1,7 @@
 package com.bandhanbook.app.exception;
 
 import com.bandhanbook.app.payload.response.base.ApiResponse;
+import com.bandhanbook.app.payload.response.base.CommonApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -54,5 +55,19 @@ public class GlobalExceptionHandler {
                 .message(VALIDATION_ERROR)
                 .error(errors)
                 .build()));
+    }
+
+    @ExceptionHandler(CommontException.class)
+    public Mono<ResponseEntity<CommonApiResponse<String>>> handleRuntime(CommontException ex) {
+        return Mono.just(ResponseEntity.badRequest().body(CommonApiResponse.<String>builder().
+                status(HttpStatus.BAD_REQUEST.value()).
+                error(ex.getMessage()).build()));
+    }
+
+    @ExceptionHandler(UnAuthorizedException.class)
+    public Mono<ResponseEntity<CommonApiResponse<String>>> handleRuntime(UnAuthorizedException ex) {
+        return Mono.just(ResponseEntity.badRequest().body(CommonApiResponse.<String>builder().
+                status(HttpStatus.UNAUTHORIZED.value()).
+                error(ex.getMessage()).build()));
     }
 }

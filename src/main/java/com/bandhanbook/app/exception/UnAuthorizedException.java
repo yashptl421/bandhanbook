@@ -1,19 +1,19 @@
 package com.bandhanbook.app.exception;
 
-public class UnAuthrizedException extends RuntimeException {
-    public UnAuthrizedException() {
+public class UnAuthorizedException extends RuntimeException {
+    public UnAuthorizedException() {
         super();
     }
 
-    public UnAuthrizedException(String message, Throwable cause) {
+    public UnAuthorizedException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public UnAuthrizedException(String message) {
+    public UnAuthorizedException(String message) {
         super(message);
     }
 
-    public UnAuthrizedException(Throwable cause) {
+    public UnAuthorizedException(Throwable cause) {
         super(cause);
     }
 }

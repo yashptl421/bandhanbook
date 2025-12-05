@@ -5,6 +5,7 @@ public interface ErrorResponseMessages {
     String DATA_NOT_FOUND = "Data not found";
     String VALIDATION_ERROR = "Validation error";
     String PHONE_EXISTS = "User with this phone number already exists.";
+    String PHONE_EMAIL_EXISTS = "User with this phone number Or Email already exists.";
     String EMAIL_EXISTS = "User with this email already exists.";
     String BLOCKED = "Your account is blocked; kindly contact your administrator.";
     String INVALID_OTP = "Invalid or expired OTP";

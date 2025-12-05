@@ -4,9 +4,11 @@ package com.bandhanbook.app.conrollers;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.LoginRequest;
+import com.bandhanbook.app.payload.request.PhoneLoginRequest;
 import com.bandhanbook.app.payload.request.RefreshRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
 import com.bandhanbook.app.payload.response.LoginResponse;
+import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,6 +36,17 @@ public class AuthController {
 
     @Autowired
     private final UserService userService;
+
+    @Operation(summary = "Login from mobile application")
+    @PostMapping("/login")
+    public Mono<ResponseEntity<ApiResponse<Void>>> login(@RequestBody @Valid PhoneLoginRequest request) {
+        return userService.login(request)
+                .map(res -> ResponseEntity.ok(ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(res)
+                        .build()
+                ));
+    }
 
     @Operation(summary = "Login from web application")
     @PostMapping("/web-login")
@@ -81,4 +94,18 @@ public class AuthController {
     public Mono<Users> getUsers() {
         return Mono.just(userService.getUsers());
     }
+
+
+    /*@Operation(summary = "Verify Otp")
+    @PostMapping("/verify-otp")
+    public Mono<ResponseEntity<ApiResponse<LoginResponse>>> verifyOtp(@RequestBody @Valid PhoneLoginResponse request) {
+        return userService.verifyOtp(request)
+                .map(res -> ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(LOGGED_IN)
+                        .data(res)
+                        .build()
+                ));
+    }*/
+
 }

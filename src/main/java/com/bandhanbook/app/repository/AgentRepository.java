@@ -1,4 +1,7 @@
 package com.bandhanbook.app.repository;
 
-public class AgentRepository {
+import com.bandhanbook.app.model.Agents;
+import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
+
+public interface AgentRepository extends ReactiveMongoRepository<Agents, String> {
 }

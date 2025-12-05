@@ -1,18 +1,24 @@
 package com.bandhanbook.app.service;
 
 import com.bandhanbook.app.exception.EmailNotFoundException;
-import com.bandhanbook.app.exception.InvalidOtpException;
 import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
+import com.bandhanbook.app.exception.PhoneOrEmailNotFoundException;
 import com.bandhanbook.app.exception.RecordNotFoundException;
-import com.bandhanbook.app.model.*;
+import com.bandhanbook.app.model.EventParticipants;
+import com.bandhanbook.app.model.MatrimonyCandidate;
+import com.bandhanbook.app.model.RefreshToken;
+import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.LoginRequest;
+import com.bandhanbook.app.payload.request.PhoneLoginRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
 import com.bandhanbook.app.payload.response.LoginResponse;
-import com.bandhanbook.app.repository.*;
+import com.bandhanbook.app.repository.EventParticipantsRepository;
+import com.bandhanbook.app.repository.MatrimonyRepository;
+import com.bandhanbook.app.repository.RefreshTokenRepository;
+import com.bandhanbook.app.repository.UserRepository;
 import com.bandhanbook.app.security.jwt.JwtService;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
-import com.bandhanbook.app.utilities.UtilityHelper;
 import io.jsonwebtoken.Claims;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,11 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.OTP_SENT;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.USER_REGISTERED;
 
 @Service
@@ -47,27 +51,40 @@ public class UserService {
     @Autowired
     private EventParticipantsRepository eventParticipantRepo;
     @Autowired
-    TokensRepository tokensRepository;
+    OtpService otpService;
+   /* @Autowired
+    TokensRepository tokensRepository;*/
 
     public Users getUsers() {
         return new Users();
     }
 
+    @Transactional
+    public Mono<String> login(PhoneLoginRequest loginRequest) {
+
+        return userDetailService.findByPhoneNumber(loginRequest.getPhoneNumber())
+                .switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(INVALID_CREDENTIALS)))
+                .flatMap(user -> {
+
+                    if (!loginRequest.getPassword().isBlank() && !passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+                        return Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS));
+                    }
+                    if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {
+                        return Mono.error(new EmailNotFoundException(loginRequest.getRole() + " is not registered with this number"));
+                    }
+                    return otpService.requestOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
+                });
+    }
+
+    @Transactional
     public Mono<Void> registerUser(UserRegisterRequest request) {
         String role = RoleNames.SuperUser.name();
-        return userRepository
-                .existsByPhoneNumber(request.getPhoneNumber())
-                .flatMap(exists -> {
-                    if (exists) {
-                        return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
-                    }
-                    return Mono.empty();
-                }).then(Mono.defer(() -> {
-                    Users user = modelMapper.map(request, Users.class);
-                    user.getRoles().add(role);
-                    user.setPassword(passwordEncoder.encode(user.getPassword()));
-                    return userRepository.save(user);
-                })).then();
+        return getValidatedUser(request.getPhoneNumber(), request.getEmail(), role).then(Mono.defer(() -> {
+            Users user = modelMapper.map(request, Users.class);
+            user.getRoles().add(role);
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            return userRepository.save(user);
+        })).then();
     }
 
     @Transactional
@@ -75,69 +92,57 @@ public class UserService {
         String role = RoleNames.Candidate.name();
         // If no OTP → Send OTP
         if (request.getOtp() == null || request.getOtp().isBlank()) {
-            return sendOtp(request, role);
+            return otpService.requestOtp(request.getPhoneNumber(), role);
         }
-        Mono<Token> tokenMono = tokensRepository.findByPhoneNumberAndRole(request.getPhoneNumber(), role)
-                .switchIfEmpty(Mono.error(new InvalidOtpException(INVALID_OTP)));
-                /*findByPhoneRoleAndOtp(request.getPhoneNumber(), request.getOtp(), role)
-                .switchIfEmpty(Mono.error(new InvalidOtpException()));
-                */
+        Mono<String> verifiedOtp = otpService.verifyOtp(request.getPhoneNumber(), role, request.getOtp());
 
-        return tokenMono.flatMap(token -> {
+        // STEP 3 — Check if user exists by phone
+        return verifiedOtp.flatMap(str -> userRepository.findByPhoneNumber(request.getPhoneNumber())
 
-            // If OTP not 123456 → return || invalid must be remove in prod
-            if (!"123456".equals(request.getOtp())) {
-                return Mono.error(new InvalidOtpException(INVALID_OTP));
-            }
+                .flatMap(existingUser ->
+                        matrimonyRepository.findByUserId(existingUser.getId())
+                                .flatMap(candidate ->
+                                        eventParticipantRepo
+                                                .existsByCandidateIdAndEventId(candidate.getId(), request.getEventId())
+                                                .flatMap(exists -> {
+                                                    if (exists) {
+                                                        return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
+                                                    }
+                                                    // Add candidate to new event
+                                                    return saveEventParticipant(candidate, request, authUser)
+                                                            .thenReturn(USER_REGISTERED);
+                                                })
+                                )
+                                .switchIfEmpty(
+                                        Mono.defer(() -> {
+                                            existingUser.getRoles().add(role);
+                                            return userRepository.save(existingUser)
+                                                    .flatMap(savedUser ->
+                                                            matrimonyRepository
+                                                                    .save(registerReqToCandidate(request, savedUser))
+                                                                    .flatMap(matrimonyCandidate ->
+                                                                            saveEventParticipant(matrimonyCandidate, request, authUser)
+                                                                                    .thenReturn(USER_REGISTERED)
+                                                                    )
+                                                    );
+                                        })
+                                )
+                )
+                .switchIfEmpty(
+                        Mono.defer(() -> {
+                            Users newUser = modelMapper.map(request, Users.class);
+                            newUser.getRoles().add(role);
 
-            // STEP 3 — Check if user exists by phone
-            return userRepository.findByPhoneNumber(request.getPhoneNumber())
-
-                    .flatMap(existingUser ->
-                            matrimonyRepository.findByUserId(existingUser.getId())
-                                    .flatMap(candidate ->
-                                            eventParticipantRepo
-                                                    .existsByCandidateIdAndEventId(candidate.getId(), request.getEventId())
-                                                    .flatMap(exists -> {
-                                                        if (exists) {
-                                                            return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
-                                                        }
-                                                        // Add candidate to new event
-                                                        return saveEventParticipant(candidate, request, authUser)
-                                                                .thenReturn(USER_REGISTERED);
-                                                    })
-                                    )
-                                    .switchIfEmpty(
-                                            Mono.defer(() -> {
-                                                existingUser.getRoles().add(role);
-                                                return userRepository.save(existingUser)
-                                                        .flatMap(savedUser ->
-                                                                matrimonyRepository
-                                                                        .save(registerReqToCandidate(request, savedUser))
-                                                                        .flatMap(matrimonyCandidate ->
-                                                                                saveEventParticipant(matrimonyCandidate, request, authUser)
-                                                                                        .thenReturn(USER_REGISTERED)
-                                                                        )
-                                                        );
-                                            })
-                                    )
-                    )
-                    .switchIfEmpty(
-                            Mono.defer(() -> {
-                                Users newUser = modelMapper.map(request, Users.class);
-                                newUser.getRoles().add(role);
-
-                                return userRepository.save(newUser)
-                                        .flatMap(savedUser ->
-                                                matrimonyRepository.save(registerReqToCandidate(request, savedUser))
-                                                        .flatMap(matrimonyCandidate ->
-                                                                saveEventParticipant(matrimonyCandidate, request, authUser)
-                                                                        .thenReturn(USER_REGISTERED)
-                                                        )
-                                        );
-                            })
-                    );
-        });
+                            return userRepository.save(newUser)
+                                    .flatMap(savedUser ->
+                                            matrimonyRepository.save(registerReqToCandidate(request, savedUser))
+                                                    .flatMap(matrimonyCandidate ->
+                                                            saveEventParticipant(matrimonyCandidate, request, authUser)
+                                                                    .thenReturn(USER_REGISTERED)
+                                                    )
+                                    );
+                        })
+                ));
     }
 
     public Mono<LoginResponse> webLogin(LoginRequest loginRequest) {
@@ -209,27 +214,12 @@ public class UserService {
                 .then();
     }
 
-    private Mono<String> sendOtp(UserRegisterRequest request, String role) {
-        String otp = generateOtp();
-        return tokensRepository.save(Token.builder()
-                .phoneNumber(request.getPhoneNumber())
-                .email(request.getEmail())
-                .role(role)
-                .otp(otp)
-                .createdAt(Instant.now())
-                .build()).thenReturn((OTP_SENT));
-    }
-
-    private String generateOtp() {
-        return UtilityHelper.generateOtp();
-    }
-
     private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, Users authUser) {
-        return tokensRepository.deleteByPhoneNumber(request.getPhoneNumber()).then(eventParticipantRepo.save(EventParticipants.builder()
+        return eventParticipantRepo.save(EventParticipants.builder()
                 .candidateId(candidate.getId())
                 .eventId(request.getEventId())
                 .addedBy(authUser.getId())
-                .build()));
+                .build());
     }
 
     private MatrimonyCandidate registerReqToCandidate(UserRegisterRequest userRegisterRequest, Users user) {
@@ -246,5 +236,15 @@ public class UserService {
                                 .state(userRegisterRequest.getState()).build())
 
                 .build();
+    }
+
+    public Mono<Users> getValidatedUser(String phoneNumber, String email, String role) {
+        return userRepository
+                .findByPhoneNumberOrEmail(phoneNumber, email).flatMap(existingUser -> {
+                    if (existingUser.getRoles().contains(role)) {
+                        return Mono.error(new PhoneOrEmailNotFoundException(PHONE_EMAIL_EXISTS));
+                    }
+                    return Mono.just(existingUser);
+                });
     }
 }

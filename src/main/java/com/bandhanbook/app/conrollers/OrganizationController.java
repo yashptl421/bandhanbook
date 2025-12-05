@@ -4,6 +4,7 @@ import com.bandhanbook.app.model.PricingPlans;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
+import com.bandhanbook.app.payload.response.base.CommonApiResponse;
 import com.bandhanbook.app.service.OrganizationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -54,7 +55,7 @@ public class OrganizationController {
                         .status(HttpStatus.OK.value())
                         .message(DATA_FOUND)
                         .data(tuple.getT2())
-                        .meta(ApiResponse.Meta.builder().page(page).limit(limit).totalPages((int)Math.ceil((double) tuple.getT1() / limit)).totalRecords(tuple.getT1()).build())
+                        .meta(ApiResponse.Meta.builder().page(page).limit(limit).totalPages((int) Math.ceil((double) tuple.getT1() / limit)).totalRecords(tuple.getT1()).build())
                         .build()
         ));
     }
@@ -76,14 +77,14 @@ public class OrganizationController {
     }
 
     @GetMapping("/pricing-plan")
-    public Mono<ResponseEntity<ApiResponse<List<PricingPlans>>>> getPricingPlans() {
+    public Mono<ResponseEntity<CommonApiResponse<List<PricingPlans>>>> getPricingPlans() {
         return organizationService.getPricingPlans()
                 .map(json -> ResponseEntity.ok(
-                        ApiResponse.<List<PricingPlans>>builder()
+                        CommonApiResponse.<List<PricingPlans>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message(DATA_FOUND)
                                 .data(json)
-                                .meta(ApiResponse.Meta.builder().totalRecords(json.size()).build())
+                                .totalRecords(json.size())
                                 .build()
                 ));
     }

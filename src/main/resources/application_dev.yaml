@@ -23,6 +23,8 @@ jwt:
   # expiration refresh token
   refreshExpiration: 172800
 
+otp:
+  expiration: 300
 #Swagger Config
 springdoc:
   api-docs:
