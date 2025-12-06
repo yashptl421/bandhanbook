@@ -1,0 +1,76 @@
+[
+  {
+    "id": "basic_plan",
+    "name": "Basic Plan",
+    "price": 49999,
+    "maxAgents": 5,
+    "maxUsers": 100,
+    "registrationPeriod": 30,
+    "period": "Year",
+    "features": [
+      "Upto 5 Agents",
+      "Upto 100 Matrimony Users",
+      "Registration period upto 30 days",
+      "Orgnazation branding (name, logo)",
+      "Basic dashboard access",
+      "Email Support",
+      "1 Year access per user"
+    ]
+  },
+  {
+    "id": "standard_plan",
+    "name": "Standard Plan",
+    "price": 249999,
+    "maxAgents": 5,
+    "maxUsers": 100,
+    "registrationPeriod": 45,
+    "period": "Year",
+    "features": [
+      "Upto 20 Agents",
+      "Upto 500 Matrimony Users",
+      "Registration period upto 45 days",
+      "Orgnazation branding (name, logo)",
+      "Basic dashboard access",
+      "Email Support",
+      "1 Year access per user"
+    ]
+  },
+  {
+    "id": "premium_plan",
+    "name": "Premium Plan",
+    "price": 249999,
+    "maxAgents": 5,
+    "maxUsers": 100,
+    "registrationPeriod": 60,
+    "period": "Year",
+    "features": [
+      "Upto 100 Agents",
+      "Upto 1000 Matrimony Users",
+      "Registration period upto 60 days",
+      "Orgnazation branding (name, logo)",
+      "Full dashboard access",
+      "Lead Insights from events",
+      "Premium support (phone/chat)",
+      "1 Year access per user"
+    ]
+  },
+  {
+    "id": "enterprise_plan",
+    "name": "Enterprise Plan",
+    "price": 499999,
+    "maxAgents": 5,
+    "maxUsers": 100,
+    "registrationPeriod": 90,
+    "period": "Year",
+    "features": [
+      "Unlimited Agents",
+      "Unlimited Matrimony Users",
+      "Registration period upto 90 days",
+      "Orgnazation branding (name, logo)",
+      "Full dashboard access",
+      "Lead Insights from events",
+      "Premium support (phone/chat/email)",
+      "1 Year access per user"
+    ]
+  }
+]
