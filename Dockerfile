@@ -1,16 +1,18 @@
 # ---------- Stage 1: Build the JAR ----------
+# ====== BUILD STAGE ======
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /app
+
+# Copy project files
 COPY pom.xml .
-RUN mvn -B dependency:go-offline
-
 COPY src ./src
-RUN mvn -B package -DskipTests
 
-# ---------- Stage 2: Run the JAR ----------
+# Package without tests
+RUN mvn clean package -DskipTests
+
+# ====== RUN STAGE ======
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-
 COPY --from=builder /app/target/*.jar app.jar
 
 EXPOSE 8082
