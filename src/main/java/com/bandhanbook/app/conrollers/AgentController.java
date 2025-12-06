@@ -27,8 +27,8 @@ public class AgentController {
     private AgentService agentService;
 
     @PostMapping()
-    public Mono<ResponseEntity<ApiResponse<String>>> createAgent(@Valid @RequestBody AgentRequest request) {
-        return agentService.createAgent(request).thenReturn(ResponseEntity.ok(new ApiResponse<>(
+    public Mono<ResponseEntity<ApiResponse<String>>> createAgent(@Valid @RequestBody AgentRequest request, @CurrentUser Users authUser) {
+        return agentService.createAgent(request, authUser).thenReturn(ResponseEntity.ok(new ApiResponse<>(
                 AGENT_CREATED,
                 HttpStatus.OK.value()
         )));

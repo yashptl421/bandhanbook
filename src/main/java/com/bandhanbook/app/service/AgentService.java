@@ -48,19 +48,30 @@ public class AgentService {
     @Autowired
     private ReactiveMongoTemplate mongoTemplate;
 
-    public Mono<String> createAgent(AgentRequest request) {
+    public Mono<String> createAgent(AgentRequest request, Users authUser) {
 
         String role = RoleNames.Agent.name();
         Mono<Users> validUser = userService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), role);
-
-        return validUser.flatMap(existingUser -> {
-            existingUser.getRoles().add(role);
-            return saveAgent(request, existingUser);
-        }).switchIfEmpty(Mono.defer(() -> {
-            Users newUser = modelMapper.map(request, Users.class);
-            newUser.getRoles().add(role);
-            return saveAgent(request, newUser);
-        }));
+        Mono<String> orgId = Mono.just("");
+        if (authUser.getRoles().contains(RoleNames.Organization.name())) {
+            orgId = organizationRepository.findByUserId(authUser.getId())
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                    .map(Organization::getId);
+        }
+        return orgId
+                .flatMap(org -> {
+                    if (!org.isEmpty()) {
+                        request.setOrganizationId(org);
+                    }
+                    return validUser.flatMap(existingUser -> {
+                        existingUser.getRoles().add(role);
+                        return saveAgent(request, existingUser);
+                    }).switchIfEmpty(Mono.defer(() -> {
+                        Users newUser = modelMapper.map(request, Users.class);
+                        newUser.getRoles().add(role);
+                        return saveAgent(request, newUser);
+                    }));
+                });
     }
 
     public Mono<AgentResponse> showAgent(String agentId, Users authUser) {
@@ -68,7 +79,6 @@ public class AgentService {
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .flatMap(agents ->
                         organizationRepository.findByUserId(authUser.getId())
-                        .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                                 .flatMap(org -> {
                                     if (!org.getId().equals(agents.getOrganizationId())) {
                                         return Mono.error(new UnAuthorizedException("User Not Authorized"));
@@ -84,7 +94,19 @@ public class AgentService {
                                                 res.setUser_details(userDetails);
                                                 return res;
                                             });
-                                }));
+                                }).switchIfEmpty(Mono.defer(() -> {
+                                    return userRepository.findById(agents.getUserId())
+                                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                                            .map(users -> {
+                                                AgentResponse res = modelMapper.map(agents, AgentResponse.class);
+                                                AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
+                                                userDetails.setFull_name(users.getFullName());
+                                                userDetails.setPhone_number(users.getPhoneNumber());
+                                                userDetails.setRole(users.getRoles().get(0));
+                                                res.setUser_details(userDetails);
+                                                return res;
+                                            });
+                                })));
     }
 
     private Mono<String> saveAgent(AgentRequest request, Users newUser) {
