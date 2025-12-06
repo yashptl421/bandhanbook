@@ -187,7 +187,7 @@ public class AgentService {
             if (filterReq.get("organizationId") != null) {
                 return Mono.just(filterReq.get("organizationId"));
             }
-            return Mono.empty();
+            return Mono.just("");
         } else {
             return organizationRepository.findByUserId(authUser.getId())
                     .map(Organization::getId)
