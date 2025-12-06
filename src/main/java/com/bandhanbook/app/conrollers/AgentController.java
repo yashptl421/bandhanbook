@@ -3,6 +3,7 @@ package com.bandhanbook.app.conrollers;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.AgentRequest;
+import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.response.AgentResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.AgentService;
@@ -17,8 +18,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_CREATED;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 @RestController
 @RequestMapping("/agent")
@@ -43,6 +43,13 @@ public class AgentController {
                         .data(response)
                         .build()
         ));
+    }
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<ApiResponse<String>>> updateAgent(@Valid @RequestBody AgentRequest req, @PathVariable String id) {
+        return agentService.updateAgent(req, id).thenReturn(ResponseEntity.ok(new ApiResponse<>(
+                ORGANIZATION_UPDATED,
+                HttpStatus.OK.value()
+        )));
     }
 
     @GetMapping("")

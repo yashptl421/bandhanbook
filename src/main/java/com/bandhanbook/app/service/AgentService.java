@@ -30,6 +30,7 @@ import java.util.function.Function;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_CREATED;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_UPDATED;
 
 @Service
 @AllArgsConstructor
@@ -120,6 +121,31 @@ public class AgentService {
                     agent.setOrganizationId(organizationId);
                     return agentRepository.save(agent)
                             .thenReturn(AGENT_CREATED);
+                });
+    }
+
+    public Mono<String> updateAgent(AgentRequest request, String agentId) {
+        return agentRepository.findById(agentId)
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .flatMap(existingAgent -> {
+                    userRepository.findById(existingAgent.getUserId())
+                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).map(users ->
+                            {
+                                users.setFullName(request.getFullName());
+                                users.setEmail(request.getEmail());
+                                users.setPhoneNumber(request.getPhoneNumber());
+                                return userRepository.save(users);
+                            });
+
+                    existingAgent.setStatus(request.getStatus());
+                    existingAgent.setGender(request.getGender());
+                    existingAgent.setAddress(request.getAddress());
+                    existingAgent.setCity(request.getCity());
+                    existingAgent.setState(request.getState());
+                    existingAgent.setCountry(request.getCountry());
+                    existingAgent.setZip(request.getZip());
+                    return agentRepository.save(existingAgent)
+                            .thenReturn(AGENT_UPDATED);
                 });
     }
 
