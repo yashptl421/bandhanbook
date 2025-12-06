@@ -27,5 +27,5 @@ public interface UserRepository extends ReactiveMongoRepository<Users, String> {
 
     Mono<Users> findByPhoneNumberOrEmail(String phoneNumber, String email);
 
-    Mono<Users> findByEmailAndRolesContaining(String email, String role);
+    Mono<Users> findByPhoneNumberAndRolesContaining(String email, String role);
 }

@@ -2,7 +2,6 @@ package com.bandhanbook.app.service;
 
 import com.bandhanbook.app.model.Token;
 import com.bandhanbook.app.repository.TokensRepository;
-import com.bandhanbook.app.security.userprinciple.UserDetailService;
 import com.bandhanbook.app.utilities.UtilityHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,8 +25,6 @@ public class OtpService {
     private static final Logger log = LoggerFactory.getLogger(OtpService.class);
     @Autowired
     private PasswordEncoder passwordEncoder;
-    @Autowired
-    UserDetailService userDetailService;
     @Autowired
     TokensRepository tokensRepository;
     /* @Autowired

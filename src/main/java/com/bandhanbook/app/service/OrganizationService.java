@@ -220,7 +220,7 @@ public class OrganizationService {
 
         return Mono.fromCallable(() -> {
                     Resource resource =
-                            resourceLoader.getResource("classpath:json/pricingPlans.json");
+                            resourceLoader.getResource("classpath:Json/pricingPlans.json");
 
                     try (InputStream inputStream = resource.getInputStream()) {
                         return Arrays.asList(objectMapper.readValue(inputStream, PricingPlans[].class));

@@ -13,6 +13,7 @@ import com.bandhanbook.app.payload.request.LoginRequest;
 import com.bandhanbook.app.payload.request.PhoneLoginRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
 import com.bandhanbook.app.payload.response.LoginResponse;
+import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.repository.EventParticipantsRepository;
 import com.bandhanbook.app.repository.MatrimonyRepository;
 import com.bandhanbook.app.repository.RefreshTokenRepository;
@@ -20,6 +21,7 @@ import com.bandhanbook.app.repository.UserRepository;
 import com.bandhanbook.app.security.jwt.JwtService;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
 import io.jsonwebtoken.Claims;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,6 +34,7 @@ import java.time.LocalDateTime;
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.USER_REGISTERED;
 
+@Slf4j
 @Service
 public class UserService {
     @Autowired
@@ -85,6 +88,30 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
             return userRepository.save(user);
         })).then();
+    }
+
+    @Transactional
+    public Mono<PhoneLoginResponse> verifyOtp(PhoneLoginRequest request) {
+
+        return otpService.verifyOtp(request.getPhoneNumber(), request.getRole(), request.getOtp())
+                .flatMap(s ->
+                        userRepository.findByPhoneNumberAndRolesContaining(request.getPhoneNumber(), request.getRole()))
+                .flatMap(users ->
+                        matrimonyRepository.findByUserId(users.getId())
+                                .map(candidate -> {
+                                    PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
+                                    res.setAgent(false);
+                                    res.setMatrimony_data(candidate);
+                                    return res;
+                                })
+                                .switchIfEmpty(
+                                        Mono.fromSupplier(() -> {
+                                            PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
+                                            res.setAgent(false);
+                                            return res;
+                                        })
+                                )
+                );
     }
 
     @Transactional
@@ -165,6 +192,7 @@ public class UserService {
                     LoginResponse loginResponse = modelMapper.map(user.getUsers(), LoginResponse.class);
                     loginResponse.setAccessToken(accessToken);
                     loginResponse.setRefreshToken(refreshToken);
+                    loginResponse.setRole(user.getUsers().getRoles().get(0));
                     return refreshTokenRepository.save(refToken).thenReturn(loginResponse);
                 });
     }
@@ -231,6 +259,7 @@ public class UserService {
                 .address(
                         MatrimonyCandidate.Address.builder()
                                 .address(userRegisterRequest.getAddress())
+                                .country(userRegisterRequest.getCountry())
                                 .zip(userRegisterRequest.getZip())
                                 .city(userRegisterRequest.getCity())
                                 .state(userRegisterRequest.getState()).build())

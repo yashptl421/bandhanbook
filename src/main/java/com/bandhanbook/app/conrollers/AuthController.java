@@ -96,16 +96,16 @@ public class AuthController {
     }
 
 
-    /*@Operation(summary = "Verify Otp")
+    @Operation(summary = "Verify Otp")
     @PostMapping("/verify-otp")
-    public Mono<ResponseEntity<ApiResponse<LoginResponse>>> verifyOtp(@RequestBody @Valid PhoneLoginResponse request) {
+    public Mono<ResponseEntity<ApiResponse<PhoneLoginResponse>>> verifyOtp(@RequestBody @Valid PhoneLoginRequest request) {
         return userService.verifyOtp(request)
-                .map(res -> ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
+                .map(res -> ResponseEntity.ok(ApiResponse.<PhoneLoginResponse>builder()
                         .status(HttpStatus.OK.value())
-                        .message(LOGGED_IN)
+                        .message(OTP_VERIFIED)
                         .data(res)
                         .build()
                 ));
-    }*/
+    }
 
 }

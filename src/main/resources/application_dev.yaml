@@ -1,12 +1,12 @@
 server:
-  port: 8083
+  port: ${PORT:8082}
 spring:
   application:
     name: bandhanbook
 
   data:
     mongodb:
-      uri: mongodb+srv://gulshanyuvasoft198:uJIUXiOsoOczGejq@cluster0.hw9ikzu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0  #?retryWrites=true&w=majority
+      uri: ${MONGO_URI}
       auto-index-creation: true
 # Optional: logging for Mongo queries
 logging:
@@ -18,13 +18,20 @@ logging:
             core:
               MongoTemplate: DEBUG
 jwt:
-  secret: ypatel
+  secret: L8KwmXTT/ByT7e9ZiO0s5cGedE7cSfS5YKpC0Qn/qO8=
+  refresh_secret: 9a4f2c8d3b7a1e6f45c8a0b3f267d8b1d4e6f3c8a9d2b5f8e3a9c8b5f6v8a3d9
   expiration: 86400
   # expiration refresh token
   refreshExpiration: 172800
 
+#otp config
 otp:
   expiration: 300
+  duration: 60
+  windowDuration : 1
+  maxRequestsPerWindow: 5
+  maxFailedAttempts: 5
+
 #Swagger Config
 springdoc:
   api-docs:
