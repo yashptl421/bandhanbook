@@ -18,4 +18,5 @@ COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8082
 ENV PORT=8082
 
-CMD ["sh", "-c", "java -jar bandhanbook-0.0.1-SNAPSHOT.jar --server.port=$PORT"]
+# Run the jar
+ENTRYPOINT ["java", "-jar", "app.jar"]
