@@ -39,7 +39,7 @@ public class AgentService {
     @Autowired
     UserRepository userRepository;
     @Autowired
-    UserService userService;
+    AuthService authService;
     @Autowired
     AgentRepository agentRepository;
     @Autowired
@@ -54,7 +54,7 @@ public class AgentService {
     public Mono<String> createAgent(AgentRequest request, Users authUser) {
 
         String role = RoleNames.Agent.name();
-        Mono<Users> validUser = userService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), role);
+        Mono<Users> validUser = authService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), role);
         Mono<String> orgId = Mono.just("");
         if (authUser.getRoles().contains(RoleNames.Organization.name())) {
             orgId = organizationRepository.findByUserId(authUser.getId())

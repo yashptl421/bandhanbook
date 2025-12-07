@@ -2,9 +2,7 @@ package com.bandhanbook.app.conrollers;
 
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
-import com.bandhanbook.app.payload.request.LoginRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
-import com.bandhanbook.app.payload.response.LoginResponse;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
@@ -21,11 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.Map;
-
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.LOGGED_IN;
 
 
 @Slf4j
@@ -50,6 +44,19 @@ public class UserController {
                         .build()
         ));
     }
+
+   /* @Operation(summary = "Fetch a Candidate by id", description = "Retrieves the details of a candidate using their unique identifier.")
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<ApiResponse<OrganizationResponse>>> show(@PathVariable String id, @CurrentUser Users authUser) {
+        return userService.getCandidate(id, authUser)
+                .map(response -> ResponseEntity.ok(
+                        ApiResponse.<OrganizationResponse>builder()
+                                .status(HttpStatus.OK.value())
+                                .message(DATA_FOUND)
+                                .data(response)
+                                .build()
+                ));
+    }*/
 
     @Operation(summary = "Login from web application")
     @GetMapping("/me")
