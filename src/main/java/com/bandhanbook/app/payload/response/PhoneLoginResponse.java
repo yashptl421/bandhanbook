@@ -27,6 +27,7 @@ public class PhoneLoginResponse {
     private MatrimonyCandidate matrimony_data;
     private EventParticipants eventParticipants;
     private AgentResponse agent_details;
+    private OrganizationResponse organization_details;
 
     @Getter
     @Setter
