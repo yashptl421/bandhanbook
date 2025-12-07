@@ -9,7 +9,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.List;
 
 
 @Getter
@@ -34,7 +33,7 @@ public class UserPrinciple implements UserDetails {
 
     @Override
     public String getUsername() {
-        return users.getEmail();
+        return users.getId();
     }
 
     @Override
@@ -54,6 +53,6 @@ public class UserPrinciple implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return users.getDeletedAt()==null;
+        return users.getDeletedAt() == null;
     }
 }

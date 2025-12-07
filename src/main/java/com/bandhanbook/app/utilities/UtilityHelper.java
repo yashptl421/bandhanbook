@@ -45,4 +45,8 @@ public class UtilityHelper {
         }
         return password.toString();
     }
+    public static boolean validPhoneNumber(String phoneNumber) {
+        String regex = "^[0-9]{10}$";
+        return phoneNumber != null && phoneNumber.matches(regex);
+    }
 }

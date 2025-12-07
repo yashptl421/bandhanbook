@@ -18,7 +18,7 @@ public class PhoneLoginResponse {
     private String email;
     private String fullName;
     private String role;
-    private boolean isAgent;
+    private boolean isAgent=false;
     private Image profileImage;
     @JsonProperty("token")
     private String accessToken;
@@ -29,20 +29,6 @@ public class PhoneLoginResponse {
     private AgentResponse agent_details;
     private OrganizationResponse organization_details;
 
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class Address {
-        private String address;
-        private int country = 101; // India
-        private int state = 4039; // Madhya Pradesh
-        private int city;
-        private String zip;
-
-    }
 
     @Getter
     @Setter

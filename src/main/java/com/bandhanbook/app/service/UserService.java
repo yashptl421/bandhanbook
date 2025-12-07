@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.USER_REGISTERED;
@@ -102,13 +103,17 @@ public class UserService {
                     if (!user.getUsers().getRoles().contains(request.getRole())) {
                         return Mono.error(new UnAuthorizedException(request.getRole() + " is not registered with this number"));
                     }
+                    // Check if user has the requested role
+                    if (user.getUsers().getRoles().size() > 1) {
+                        user.getUsers().setRoles(List.of(request.getRole()));
+                    }
                     Mono<PhoneLoginResponse> responseMono;
                     if (request.getRole().equals(RoleNames.Candidate.name())) {
-                        responseMono = getMatrimonyDetails(request, user.getUsers());
+                        responseMono = getMatrimonyDetails(request.getRole(), user.getUsers());
                     } else if (request.getRole().equals(RoleNames.Agent.name())) {
-                        responseMono = getAgentDetails(request, user.getUsers());
+                        responseMono = getAgentDetails(request.getRole(), user.getUsers());
                     } else {
-                        responseMono = getOrganizationDetails(request, user.getUsers());
+                        responseMono = getOrganizationDetails(request.getRole(), user.getUsers());
                     }
                     return responseMono.map(res -> {
 
@@ -128,11 +133,11 @@ public class UserService {
                 }).switchIfEmpty(Mono.error(new UnAuthorizedException("Error occurred during login")));
     }
 
-    private Mono<PhoneLoginResponse> getAgentDetails(PhoneLoginRequest request, Users users) {
+    private Mono<PhoneLoginResponse> getAgentDetails(String role, Users users) {
         return agentRepository.findByUserId(users.getId()).flatMap(agents -> {
                     PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
                     res.setAgent(true);
-                    res.setRole(request.getRole());
+                    res.setRole(role);
                     AgentResponse agentResponse = modelMapper.map(agents, AgentResponse.class);
                     agentResponse.setUser_id(agents.getUserId());
                     agentResponse.setOrganization_id(agents.getOrganizationId());
@@ -143,14 +148,14 @@ public class UserService {
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 
-    private Mono<PhoneLoginResponse> getMatrimonyDetails(PhoneLoginRequest request, Users users) {
+    private Mono<PhoneLoginResponse> getMatrimonyDetails(String role, Users users) {
 
         return matrimonyRepository.findByUserId(users.getId())
                 .flatMap(candidate ->
                         eventParticipantRepo.findByCandidateId(candidate.getId()).map(eventParticipants -> {
                             PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
                             res.setAgent(false);
-                            res.setRole(request.getRole());
+                            res.setRole(role);
                             res.setEventParticipants(eventParticipants);
                             res.setMatrimony_data(candidate);
                             return res;
@@ -158,11 +163,11 @@ public class UserService {
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 
-    private Mono<PhoneLoginResponse> getOrganizationDetails(PhoneLoginRequest request, Users users) {
+    private Mono<PhoneLoginResponse> getOrganizationDetails(String role, Users users) {
         return organizationRepository.findByUserId(users.getId()).map(organization -> {
             PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
             res.setAgent(false);
-            res.setRole(request.getRole());
+            res.setRole(role);
             res.setOrganization_details(modelMapper.map(organization, OrganizationResponse.class));
             return res;
         }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
@@ -235,6 +240,10 @@ public class UserService {
                     if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
                         return Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS));
                     }
+                    // Check if user has the requested role
+                    if (user.getUsers().getRoles().size() > 1) {
+                        user.getUsers().setRoles(List.of(loginRequest.getRole()));
+                    }
                     String accessToken = jwtService.generateToken(user);
                     String refreshToken = jwtService.generateRefreshToken(user.getUsername());
                     RefreshToken refToken = RefreshToken.builder()
@@ -249,6 +258,28 @@ public class UserService {
                     loginResponse.setRole(user.getUsers().getRoles().get(0));
                     return refreshTokenRepository.save(refToken).thenReturn(loginResponse);
                 });
+    }
+
+    public Mono<PhoneLoginResponse> myProfile(Users users) {
+        return userDetailService.findById(users.getId())
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .flatMap(user -> {
+                    Mono<PhoneLoginResponse> responseMono;
+                    if (user.getUsers().getRoles().contains(RoleNames.Candidate.name())) {
+                        responseMono = getMatrimonyDetails(RoleNames.Candidate.name(), user.getUsers());
+                    } else if (user.getUsers().getRoles().contains(RoleNames.Agent.name())) {
+                        responseMono = getAgentDetails(RoleNames.Agent.name(), user.getUsers());
+                    } else if (user.getUsers().getRoles().contains(RoleNames.Organization.name())) {
+                        responseMono = getOrganizationDetails(RoleNames.Organization.name(), user.getUsers());
+                    } else {
+                        responseMono = Mono.just(modelMapper.map(user.getUsers(), PhoneLoginResponse.class));
+                    }
+                    return responseMono.map(res -> {
+
+                        // res.setRole(request.getRole());
+                        return res;
+                    });
+                }).switchIfEmpty(Mono.error(new UnAuthorizedException("Error occurred during login")));
     }
 
     public Mono<LoginResponse> refreshToken(String oldRefreshToken) {

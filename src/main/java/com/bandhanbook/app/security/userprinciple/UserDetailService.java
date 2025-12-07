@@ -4,9 +4,11 @@ import com.bandhanbook.app.exception.CommontException;
 import com.bandhanbook.app.exception.EmailNotFoundException;
 import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
 import com.bandhanbook.app.repository.UserRepository;
+import com.bandhanbook.app.utilities.UtilityHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -40,7 +42,11 @@ public class UserDetailService implements ReactiveUserDetailsService {
                     .switchIfEmpty(Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS)))
                     .map(UserPrinciple::new);
         }
-        return userRepository.findByPhoneNumber(userName).switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(INVALID_CREDENTIALS)))
+        if (UtilityHelper.validPhoneNumber(userName)) {
+            return userRepository.findByPhoneNumber(userName).switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(INVALID_CREDENTIALS)))
+                    .map(UserPrinciple::new);
+        }
+        return userRepository.findById(userName).switchIfEmpty(Mono.error(new UsernameNotFoundException(INVALID_CREDENTIALS)))
                 .map(UserPrinciple::new);
 
     }
@@ -58,5 +64,8 @@ public class UserDetailService implements ReactiveUserDetailsService {
 
     public Mono<UserPrinciple> findByPhoneNumber(String phoneNumber) {
         return findByUsername(phoneNumber).cast(UserPrinciple.class);
+    }
+    public Mono<UserPrinciple> findById(String id) {
+        return findByUsername(id).cast(UserPrinciple.class);
     }
 }
