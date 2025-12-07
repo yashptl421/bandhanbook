@@ -97,16 +97,35 @@ public class UserService {
 
         return otpService.verifyOtp(request.getPhoneNumber(), request.getRole(), request.getOtp())
                 .flatMap(s ->
-                        userRepository.findByPhoneNumberAndRolesContaining(request.getPhoneNumber(), request.getRole()))
-                .flatMap(users -> {
-                    if (request.getRole().equals(RoleNames.Candidate.name())) {
-                        return getMatrimonyDetails(request, users);
-                    } else if (request.getRole().equals(RoleNames.Agent.name())) {
-                        return getAgentDetails(request, users);
-                    } else {
-                        return getOrganizationDetails(request, users);
+                        userDetailService.findByPhoneNumber(request.getPhoneNumber()))
+                .flatMap(user -> {
+                    if (!user.getUsers().getRoles().contains(request.getRole())) {
+                        return Mono.error(new UnAuthorizedException(request.getRole() + " is not registered with this number"));
                     }
-                }).switchIfEmpty(Mono.error(new UnAuthorizedException(request.getRole() + " is not registered with this number")));
+                    Mono<PhoneLoginResponse> responseMono;
+                    if (request.getRole().equals(RoleNames.Candidate.name())) {
+                        responseMono = getMatrimonyDetails(request, user.getUsers());
+                    } else if (request.getRole().equals(RoleNames.Agent.name())) {
+                        responseMono = getAgentDetails(request, user.getUsers());
+                    } else {
+                        responseMono = getOrganizationDetails(request, user.getUsers());
+                    }
+                    return responseMono.map(res -> {
+
+                        String accessToken = jwtService.generateToken(user);
+                        String refreshToken = jwtService.generateRefreshToken(user.getUsername());
+                        RefreshToken refToken = RefreshToken.builder()
+                                .userId(user.getUsers().getId())
+                                .token(refreshToken)
+                                .revoked(false)
+                                .expiryDate(LocalDateTime.now().plusDays(30))
+                                .build();
+                        res.setAccessToken(accessToken);
+                        res.setRefreshToken(refreshToken);
+                        res.setRole(request.getRole());
+                        return res;
+                    });
+                }).switchIfEmpty(Mono.error(new UnAuthorizedException("Error occurred during login")));
     }
 
     private Mono<PhoneLoginResponse> getAgentDetails(PhoneLoginRequest request, Users users) {
