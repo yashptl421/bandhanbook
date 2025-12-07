@@ -49,7 +49,7 @@ public class CommonController {
 
     @GetMapping("/states/{id}")
     public Mono<ResponseEntity<CommonApiResponse<List<States>>>> getStates(@PathVariable String id) throws IOException {
-        return commonService.getStates(id).collectList().map(json -> ResponseEntity.ok(
+        return commonService.getStates(Integer.parseInt(id)).collectList().map(json -> ResponseEntity.ok(
                 CommonApiResponse.<List<States>>builder()
                         .status(HttpStatus.OK.value())
                         .message(DATA_FOUND)
@@ -60,7 +60,7 @@ public class CommonController {
 
     @GetMapping("/cities/{id}")
     public Mono<ResponseEntity<CommonApiResponse<List<City>>>> getCities(@PathVariable String id) throws IOException {
-        return commonService.getCities(id).collectList().map(json -> ResponseEntity.ok(
+        return commonService.getCities(Integer.parseInt(id)).collectList().map(json -> ResponseEntity.ok(
                 CommonApiResponse.<List<City>>builder()
                         .status(HttpStatus.OK.value())
                         .message(DATA_FOUND)

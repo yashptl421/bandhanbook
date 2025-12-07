@@ -51,7 +51,7 @@ public class Agents {
 
     private int country = 101; // India
     private int state = 4039; // Madhya Pradesh
-    private Integer city;
+    private int city;
     private String zip;
 
     @Field("created_at")

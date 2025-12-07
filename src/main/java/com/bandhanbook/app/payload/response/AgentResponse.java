@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.Address;
 import com.bandhanbook.app.model.Organization;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -21,28 +22,11 @@ public class AgentResponse {
     private String gender;
     private String status;
     private Image profileImage;
-    private int country;
-    private int state;
-    private int city;
-    private String zip;
-    private String address;
+    @JsonProperty("address")
+    private Address localAddress;
     private UserDetails user_details;
     private Organization organization_details;
 
-
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class Address {
-        private String address;
-        private int country = 101; // India
-        private int state = 4039; // Madhya Pradesh
-        private int city;
-        private String zip;
-
-    }
 
     @Getter
     @Setter

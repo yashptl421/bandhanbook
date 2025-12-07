@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.EventParticipants;
 import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -24,6 +25,8 @@ public class PhoneLoginResponse {
     @JsonProperty("refreshToken")
     private String refreshToken;
     private MatrimonyCandidate matrimony_data;
+    private EventParticipants eventParticipants;
+    private AgentResponse agent_details;
 
     @Getter
     @Setter

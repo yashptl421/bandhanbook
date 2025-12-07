@@ -11,7 +11,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class Country {
-    private int id;
-    private String name;
+public class Address {
+    private String address;
+    private Country country;
+    private States state;
+    private City city;
+    private String zip;
 }

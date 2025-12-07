@@ -10,4 +10,5 @@ import reactor.core.publisher.Mono;
 public interface EventParticipantsRepository extends ReactiveMongoRepository<EventParticipants, String> {
 
     Mono<Boolean> existsByCandidateIdAndEventId(String candidate_id, String event_id);
+    Mono<EventParticipants> findByCandidateId(String candidate_id);
 }

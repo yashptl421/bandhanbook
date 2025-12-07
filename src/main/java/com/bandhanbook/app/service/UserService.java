@@ -1,9 +1,6 @@
 package com.bandhanbook.app.service;
 
-import com.bandhanbook.app.exception.EmailNotFoundException;
-import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
-import com.bandhanbook.app.exception.PhoneOrEmailNotFoundException;
-import com.bandhanbook.app.exception.RecordNotFoundException;
+import com.bandhanbook.app.exception.*;
 import com.bandhanbook.app.model.EventParticipants;
 import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.RefreshToken;
@@ -12,12 +9,10 @@ import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.LoginRequest;
 import com.bandhanbook.app.payload.request.PhoneLoginRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
+import com.bandhanbook.app.payload.response.AgentResponse;
 import com.bandhanbook.app.payload.response.LoginResponse;
 import com.bandhanbook.app.payload.response.PhoneLoginResponse;
-import com.bandhanbook.app.repository.EventParticipantsRepository;
-import com.bandhanbook.app.repository.MatrimonyRepository;
-import com.bandhanbook.app.repository.RefreshTokenRepository;
-import com.bandhanbook.app.repository.UserRepository;
+import com.bandhanbook.app.repository.*;
 import com.bandhanbook.app.security.jwt.JwtService;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
 import io.jsonwebtoken.Claims;
@@ -54,7 +49,11 @@ public class UserService {
     @Autowired
     private EventParticipantsRepository eventParticipantRepo;
     @Autowired
-    OtpService otpService;
+    private OtpService otpService;
+    @Autowired
+    private AgentRepository agentRepository;
+    @Autowired
+    private CommonService commonService;
    /* @Autowired
     TokensRepository tokensRepository;*/
 
@@ -96,22 +95,45 @@ public class UserService {
         return otpService.verifyOtp(request.getPhoneNumber(), request.getRole(), request.getOtp())
                 .flatMap(s ->
                         userRepository.findByPhoneNumberAndRolesContaining(request.getPhoneNumber(), request.getRole()))
-                .flatMap(users ->
-                        matrimonyRepository.findByUserId(users.getId())
-                                .map(candidate -> {
-                                    PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
-                                    res.setAgent(false);
-                                    res.setMatrimony_data(candidate);
-                                    return res;
-                                })
-                                .switchIfEmpty(
-                                        Mono.fromSupplier(() -> {
-                                            PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
-                                            res.setAgent(false);
-                                            return res;
-                                        })
-                                )
-                );
+                .flatMap(users -> {
+                    if (request.getRole().equals(RoleNames.Candidate.name())) {
+                        return getMatrimonyDetails(request, users);
+                    } else if (request.getRole().equals(RoleNames.Agent.name())) {
+                        return getAgentDetails(request, users);
+                    } else {
+                        return Mono.just(new PhoneLoginResponse());
+                    }
+                }).switchIfEmpty(Mono.error(new UnAuthorizedException(request.getRole() + " is not registered with this number")));
+    }
+
+    private Mono<PhoneLoginResponse> getAgentDetails(PhoneLoginRequest request, Users users) {
+        return agentRepository.findByUserId(users.getId()).flatMap(agents -> {
+                    PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
+                    res.setAgent(true);
+                    res.setRole(res.getRole());
+                    AgentResponse agentResponse = modelMapper.map(agents, AgentResponse.class);
+                    agentResponse.setUser_id(agents.getUserId());
+                    agentResponse.setOrganization_id(agents.getOrganizationId());
+                    agentResponse.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
+                    res.setAgent_details(agentResponse);
+                    return Mono.just(res);
+                })
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+    }
+
+    private Mono<PhoneLoginResponse> getMatrimonyDetails(PhoneLoginRequest request, Users users) {
+
+        return matrimonyRepository.findByUserId(users.getId())
+                .flatMap(candidate ->
+                        eventParticipantRepo.findByCandidateId(candidate.getId()).map(eventParticipants -> {
+                            PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
+                            res.setAgent(false);
+                            res.setRole(res.getRole());
+                            res.setEventParticipants(eventParticipants);
+                            res.setMatrimony_data(candidate);
+                            return res;
+                        }))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 
     @Transactional

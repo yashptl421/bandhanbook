@@ -48,6 +48,8 @@ public class AgentService {
     private OrganizationRepository organizationRepository;
     @Autowired
     private ReactiveMongoTemplate mongoTemplate;
+    @Autowired
+    private CommonService commonService;
 
     public Mono<String> createAgent(AgentRequest request, Users authUser) {
 
@@ -88,6 +90,9 @@ public class AgentService {
                                             .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                                             .map(users -> {
                                                 AgentResponse res = modelMapper.map(agents, AgentResponse.class);
+                                                res.setUser_id(agents.getUserId());
+                                                res.setOrganization_id(agents.getOrganizationId());
+                                                res.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
                                                 AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
                                                 userDetails.setFull_name(users.getFullName());
                                                 userDetails.setPhone_number(users.getPhoneNumber());
@@ -100,6 +105,8 @@ public class AgentService {
                                             .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                                             .map(users -> {
                                                 AgentResponse res = modelMapper.map(agents, AgentResponse.class);
+                                                res.setUser_id(agents.getUserId());
+                                                res.setOrganization_id(agents.getOrganizationId());
                                                 AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
                                                 userDetails.setFull_name(users.getFullName());
                                                 userDetails.setPhone_number(users.getPhoneNumber());
@@ -132,8 +139,6 @@ public class AgentService {
                             .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).map(users ->
                             {
                                 users.setFullName(request.getFullName());
-                                users.setEmail(request.getEmail());
-                                users.setPhoneNumber(request.getPhoneNumber());
                                 return userRepository.save(users);
                             });
 
