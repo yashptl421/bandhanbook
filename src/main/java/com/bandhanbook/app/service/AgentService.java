@@ -107,6 +107,7 @@ public class AgentService {
                                                 AgentResponse res = modelMapper.map(agents, AgentResponse.class);
                                                 res.setUser_id(agents.getUserId());
                                                 res.setOrganization_id(agents.getOrganizationId());
+                                                res.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
                                                 AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
                                                 userDetails.setFull_name(users.getFullName());
                                                 userDetails.setPhone_number(users.getPhoneNumber());
