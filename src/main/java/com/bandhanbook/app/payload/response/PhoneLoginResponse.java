@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -24,8 +26,8 @@ public class PhoneLoginResponse {
     private String accessToken;
     @JsonProperty("refreshToken")
     private String refreshToken;
-    private MatrimonyCandidate matrimony_data;
-    private EventParticipants eventParticipants;
+    private MatrimonyCandidateResponse matrimony_data;
+    private List<EventParticipantsResponse> eventParticipants;
     private AgentResponse agent_details;
     private OrganizationResponse organization_details;
 

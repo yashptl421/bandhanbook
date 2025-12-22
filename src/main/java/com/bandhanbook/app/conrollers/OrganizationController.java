@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +37,7 @@ public class OrganizationController {
 
     @GetMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<OrganizationResponse>>> show(@PathVariable String id) {
-        return organizationService.getOrganizationById(id)
+        return organizationService.getOrganizationById(new ObjectId(id))
                 .map(response -> ResponseEntity.ok(
                         ApiResponse.<OrganizationResponse>builder()
                                 .status(HttpStatus.OK.value())
@@ -70,7 +71,7 @@ public class OrganizationController {
 
     @PutMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<String>>> updateOrganization(@Valid @RequestBody OrganizationRequest req, @PathVariable String id) {
-        return organizationService.updateOrganization(req, id).thenReturn(ResponseEntity.ok(new ApiResponse<>(
+        return organizationService.updateOrganization(req, new ObjectId(id)).thenReturn(ResponseEntity.ok(new ApiResponse<>(
                 ORGANIZATION_UPDATED,
                 HttpStatus.OK.value()
         )));

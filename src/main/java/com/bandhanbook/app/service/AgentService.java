@@ -3,7 +3,6 @@ package com.bandhanbook.app.service;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.model.Agents;
-import com.bandhanbook.app.model.Organization;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.AgentRequest;
@@ -14,6 +13,7 @@ import com.bandhanbook.app.repository.UserRepository;
 import com.bandhanbook.app.wrappers.AgentWrapper;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
@@ -59,7 +59,7 @@ public class AgentService {
         if (authUser.getRoles().contains(RoleNames.Organization.name())) {
             orgId = organizationRepository.findByUserId(authUser.getId())
                     .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
-                    .map(Organization::getId);
+                    .map(org-> org.getId().toHexString());
         }
         return orgId
                 .flatMap(org -> {
@@ -90,8 +90,8 @@ public class AgentService {
                                             .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                                             .map(users -> {
                                                 AgentResponse res = modelMapper.map(agents, AgentResponse.class);
-                                                res.setUser_id(agents.getUserId());
-                                                res.setOrganization_id(agents.getOrganizationId());
+                                                res.setUser_id(agents.getUserId().toHexString());
+                                                res.setOrganization_id(agents.getOrganizationId().toHexString());
                                                 res.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
                                                 AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
                                                 userDetails.setFull_name(users.getFullName());
@@ -105,8 +105,8 @@ public class AgentService {
                                             .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                                             .map(users -> {
                                                 AgentResponse res = modelMapper.map(agents, AgentResponse.class);
-                                                res.setUser_id(agents.getUserId());
-                                                res.setOrganization_id(agents.getOrganizationId());
+                                                res.setUser_id(agents.getUserId().toHexString());
+                                                res.setOrganization_id(agents.getOrganizationId().toHexString());
                                                 res.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
                                                 AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
                                                 userDetails.setFull_name(users.getFullName());
@@ -126,7 +126,7 @@ public class AgentService {
                     // 5. Create Agent
                     Agents agent = modelMapper.map(request, Agents.class);
                     agent.setUserId(savedUser.getId());
-                    agent.setOrganizationId(organizationId);
+                    agent.setOrganizationId(new ObjectId(organizationId));
                     return agentRepository.save(agent)
                             .thenReturn(AGENT_CREATED);
                 });
@@ -162,7 +162,7 @@ public class AgentService {
             Criteria criteria = new Criteria();
 
             if (!orgId.isEmpty())
-                criteria.and("organization_id").is(orgId);
+                criteria.and("organization_id").is(new ObjectId(orgId));
             // Optional filters
             if (filterReq.get("status") != null) criteria.and("status").is(filterReq.get("status"));
             if (filterReq.get("gender") != null) criteria.and("gender").is(filterReq.get("gender"));
@@ -178,9 +178,7 @@ public class AgentService {
                     .foreignField("_id")
                     .as("user_details");
 
-            AddFieldsOperation convertUserId = Aggregation.addFields()
-                    .addFieldWithValue("user_id", ConvertOperators.ToObjectId.toObjectId("$user_id"))
-                    .build();
+
             UnwindOperation unwindUser = Aggregation.unwind("user_details");
 
             LookupOperation orgLookup = LookupOperation.newLookup()
@@ -189,9 +187,6 @@ public class AgentService {
                     .foreignField("_id")
                     .as("organization_details");
 
-            AddFieldsOperation convertOrgId = Aggregation.addFields()
-                    .addFieldWithValue("organization_id", ConvertOperators.ToObjectId.toObjectId("$organization_id"))
-                    .build();
 
             UnwindOperation unwindOrg = Aggregation.unwind("organization_details");
 
@@ -217,11 +212,9 @@ public class AgentService {
                     .and(Aggregation.count().as("totalRecords")).as("totalRecords");
 
             Aggregation aggregation = Aggregation.newAggregation(
-                    convertUserId,
                     matchStage,
                     userLookup,
                     unwindUser,
-                    convertOrgId,
                     orgLookup,
                     unwindOrg,
                     searchMatch != null ? searchMatch : Aggregation.match(new Criteria()),
@@ -244,7 +237,7 @@ public class AgentService {
             return Mono.just("");
         } else {
             return organizationRepository.findByUserId(authUser.getId())
-                    .map(Organization::getId)
+                    .map(org -> org.getId().toHexString())
                     .switchIfEmpty(Mono.error(new RecordNotFoundException("Organization Not Found")));
         }
     }

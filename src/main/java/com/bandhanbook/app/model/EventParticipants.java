@@ -2,6 +2,7 @@ package com.bandhanbook.app.model;
 
 
 import lombok.*;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -21,16 +22,16 @@ import java.time.LocalDateTime;
 public class EventParticipants {
 
     @Id
-    private String id;
+    private ObjectId id;
 
     @Field("candidate_id")
-    private String candidateId;
+    private ObjectId candidateId;
 
     @Field("event_id")
-    private String eventId;
+    private ObjectId eventId;
 
     @Field("added_by")
-    private String addedBy;
+    private ObjectId addedBy;
 
     @Field("created_at")
     @CreatedDate

@@ -2,6 +2,7 @@ package com.bandhanbook.app.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -23,7 +24,7 @@ import java.util.List;
 public class Users {
 
     @Id
-    private String id;
+    private ObjectId id;
 
     @Indexed(unique = true)
     @Field("phone_number")

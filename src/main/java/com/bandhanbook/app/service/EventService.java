@@ -5,10 +5,12 @@ import com.bandhanbook.app.model.Events;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.EventRequest;
 import com.bandhanbook.app.payload.response.EventResponse;
+import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.UserResponse;
 import com.bandhanbook.app.repository.EventsRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
 import com.bandhanbook.app.repository.UserRepository;
+import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,9 +46,13 @@ public class EventService {
     @Transactional
     public Mono<Void> createEvent(EventRequest eventRequest, Users user) {
         logger.info("Created Event of {}", eventRequest.getName());
-        Events events = modelMapper.map(eventRequest, Events.class);
-        events.setCreatedBy(user.getId());
-        return eventsRepository.save(events).then();
+        return organizationRepository.findById(new ObjectId(eventRequest.getOrganizationId()))
+                .flatMap(organization -> {
+                    Events events = modelMapper.map(eventRequest, Events.class);
+                    events.setOrganizationId(organization.getId());
+                    events.setCreatedBy(user.getId());
+                    return eventsRepository.save(events);
+                }).switchIfEmpty(Mono.error(new RecordNotFoundException("Organization " + DATA_NOT_FOUND))).then();
     }
 
     @Transactional
@@ -81,11 +87,11 @@ public class EventService {
                     boolean match = true;
 
                     if (organizationId != null && !organizationId.isEmpty()) {
-                        match = event.getId().equals(organizationId);
+                        match = event.getId().toHexString().equals(organizationId);
                     }
 
                     if (createdBy != null && !createdBy.isEmpty()) {
-                        match = match && createdBy.equalsIgnoreCase(event.getCreatedBy());
+                        match = match && createdBy.equalsIgnoreCase(event.getCreatedBy().toHexString());
                     }
 
                     return match;
@@ -119,7 +125,7 @@ public class EventService {
                     .map(user -> {
                         EventResponse res = modelMapper.map(event, EventResponse.class);
                         UserResponse userResponse = modelMapper.map(user, UserResponse.class);
-                        res.setOrganization_details(org);
+                        res.setOrganization_details(modelMapper.map(org, OrganizationResponse.class));
                         res.setCreated_by_details(userResponse);
                         return res;
                     }));

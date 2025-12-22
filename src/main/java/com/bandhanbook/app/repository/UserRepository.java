@@ -1,13 +1,14 @@
 package com.bandhanbook.app.repository;
 
 import com.bandhanbook.app.model.Users;
+import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Repository
-public interface UserRepository extends ReactiveMongoRepository<Users, String> {
+public interface UserRepository extends ReactiveMongoRepository<Users, ObjectId> {
 
    /* @Query(value = "{ 'phone_number': ?0, 'role' : ?=1 }", exists = true)
 
@@ -25,7 +26,7 @@ public interface UserRepository extends ReactiveMongoRepository<Users, String> {
 
     Mono<Users> findByPhoneNumber(String phone_number);
 
-    Mono<Users> findByPhoneNumberOrEmail(String phoneNumber, String email);
+    Mono<Users> findByPhoneNumberOrEmail(String phone_number, String email);
 
     Mono<Users> findByPhoneNumberAndRolesContaining(String email, String role);
 }

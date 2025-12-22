@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -19,7 +20,7 @@ import java.time.Instant;
 @Document(collection = "tokens")
 public class Token {
     @Id
-    private String id;
+    private ObjectId id;
     @Indexed(unique = true)
     @Field("phone_number")
     private String phoneNumber;

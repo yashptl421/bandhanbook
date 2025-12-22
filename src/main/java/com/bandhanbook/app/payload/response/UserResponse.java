@@ -3,6 +3,8 @@ package com.bandhanbook.app.payload.response;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Setter
 @Builder
@@ -17,5 +19,5 @@ public class UserResponse {
     @JsonIgnore
     private String avatar;
 
-    private String role;
+    private List<String> roles;
 }

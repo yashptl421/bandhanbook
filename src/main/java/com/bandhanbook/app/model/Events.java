@@ -1,6 +1,7 @@
 package com.bandhanbook.app.model;
 
 import lombok.*;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -18,15 +19,15 @@ import java.time.LocalDateTime;
 public class Events {
 
     @Id
-    private String id;
+    private ObjectId id;
 
     private String name;
 
     @Field("created_by")
-    private String createdBy;
+    private ObjectId createdBy;
 
     @Field("organization_id")
-    private String organizationId;
+    private ObjectId organizationId;
 
     private String location;
 

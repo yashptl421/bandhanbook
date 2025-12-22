@@ -1,6 +1,7 @@
 package com.bandhanbook.app.model;
 
 import lombok.*;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -18,10 +19,10 @@ import java.time.LocalDateTime;
 public class OrgSubscriptions {
 
     @Id
-    private String id;
+    private ObjectId id;
 
     @Field("org_id")
-    private String orgId;
+    private ObjectId orgId;
 
     @Field("plan_id")
     private String planId;

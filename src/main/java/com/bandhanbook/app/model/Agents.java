@@ -3,6 +3,7 @@ package com.bandhanbook.app.model;
 import com.bandhanbook.app.model.constants.GenderOptions;
 import com.bandhanbook.app.model.constants.ProfileStatus;
 import lombok.*;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -20,13 +21,13 @@ import java.time.LocalDateTime;
 public class Agents {
 
     @Id
-    private String id;
+    private ObjectId id;
 
     @Field("user_id")
-    private String userId;
+    private ObjectId userId;
 
     @Field("organization_id")
-    private String organizationId;
+    private ObjectId organizationId;
 
     @Builder.Default
     private String gender = GenderOptions.MALE.name();

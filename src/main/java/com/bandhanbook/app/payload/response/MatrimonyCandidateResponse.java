@@ -1,13 +1,7 @@
-package com.bandhanbook.app.model;
+package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.constants.*;
 import lombok.*;
-import org.bson.types.ObjectId;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -18,58 +12,41 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Document(collection = "matrimonyprofiles")
-public class MatrimonyCandidate {
+public class MatrimonyCandidateResponse {
+    private String id;
 
-    @Id
-    private ObjectId id;
-    @Field("user_id")
-    private ObjectId userId; // Assuming ObjectId as String
+    private String user_id; // Assuming ObjectId as String
 
-    private Address address;
+    private MatrimonyCandidateResponse.Address address;
 
-    @Field("contact_details")
-    private ContactDetails contactDetails;
+    private MatrimonyCandidateResponse.ContactDetails contactDetails;
 
-    @Field("personal_details")
-    private PersonalDetails personalDetails;
+    private MatrimonyCandidateResponse.PersonalDetails personalDetails;
 
-    @Field("profileImage")
-    private Image profileImage;
+    private MatrimonyCandidateResponse.Image profileImage;
 
-    @Field("images")
-    private Image images;
+    private MatrimonyCandidateResponse.Image images;
 
-    @Field("family_details")
-    private FamilyDetails familyDetails;
+    private MatrimonyCandidateResponse.FamilyDetails familyDetails;
 
-    @Field("education_details")
-    private EducationDetails educationDetails;
+    private MatrimonyCandidateResponse.EducationDetails educationDetails;
 
-    @Field("occupation_details")
-    private OccupationDetails occupationDetails;
+    private MatrimonyCandidateResponse.OccupationDetails occupationDetails;
 
-    @Field("lifestyle_interests")
-    private LifestyleInterests lifestyleInterests;
+    private MatrimonyCandidateResponse.LifestyleInterests lifestyleInterests;
 
-    @Field("privacy_settings")
-    private PrivacySettings privacySettings;
+    private MatrimonyCandidateResponse.PrivacySettings privacySettings;
 
-    private PartnerPreferences partnerPreferences;
+    private MatrimonyCandidateResponse.PartnerPreferences partnerPreferences;
 
     private List<String> favorites;
 
     private ProfileStatus status;
 
-    @CreatedDate
-    @Field("created_at")
     private LocalDateTime createdAt;
 
-    @Field("profile_completed")
     private boolean profileCompleted;
 
-    @LastModifiedDate
-    @Field("updated_at")
     private LocalDateTime updatedAt;
 
     @Getter
@@ -79,48 +56,33 @@ public class MatrimonyCandidate {
     @Builder
     public static class PersonalDetails {
 
-        @Field("birth_time")
         private String birthTime;
 
-        @Field("date_of_birth")
         private Date dob;
-
-        @Builder.Default
         private String gender = GenderOptions.MALE.name();
 
         private String height;
 
-        @Field("birth_place")
         private String birthPlace;
 
-        @Field("blood_group")
         private String bloodGroup;
 
-        @Field("complexion")
         private ComplexionOptions complexion;
 
-        @Field("mother_tongue")
         private String motherTongue = "Hindi";
 
-        @Field("nationality")
-        @Builder.Default
         private String nationality = "Indian";
 
-        @Field("religion")
-        @Builder.Default
         private String religion = "Hindu";
 
-        @Field("gotra")
         private String gotra;
 
-        @Field("maternal_gotra")
         private String maternalGotra;
 
         private String caste;
 
         private ManglikOptions manglik;
 
-        @Field("marital_status")
         private MaritalStatus maritalStatus;
 
         private String kuldevi;
@@ -144,34 +106,15 @@ public class MatrimonyCandidate {
     @Builder
     public static class FamilyDetails {
 
-        @Field("father_name")
         private String fatherName;
-
-        @Field("father_occupation")
         private String fatherOccupation;
-
-        @Field("mather_name")
         private String motherName;
-
-        @Field("mother_occupation")
         private String motherOccupation;
-
-        @Field("siblings")
         private String siblings;
-
-        @Field("family_status")
         private FamilyStatus familyStatus;
-
-        @Field("family_type")
         private FamilyType familyType;
-
-        @Field("family_values")
         private FamilyValues familyValues;
-
-        @Field("native_place")
         private String nativePlace;
-
-        @Field("krashi_bhumi")
         private String krashiBhumi;
 
     }
@@ -196,11 +139,8 @@ public class MatrimonyCandidate {
     @NoArgsConstructor
     @Builder
     public static class EducationDetails {
-
-        @Field("highest_qualification")
         private String highestQualification;
         private String institution;
-
         // Getters and setters omitted for brevity
     }
 
@@ -211,11 +151,8 @@ public class MatrimonyCandidate {
     @Builder
     public static class OccupationDetails {
         private String designation;
-        @Field("sector_type")
         private SectorType sectorType;
-        @Field("company_name")
         private String companyName;
-        @Field("annual_income")
         private String annualIncome;
         private String location;
 
@@ -264,9 +201,9 @@ public class MatrimonyCandidate {
     @NoArgsConstructor
     @Builder
     public static class PartnerPreferences {
-        private AgeRange ageRange;
-        private HeightRange heightRange;
-        private SalaryRange salaryRange;
+        private MatrimonyCandidateResponse.PartnerPreferences.AgeRange ageRange;
+        private MatrimonyCandidateResponse.PartnerPreferences.HeightRange heightRange;
+        private MatrimonyCandidateResponse.PartnerPreferences.SalaryRange salaryRange;
         private String drinkingHabits;
         private String dietaryHabits;
         private String smokingHabits;

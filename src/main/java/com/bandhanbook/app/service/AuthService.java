@@ -7,10 +7,7 @@ import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.LoginRequest;
 import com.bandhanbook.app.payload.request.PhoneLoginRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
-import com.bandhanbook.app.payload.response.AgentResponse;
-import com.bandhanbook.app.payload.response.LoginResponse;
-import com.bandhanbook.app.payload.response.OrganizationResponse;
-import com.bandhanbook.app.payload.response.PhoneLoginResponse;
+import com.bandhanbook.app.payload.response.*;
 import com.bandhanbook.app.repository.*;
 import com.bandhanbook.app.security.jwt.JwtService;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
@@ -25,6 +22,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
 
@@ -130,8 +128,8 @@ public class AuthService {
                     res.setAgent(true);
                     res.setRole(role);
                     AgentResponse agentResponse = modelMapper.map(agents, AgentResponse.class);
-                    agentResponse.setUser_id(agents.getUserId());
-                    agentResponse.setOrganization_id(agents.getOrganizationId());
+                    agentResponse.setUser_id(agents.getUserId().toHexString());
+                    agentResponse.setOrganization_id(agents.getOrganizationId().toHexString());
                     agentResponse.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
                     res.setAgent_details(agentResponse);
                     return Mono.just(res);
@@ -143,12 +141,13 @@ public class AuthService {
 
         return matrimonyRepository.findByUserId(users.getId())
                 .flatMap(candidate ->
-                        eventParticipantRepo.findByCandidateId(candidate.getId()).map(eventParticipants -> {
+                        eventParticipantRepo.findByCandidateId(candidate.getId()).collectList().map(eventParticipants -> {
                             PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
                             res.setAgent(false);
                             res.setRole(role);
-                            res.setEventParticipants(eventParticipants);
-                            res.setMatrimony_data(candidate);
+                            List<EventParticipantsResponse> eventParticipant = eventParticipants.stream().map(entity -> modelMapper.map(entity, EventParticipantsResponse.class)).collect(Collectors.toList());
+                            res.setEventParticipants(eventParticipant);
+                            res.setMatrimony_data(modelMapper.map(candidate, MatrimonyCandidateResponse.class));
                             return res;
                         }))
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
@@ -245,6 +244,6 @@ public class AuthService {
                         return Mono.error(new PhoneOrEmailNotFoundException(PHONE_EMAIL_EXISTS));
                     }
                     return Mono.just(existingUser);
-                });
+                }).switchIfEmpty(Mono.empty());
     }
 }

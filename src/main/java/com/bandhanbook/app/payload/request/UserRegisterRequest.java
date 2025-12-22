@@ -4,9 +4,11 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.bson.types.ObjectId;
 
 import java.util.Date;
 
@@ -39,6 +41,5 @@ public class UserRegisterRequest {
     private String zip;
 
     private String eventId;
-
     private String otp;
 }

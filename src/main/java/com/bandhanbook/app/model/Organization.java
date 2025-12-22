@@ -2,6 +2,7 @@ package com.bandhanbook.app.model;
 
 import com.bandhanbook.app.model.constants.ProfileStatus;
 import lombok.*;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -22,10 +23,11 @@ import java.time.LocalDateTime;
 public class Organization {
 
     @Id
-    private String id;
+    private ObjectId id;
 
     @Indexed(unique = true)
-    private String userId;
+    @Field("user_id")
+    private ObjectId userId;
 
     private String organizationName;
 
@@ -41,9 +43,11 @@ public class Organization {
     private String zip;
 
     @Field("phone_verified_at")
+    @Builder.Default
     private String phoneVerifiedAt = null;
 
     @Field("phone_verification_code")
+    @Builder.Default
     private String phoneVerificationCode = null;
 
     private String status = ProfileStatus.pending.name();

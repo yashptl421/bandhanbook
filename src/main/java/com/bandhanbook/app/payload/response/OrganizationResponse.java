@@ -30,6 +30,6 @@ public class OrganizationResponse {
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
 
-    private Users user_details;
-    private OrgSubscriptions subscription;
+    private UserResponse user_details;
+    private OrgSubscriptionsResponse subscription;
 }

@@ -3,9 +3,11 @@ package com.bandhanbook.app.conrollers;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
-import com.bandhanbook.app.payload.response.OrganizationResponse;
+import com.bandhanbook.app.payload.response.AgentResponse;
+import com.bandhanbook.app.payload.response.CandidateResponse;
 import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
+import com.bandhanbook.app.service.CommonService;
 import com.bandhanbook.app.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +34,7 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
 public class UserController {
 
     private final UserService userService;
+    private final CommonService commonService;
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     @Operation(summary = "Register a new Candidate", description = "Registers a new user with the provided details.")
@@ -45,18 +48,43 @@ public class UserController {
         ));
     }
 
-   /* @Operation(summary = "Fetch a Candidate by id", description = "Retrieves the details of a candidate using their unique identifier.")
+    @Operation(summary = "Fetch a Candidate by id", description = "Retrieves the details of a candidate using their unique identifier.")
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<ApiResponse<OrganizationResponse>>> show(@PathVariable String id, @CurrentUser Users authUser) {
-        return userService.getCandidate(id, authUser)
+    public Mono<ResponseEntity<ApiResponse<CandidateResponse>>> showCandidate(@PathVariable String id, @CurrentUser Users authUser) {
+        return userService.showCandidates(id, authUser)
+                .map(response -> {
+                    if (response.getMatrimony_data() != null &&
+                            response.getMatrimony_data().getEvent_participant() != null) {
+
+                        response.getMatrimony_data()
+                                .getEvent_participant()
+                                .forEach(eventParticipant -> {
+
+                                    AgentResponse agent = eventParticipant.getAgent_details();
+                                    if (agent != null) {
+                                        agent.setLocalAddress(
+                                                commonService.getAddressByIds(
+                                                        agent.getAddress(),
+                                                        agent.getCountry(),
+                                                        agent.getState(),
+                                                        agent.getCity(),
+                                                        agent.getZip()
+                                                )
+                                        );
+                                    }
+                                });
+                    }
+
+                    return response; // IMPORTANT
+                })
                 .map(response -> ResponseEntity.ok(
-                        ApiResponse.<OrganizationResponse>builder()
+                        ApiResponse.<CandidateResponse>builder()
                                 .status(HttpStatus.OK.value())
                                 .message(DATA_FOUND)
                                 .data(response)
                                 .build()
                 ));
-    }*/
+    }
 
     @Operation(summary = "Login from web application")
     @GetMapping("/me")

@@ -24,6 +24,6 @@ public class EventResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
-    private Organization organization_details;
+    private OrganizationResponse organization_details;
     private UserResponse created_by_details;
 }

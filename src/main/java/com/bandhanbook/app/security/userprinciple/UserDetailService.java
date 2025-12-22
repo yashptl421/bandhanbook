@@ -5,6 +5,7 @@ import com.bandhanbook.app.exception.EmailNotFoundException;
 import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
 import com.bandhanbook.app.repository.UserRepository;
 import com.bandhanbook.app.utilities.UtilityHelper;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -46,7 +47,7 @@ public class UserDetailService implements ReactiveUserDetailsService {
             return userRepository.findByPhoneNumber(userName).switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(INVALID_CREDENTIALS)))
                     .map(UserPrinciple::new);
         }
-        return userRepository.findById(userName).switchIfEmpty(Mono.error(new UsernameNotFoundException(INVALID_CREDENTIALS)))
+        return userRepository.findById(new ObjectId(userName)).switchIfEmpty(Mono.error(new UsernameNotFoundException(INVALID_CREDENTIALS)))
                 .map(UserPrinciple::new);
 
     }
@@ -65,7 +66,7 @@ public class UserDetailService implements ReactiveUserDetailsService {
     public Mono<UserPrinciple> findByPhoneNumber(String phoneNumber) {
         return findByUsername(phoneNumber).cast(UserPrinciple.class);
     }
-    public Mono<UserPrinciple> findById(String id) {
-        return findByUsername(id).cast(UserPrinciple.class);
+    public Mono<UserPrinciple> findById(ObjectId id) {
+        return findByUsername(id.toHexString()).cast(UserPrinciple.class);
     }
 }

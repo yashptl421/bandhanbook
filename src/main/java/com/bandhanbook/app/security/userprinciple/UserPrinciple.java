@@ -33,7 +33,7 @@ public class UserPrinciple implements UserDetails {
 
     @Override
     public String getUsername() {
-        return users.getId();
+        return users.getId().toHexString();
     }
 
     @Override

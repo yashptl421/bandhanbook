@@ -8,11 +8,14 @@ import com.bandhanbook.app.model.PricingPlans;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
+import com.bandhanbook.app.payload.response.OrgSubscriptionsResponse;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
+import com.bandhanbook.app.payload.response.UserResponse;
 import com.bandhanbook.app.repository.OrgSubscriptionsRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
 import com.bandhanbook.app.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -68,7 +71,7 @@ public class OrganizationService {
                     boolean match = true;
 
                     if (organizationId != null && !organizationId.isEmpty()) {
-                        match = org.getId().equals(organizationId);
+                        match = org.getId().toHexString().equals(organizationId);
                     }
 
                     if (status != null && !status.isEmpty()) {
@@ -101,14 +104,14 @@ public class OrganizationService {
         Flux<OrganizationResponse> responseFlux = pagedFlux.flatMap(org ->
                 userRepository.findById(org.getUserId()).map(user -> {
                     OrganizationResponse res = modelMapper.map(org, OrganizationResponse.class);
-                    res.setUser_details(user);
+                    res.setUser_details(modelMapper.map(user, UserResponse.class));
                     return res;
                 })
         );
         return totalMono.zipWith(responseFlux.collectList());
     }
 
-    public Mono<OrganizationResponse> getOrganizationById(String id) {
+    public Mono<OrganizationResponse> getOrganizationById(ObjectId id) {
         return organizationRepository.findById(id)
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .flatMap(org ->
@@ -119,8 +122,8 @@ public class OrganizationService {
                                                 .switchIfEmpty(Mono.just(new OrgSubscriptions())),  // avoid null
                                         (user, subscription) -> {
                                             OrganizationResponse res = modelMapper.map(org, OrganizationResponse.class);
-                                            res.setUser_details(user);
-                                            res.setSubscription(subscription);
+                                            res.setUser_details(modelMapper.map(user, UserResponse.class));
+                                            res.setSubscription(modelMapper.map(subscription, OrgSubscriptionsResponse.class));
                                             return res;
                                         })
                 );
@@ -164,7 +167,7 @@ public class OrganizationService {
 
 
     @Transactional
-    public Mono<Void> updateOrganization(OrganizationRequest organizationRequest, String id) {
+    public Mono<Void> updateOrganization(OrganizationRequest organizationRequest, ObjectId id) {
         return organizationRepository.findById(id).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).flatMap(existingOrg -> userRepository.findById(existingOrg.getUserId()).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).flatMap(existingUser -> {
 
             // STEP 1 — validate duplicate phone (but ignore same user)
