@@ -22,10 +22,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -57,6 +59,8 @@ public class UserService {
     private OrganizationRepository organizationRepository;
     @Autowired
     private ReactiveMongoTemplate reactiveMongoTemplate;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public Users getUsers() {
         return new Users();
@@ -401,7 +405,7 @@ public class UserService {
                         Mono.defer(() -> {
                             Users newUser = modelMapper.map(request, Users.class);
                             newUser.getRoles().add(role);
-
+                            newUser.setPassword(passwordEncoder.encode(request.getPassword()));
                             return userRepository.save(newUser)
                                     .flatMap(savedUser ->
                                             matrimonyRepository.save(registerReqToCandidate(request, savedUser))
@@ -444,20 +448,27 @@ public class UserService {
                 .build());
     }
 
-    private MatrimonyCandidate registerReqToCandidate(UserRegisterRequest userRegisterRequest, Users user) {
+    private MatrimonyCandidate registerReqToCandidate(UserRegisterRequest req, Users user) {
         return MatrimonyCandidate.builder().userId(user.getId())
                 .personalDetails(MatrimonyCandidate.PersonalDetails.builder()
-                        .dob(userRegisterRequest.getDob())
-                        .gender(userRegisterRequest.getGender())
+                        .dob(req.getDob())
+                        .gender(req.getGender())
                         .build())
                 .address(
                         MatrimonyCandidate.Address.builder()
-                                .address(userRegisterRequest.getAddress())
-                                .country(userRegisterRequest.getCountry())
-                                .zip(userRegisterRequest.getZip())
-                                .city(userRegisterRequest.getCity())
-                                .state(userRegisterRequest.getState()).build())
-
+                                .address(req.getAddress())
+                                .country(req.getCountry())
+                                .zip(req.getZip())
+                                .city(req.getCity())
+                                .state(req.getState()).build())
+                .privacySettings(MatrimonyCandidate.PrivacySettings.builder().build())
+                .contactDetails(MatrimonyCandidate.ContactDetails.builder().build())
+                .familyDetails(MatrimonyCandidate.FamilyDetails.builder().build())
+                .educationDetails(MatrimonyCandidate.EducationDetails.builder().build())
+                .lifestyleInterests(MatrimonyCandidate.LifestyleInterests.builder().build())
+                .partnerPreferences(MatrimonyCandidate.PartnerPreferences.builder().build())
+                .occupationDetails(MatrimonyCandidate.OccupationDetails.builder().build())
+                .favorites(new ArrayList<>())
                 .build();
     }
 

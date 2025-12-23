@@ -23,8 +23,9 @@ public class MatrimonyCandidate {
 
     @Id
     private ObjectId id;
+
     @Field("user_id")
-    private ObjectId userId; // Assuming ObjectId as String
+    private ObjectId userId;
 
     private Address address;
 
@@ -57,7 +58,8 @@ public class MatrimonyCandidate {
 
     private PartnerPreferences partnerPreferences;
 
-    private List<String> favorites;
+    @Builder.Default
+    private List<String> favorites=null;
 
     private ProfileStatus status;
 
@@ -99,6 +101,7 @@ public class MatrimonyCandidate {
         @Field("complexion")
         private ComplexionOptions complexion;
 
+        @Builder.Default
         @Field("mother_tongue")
         private String motherTongue = "Hindi";
 
@@ -106,7 +109,6 @@ public class MatrimonyCandidate {
         @Builder.Default
         private String nationality = "Indian";
 
-        @Field("religion")
         @Builder.Default
         private String religion = "Hindu";
 
@@ -118,7 +120,8 @@ public class MatrimonyCandidate {
 
         private String caste;
 
-        private ManglikOptions manglik;
+        @Builder.Default
+        private ManglikOptions manglik = ManglikOptions.NO;
 
         @Field("marital_status")
         private MaritalStatus maritalStatus;
@@ -183,6 +186,7 @@ public class MatrimonyCandidate {
     @Builder
     public static class Address {
         private String address;
+        @Builder.Default
         private int country = 101; // India
         private int state = 4039; // Madhya Pradesh
         private int city;
@@ -251,9 +255,19 @@ public class MatrimonyCandidate {
     @NoArgsConstructor
     @Builder
     public static class PrivacySettings {
-        private boolean isHideEmail = false;
+        @Field("is_hide_email")
+        private boolean isHideEmail;
+
+        @Builder.Default
+        @Field("is_hide_phone")
         private boolean isHidePhone = false;
+
+        @Field("is_hide_profile")
+        @Builder.Default
         private boolean isHideProfile = false;
+
+        @Field("is_hide_profile_image")
+        @Builder.Default
         private boolean isHideProfileImage = false;
 
     }
