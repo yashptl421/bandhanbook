@@ -13,6 +13,7 @@ import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.repository.*;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
+import com.bandhanbook.app.wrappers.CandidateWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -26,9 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.PHONE_EXISTS;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.USER_REGISTERED;
 
 @Slf4j
@@ -48,8 +51,6 @@ public class UserService {
     private OtpService otpService;
     @Autowired
     private AgentRepository agentRepository;
-    @Autowired
-    private CommonService commonService;
     @Autowired
     AuthService authService;
     @Autowired
@@ -92,15 +93,7 @@ public class UserService {
                     );
 
         }
-        // If Organization → filter agents by orgId
-        if (authUser.getRoles().contains(RoleNames.Organization.name())) {
-            return organizationRepository.findByUserId(authUser.getId())
-                    .flatMap(org -> {
-                        agentFilters.put("organization_id", org.getId());
-                        return runFullPipeline(targetUserId, matrimonyDataFilters, eventParticipantFilters, agentFilters);
-                    });
-        }
-        if (authUser.getRoles().contains(RoleNames.Agent.name())) {
+        if (authUser.getRoles().contains(RoleNames.Agent.name()) || authUser.getRoles().contains(RoleNames.Organization.name())) {
             return agentRepository.findByUserId(authUser.getId())
                     .flatMap(agent -> {
                         agentFilters.put("organization_id", agent.getOrganizationId());
@@ -188,6 +181,178 @@ public class UserService {
         return reactiveMongoTemplate.aggregate(aggregation, "users", CandidateResponse.class)
                 .next()
                 .switchIfEmpty(Mono.error(new RuntimeException("Candidate not found")));
+    }
+
+    public Mono<ApiResponse<List<CandidateResponse>>> listCandidates(Users authUser, Map<String, String> params, int page, int limit) {
+        int skip = (page - 1) * limit;
+
+        Document userFilters = new Document(
+                "role",
+                new Document("$in", List.of(RoleNames.Candidate.name()))
+        );
+
+        if (params.containsKey("search")) {
+            userFilters.put("$or", List.of(
+                    new Document("full_name",
+                            new Document("$regex", params.get("search")).append("$options", "i")),
+                    new Document("email",
+                            new Document("$regex", params.get("search")).append("$options", "i"))
+            ));
+        }
+
+        if (!params.get("phoneNumber").isBlank()) {
+            System.out.println(params.get("phoneNumber"));
+            userFilters.put("phone_number",
+                    new Document("$regex", params.get("phoneNumber")).append("$options", "i"));
+        }
+
+        Document matrimonyFilters = new Document();
+        Document eventFilters = new Document();
+
+        applyMatrimonyFilters(params, matrimonyFilters);
+        applyEventFilters(params, eventFilters);
+
+        if (authUser.getRoles().contains("Candidate")) {
+            matrimonyFilters.put("status", "active");
+            matrimonyFilters.put("profile_completed", true);
+            matrimonyFilters.put("privacy_settings.is_hide_profile", false);
+        }
+
+        if (authUser.getRoles().contains(RoleNames.Agent.name())) {
+            eventFilters.put("added_by", authUser.getId());
+        }
+        return resolveOrganizationId(authUser, params)
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .flatMap(orgId -> {
+
+                    Document organizationFilters = new Document();
+                    if (!orgId.isBlank()) {
+                        organizationFilters.put("organization_id", new ObjectId(orgId));
+                    }
+
+                    List<Document> pipeline = List.of(
+
+                            new Document("$match", userFilters),
+
+                            new Document("$lookup", new Document()
+                                    .append("from", "matrimonyprofiles")
+                                    .append("localField", "_id")
+                                    .append("foreignField", "user_id")
+                                    .append("as", "matrimony_data")
+                                    .append("pipeline", List.of(
+
+                                            new Document("$match", matrimonyFilters),
+
+                                            new Document("$lookup", new Document()
+                                                    .append("from", "eventparticipants")
+                                                    .append("localField", "_id")
+                                                    .append("foreignField", "candidate_id")
+                                                    .append("as", "event_participant")
+                                                    .append("pipeline", List.of(
+
+                                                            new Document("$match", eventFilters),
+
+                                                            new Document("$lookup", new Document()
+                                                                    .append("from", "events")
+                                                                    .append("localField", "event_id")
+                                                                    .append("foreignField", "_id")
+                                                                    .append("as", "event")
+                                                                    .append("pipeline", List.of(
+                                                                            new Document("$match", organizationFilters)
+                                                                    ))
+                                                            ),
+                                                            new Document("$match",
+                                                                    new Document("event.0",
+                                                                            new Document("$exists", true)))
+                                                    ))
+                                            ),
+                                            new Document("$match",
+                                                    new Document("event_participant.0",
+                                                            new Document("$exists", true)))
+                                    ))
+                            ),
+
+                            new Document("$match",
+                                    new Document("matrimony_data.0",
+                                            new Document("$exists", true))),
+
+                            new Document("$facet", new Document()
+                                    .append("metadata", List.of(
+                                            new Document("$count", "total")
+                                    ))
+                                    .append("data", List.of(
+                                            new Document("$sort", new Document("createdAt", -1)),
+                                            new Document("$skip", skip),
+                                            new Document("$limit", limit),
+                                            new Document("$project", new Document()
+                                                    .append("full_name", "$full_name")
+                                                    .append("phone_number", "$phone_number")
+                                                    .append("email", "$email")
+                                                    .append("matrimony_data",
+                                                            new Document("$arrayElemAt",
+                                                                    List.of("$matrimony_data", 0)))
+                                            )
+                                    ))
+                            )
+                    );
+
+                    List<AggregationOperation> ops = pipeline.stream()
+                            .map(d -> (AggregationOperation) ctx -> d)
+                            .toList();
+
+                    Aggregation aggregation = Aggregation.newAggregation(ops);
+
+                    return reactiveMongoTemplate.aggregate(aggregation, "users", CandidateWrapper.class)
+                            .next()
+                            .defaultIfEmpty(new CandidateWrapper())
+                            .map(result -> {
+                                List<CandidateResponse> res = result.getData();
+                                List<CandidateWrapper.RecordCount> metadata = result.getMetadata();
+
+                                long total = metadata.isEmpty()
+                                        ? 0
+                                        : metadata.get(0).getTotal();
+
+                                int totalPages = (int) Math.ceil((double) total / limit);
+
+                                return ApiResponse.<List<CandidateResponse>>builder()
+                                        .status(200)
+                                        .message(res.isEmpty() ? DATA_NOT_FOUND : DATA_FOUND)
+                                        .meta(ApiResponse.Meta.builder()
+                                                .page(page)
+                                                .limit(limit)
+                                                .totalRecords(total)
+                                                .totalPages(totalPages)
+                                                .build())
+                                        .data(res)
+                                        .build();
+                            });
+                });
+
+    }
+
+    private Mono<String> resolveOrganizationId(Users authUser, Map<String, String> params) {
+        // SUPER USER → from request
+        if (authUser.getRoles().contains(RoleNames.SuperUser.name())
+                && params.containsKey("organization")) {
+            return Mono.just(params.get("organization"));
+        }
+
+        // ORGANIZATION → find by user_id
+        if (authUser.getRoles().contains(RoleNames.Organization.name())) {
+            return organizationRepository.findByUserId(authUser.getId())
+                    .map(org -> {
+                        return String.valueOf(org.getId());
+                    });
+        }
+
+        // AGENT → find agent → org
+        if (authUser.getRoles().contains(RoleNames.Agent.name())) {
+            return agentRepository.findByUserId(authUser.getId())
+                    .map(agent -> String.valueOf(agent.getOrganizationId()));
+        }
+
+        return Mono.just("");
     }
 
     @Transactional
@@ -294,5 +459,29 @@ public class UserService {
                                 .state(userRegisterRequest.getState()).build())
 
                 .build();
+    }
+
+    private void applyMatrimonyFilters(Map<String, String> params, Document filter) {
+
+        if (params.containsKey("gender"))
+            filter.put("personal_details.gender", params.get("gender"));
+
+        if (params.containsKey("city"))
+            filter.put("address.city", params.get("city"));
+
+        if (params.containsKey("zip"))
+            filter.put("address.zip", params.get("zip"));
+
+        if (params.containsKey("status"))
+            filter.put("status", params.get("status"));
+    }
+
+    private void applyEventFilters(Map<String, String> params, Document filter) {
+
+        if (params.containsKey("agentId"))
+            filter.put("added_by", new ObjectId(params.get("agentId")));
+
+        if (params.containsKey("eventId"))
+            filter.put("event_id", new ObjectId(params.get("eventId")));
     }
 }

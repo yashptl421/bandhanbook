@@ -14,12 +14,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.Map;
 
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
 
@@ -96,5 +100,12 @@ public class UserController {
                         .data(res)
                         .build()
                 ));
+    }
+
+    @GetMapping("")
+    public Mono<ResponseEntity<ApiResponse<List<CandidateResponse>>>> listCandidates(@CurrentUser Users authUser, @RequestParam Map<String, String> params) {
+        int page = Integer.parseInt(params.getOrDefault("page", "1"));
+        int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
+        return userService.listCandidates(authUser, params, page, limit).map(response -> ResponseEntity.ok(response));
     }
 }
