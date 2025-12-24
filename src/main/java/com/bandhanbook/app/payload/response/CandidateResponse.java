@@ -4,11 +4,6 @@ import com.bandhanbook.app.model.constants.*;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
-import org.bson.types.ObjectId;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -29,6 +24,7 @@ public class CandidateResponse {
     private String email;
     private List<String> role;
     private MatrimonyCandidate matrimony_data;
+    private ProfileStatus status;
     private AgentResponse.OrganizationDetails organization_details;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -43,7 +39,7 @@ public class CandidateResponse {
         private String _id;
 
         @JsonProperty("userId")
-        private String user_id; // Assuming ObjectId as String
+        private String user_id;
 
         @JsonProperty("address")
         private Address address;
@@ -84,11 +80,14 @@ public class CandidateResponse {
         @JsonProperty("status")
         private ProfileStatus status;
 
+        @JsonProperty("bloodDonated")
+        private boolean is_blood_donated;
+
         @JsonProperty("created_at")
         private LocalDateTime createdAt;
 
-        @JsonProperty("profile_completed")
-        private boolean profileCompleted;
+        @JsonProperty("profileCompleted")
+        private boolean profile_completed;
 
         @JsonProperty("updatedAt")
         private LocalDateTime updated_at;
@@ -102,7 +101,7 @@ public class CandidateResponse {
         @NoArgsConstructor
         @Builder
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        public static class EventParticipant{
+        public static class EventParticipant {
             @JsonProperty("id")
             private String _id;
 
@@ -118,6 +117,7 @@ public class CandidateResponse {
             @JsonProperty("addedBy")
             private String added_by;
         }
+
         @Getter
         @Setter
         @AllArgsConstructor
@@ -132,7 +132,7 @@ public class CandidateResponse {
             @JsonProperty("dob")
             private Date date_of_birth;
 
-            private String gender = GenderOptions.MALE.name();
+            private GenderOptions gender = GenderOptions.MALE;
 
             private String height;
 

@@ -29,6 +29,8 @@ public class MatrimonyCandidate {
 
     private Address address;
 
+    private ProfileStatus status = ProfileStatus.pending;
+
     @Field("contact_details")
     private ContactDetails contactDetails;
 
@@ -59,9 +61,7 @@ public class MatrimonyCandidate {
     private PartnerPreferences partnerPreferences;
 
     @Builder.Default
-    private List<String> favorites=null;
-
-    private ProfileStatus status;
+    private List<String> favorites = null;
 
     @CreatedDate
     @Field("created_at")
@@ -88,7 +88,7 @@ public class MatrimonyCandidate {
         private Date dob;
 
         @Builder.Default
-        private String gender = GenderOptions.MALE.name();
+        private GenderOptions gender = GenderOptions.MALE;
 
         private String height;
 
@@ -99,7 +99,7 @@ public class MatrimonyCandidate {
         private String bloodGroup;
 
         @Field("complexion")
-        private ComplexionOptions complexion;
+        private ComplexionOptions complexion = ComplexionOptions.FAIR;
 
         @Builder.Default
         @Field("mother_tongue")
@@ -124,9 +124,12 @@ public class MatrimonyCandidate {
         private ManglikOptions manglik = ManglikOptions.NO;
 
         @Field("marital_status")
-        private MaritalStatus maritalStatus;
+        private MaritalStatus maritalStatus = MaritalStatus.SINGLE;
 
         private String kuldevi;
+
+        @Field("is_blood_donated")
+        private boolean bloodDonated;
 
     }
 
@@ -163,13 +166,13 @@ public class MatrimonyCandidate {
         private String siblings;
 
         @Field("family_status")
-        private FamilyStatus familyStatus;
+        private FamilyStatus familyStatus = FamilyStatus.MIDDLE_CLASS;
 
         @Field("family_type")
-        private FamilyType familyType;
+        private FamilyType familyType = FamilyType.NUCLEAR;
 
         @Field("family_values")
-        private FamilyValues familyValues;
+        private FamilyValues familyValues = FamilyValues.MODERATE;
 
         @Field("native_place")
         private String nativePlace;
@@ -231,9 +234,9 @@ public class MatrimonyCandidate {
     @NoArgsConstructor
     @Builder
     public static class LifestyleInterests {
-        private DietaryHabits dietaryHabits;
-        private HabitsOptions drinkingHabits;
-        private HabitsOptions smokingHabits;
+        private DietaryHabits dietaryHabits = DietaryHabits.VEGETARIAN;
+        private HabitsOptions drinkingHabits = HabitsOptions.NO;
+        private HabitsOptions smokingHabits = HabitsOptions.NO;
 
     }
 
@@ -281,11 +284,11 @@ public class MatrimonyCandidate {
         private AgeRange ageRange;
         private HeightRange heightRange;
         private SalaryRange salaryRange;
-        private String drinkingHabits;
-        private String dietaryHabits;
-        private String smokingHabits;
-        private String manglik;
-        private String maritalStatus;
+        private String drinkingHabits = HabitsOptions.NO.name();
+        private String dietaryHabits = DietaryHabits.VEGETARIAN.name();
+        private String smokingHabits = HabitsOptions.NO.name();
+        private String manglik = ManglikOptions.NO.name();
+        private String maritalStatus = MaritalStatus.SINGLE.name();
 
         @Getter
         @Setter

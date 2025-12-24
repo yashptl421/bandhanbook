@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.request;
 
+import com.bandhanbook.app.model.constants.GenderOptions;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -26,7 +27,7 @@ public class UserRegisterRequest {
     private String fullName;
 
     @NotBlank(message = "Gender must not be blank")
-    private String gender;
+    private GenderOptions gender;
 
     private Date dob;
 

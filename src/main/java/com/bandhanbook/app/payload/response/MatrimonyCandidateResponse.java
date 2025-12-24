@@ -15,29 +15,29 @@ import java.util.List;
 public class MatrimonyCandidateResponse {
     private String id;
 
-    private String user_id; // Assuming ObjectId as String
+    private String userId; // Assuming ObjectId as String
 
-    private MatrimonyCandidateResponse.Address address;
+    private Address address;
 
-    private MatrimonyCandidateResponse.ContactDetails contactDetails;
+    private ContactDetails contactDetails;
 
-    private MatrimonyCandidateResponse.PersonalDetails personalDetails;
+    private PersonalDetails personalDetails;
 
-    private MatrimonyCandidateResponse.Image profileImage;
+    private Image profileImage;
 
-    private MatrimonyCandidateResponse.Image images;
+    private Image images;
 
-    private MatrimonyCandidateResponse.FamilyDetails familyDetails;
+    private FamilyDetails familyDetails;
 
-    private MatrimonyCandidateResponse.EducationDetails educationDetails;
+    private EducationDetails educationDetails;
 
-    private MatrimonyCandidateResponse.OccupationDetails occupationDetails;
+    private OccupationDetails occupationDetails;
 
-    private MatrimonyCandidateResponse.LifestyleInterests lifestyleInterests;
+    private LifestyleInterests lifestyleInterests;
 
-    private MatrimonyCandidateResponse.PrivacySettings privacySettings;
+    private PrivacySettings privacySettings;
 
-    private MatrimonyCandidateResponse.PartnerPreferences partnerPreferences;
+    private PartnerPreferences partnerPreferences;
 
     private List<String> favorites;
 
@@ -49,6 +49,8 @@ public class MatrimonyCandidateResponse {
 
     private LocalDateTime updatedAt;
 
+    private int profileCompletion;
+
     @Getter
     @Setter
     @AllArgsConstructor
@@ -59,7 +61,7 @@ public class MatrimonyCandidateResponse {
         private String birthTime;
 
         private Date dob;
-        private String gender = GenderOptions.MALE.name();
+        private GenderOptions gender = GenderOptions.MALE;
 
         private String height;
 
@@ -201,9 +203,9 @@ public class MatrimonyCandidateResponse {
     @NoArgsConstructor
     @Builder
     public static class PartnerPreferences {
-        private MatrimonyCandidateResponse.PartnerPreferences.AgeRange ageRange;
-        private MatrimonyCandidateResponse.PartnerPreferences.HeightRange heightRange;
-        private MatrimonyCandidateResponse.PartnerPreferences.SalaryRange salaryRange;
+        private PartnerPreferences.AgeRange ageRange;
+        private PartnerPreferences.HeightRange heightRange;
+        private PartnerPreferences.SalaryRange salaryRange;
         private String drinkingHabits;
         private String dietaryHabits;
         private String smokingHabits;

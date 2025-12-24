@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.exception.EmailNotFoundException;
 import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
@@ -7,12 +8,15 @@ import com.bandhanbook.app.model.EventParticipants;
 import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
+import com.bandhanbook.app.payload.request.CandidateRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
 import com.bandhanbook.app.payload.response.CandidateResponse;
+import com.bandhanbook.app.payload.response.MatrimonyCandidateResponse;
 import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.repository.*;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
+import com.bandhanbook.app.utilities.UtilityHelper;
 import com.bandhanbook.app.wrappers.CandidateWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
@@ -31,8 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.PHONE_EXISTS;
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.USER_REGISTERED;
 
@@ -61,6 +64,9 @@ public class UserService {
     private ReactiveMongoTemplate reactiveMongoTemplate;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private UtilityHelper utilityHelper;
+
 
     public Users getUsers() {
         return new Users();
@@ -74,9 +80,6 @@ public class UserService {
         Document eventParticipantFilters = new Document();
         Document agentFilters = new Document();
         if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
-            matrimonyDataFilters.put("status", "active");
-            matrimonyDataFilters.put("privacy_settings.is_hide_profile", false);
-
             // candidate event filtering
             matrimonyRepository.findByUserId(authUser.getId())
                     .flatMap(profile ->
@@ -187,6 +190,46 @@ public class UserService {
                 .switchIfEmpty(Mono.error(new RuntimeException("Candidate not found")));
     }
 
+    @Transactional
+    public Mono<MatrimonyCandidateResponse> updateCandidate(String userId, CandidateRequest req, Users authUser) {
+
+        ObjectId userObjectId = new ObjectId(userId);
+        Mono<Boolean> emailExists = Mono.justOrEmpty(req.getEmail())
+                .flatMap(email ->
+                        userRepository.existsByEmailAndRolesContainingAndIdNot(
+                                email, RoleNames.Candidate.name(), userObjectId
+                        )
+                )
+                .defaultIfEmpty(false);
+
+        return emailExists.flatMap(exists -> {
+            if (exists) {
+                return Mono.error(new EmailNotFoundException(EMAIL_EXISTS));
+            }
+            return userRepository.findById(userObjectId).flatMap(users ->
+                    matrimonyRepository.findByUserId(userObjectId).flatMap(candidate -> {
+                        if (!req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail())) {
+                            users.setEmail(req.getEmail());
+                        }
+                        if (!req.getFullName().isBlank() && !req.getFullName().equals(users.getFullName())) {
+                            users.setFullName(req.getFullName());
+                        }
+                        if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
+                            req.getMatrimonyData().setStatus(candidate.getStatus());
+                        }
+                        modelMapper.map(req.getMatrimonyData(), candidate);
+                        return userRepository.save(users).flatMap(user -> {
+                            return matrimonyRepository.save(candidate)
+                                    .map(updatedCandidate -> {
+                                        MatrimonyCandidateResponse res = modelMapper.map(candidate, MatrimonyCandidateResponse.class);
+                                        res.setProfileCompletion(utilityHelper.getProfileCompletion(candidate));
+                                        return res;
+                                    });
+                        });
+                    }));
+        });
+    }
+
     public Mono<ApiResponse<List<CandidateResponse>>> listCandidates(Users authUser, Map<String, String> params, int page, int limit) {
         int skip = (page - 1) * limit;
 
@@ -218,7 +261,7 @@ public class UserService {
 
         if (authUser.getRoles().contains("Candidate")) {
             matrimonyFilters.put("status", "active");
-            matrimonyFilters.put("profile_completed", true);
+            matrimonyFilters.put("profile_completed", false);
             matrimonyFilters.put("privacy_settings.is_hide_profile", false);
         }
 

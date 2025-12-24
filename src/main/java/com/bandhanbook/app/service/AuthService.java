@@ -61,7 +61,7 @@ public class AuthService {
                 .switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(INVALID_CREDENTIALS)))
                 .flatMap(user -> {
 
-                    if (!loginRequest.getPassword().isBlank() && !passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+                    if (loginRequest.getPassword()!=null && !loginRequest.getPassword().isBlank() && !passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
                         return Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS));
                     }
                     if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {

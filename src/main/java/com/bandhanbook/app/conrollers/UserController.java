@@ -2,9 +2,11 @@ package com.bandhanbook.app.conrollers;
 
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.payload.request.CandidateRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
 import com.bandhanbook.app.payload.response.AgentResponse;
 import com.bandhanbook.app.payload.response.CandidateResponse;
+import com.bandhanbook.app.payload.response.MatrimonyCandidateResponse;
 import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.CommonService;
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.USER_UPDATED;
 
 
 @Slf4j
@@ -106,6 +109,18 @@ public class UserController {
     public Mono<ResponseEntity<ApiResponse<List<CandidateResponse>>>> listCandidates(@CurrentUser Users authUser, @RequestParam Map<String, String> params) {
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
-        return userService.listCandidates(authUser, params, page, limit).map(response -> ResponseEntity.ok(response));
+        return userService.listCandidates(authUser, params, page, limit).map(ResponseEntity::ok);
+    }
+
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<ApiResponse<MatrimonyCandidateResponse>>> updateCandidate(@PathVariable String id, @RequestBody CandidateRequest request, @CurrentUser Users authUser) {
+        return userService.updateCandidate(id, request, authUser)
+                .map(res -> ResponseEntity.ok(
+                        ApiResponse.<MatrimonyCandidateResponse>builder()
+                                .status(HttpStatus.OK.value())
+                                .message(USER_UPDATED)
+                                .data(res)
+                                .build()
+                ));
     }
 }
