@@ -247,7 +247,7 @@ public class UserService {
             ));
         }
 
-        if (!params.get("phoneNumber").isBlank()) {
+        if (params.get("phoneNumber") != null && !params.get("phoneNumber").isBlank() && !params.get("phoneNumber").equalsIgnoreCase("string")) {
             System.out.println(params.get("phoneNumber"));
             userFilters.put("phone_number",
                     new Document("$regex", params.get("phoneNumber")).append("$options", "i"));
@@ -261,8 +261,9 @@ public class UserService {
 
         if (authUser.getRoles().contains("Candidate")) {
             matrimonyFilters.put("status", "active");
-            matrimonyFilters.put("profile_completed", false);
+            matrimonyFilters.put("profile_completed", true);
             matrimonyFilters.put("privacy_settings.is_hide_profile", false);
+            userFilters.put("_id", new Document("$ne", authUser.getId()));
         }
 
         if (authUser.getRoles().contains(RoleNames.Agent.name())) {
