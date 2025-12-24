@@ -4,6 +4,7 @@ import com.bandhanbook.app.model.constants.*;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
+import org.bson.types.ObjectId;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -24,7 +25,6 @@ public class CandidateResponse {
     private String email;
     private List<String> role;
     private MatrimonyCandidate matrimony_data;
-    private ProfileStatus status;
     private AgentResponse.OrganizationDetails organization_details;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -75,7 +75,7 @@ public class CandidateResponse {
         private PartnerPreferences partnerPreferences;
 
         @JsonProperty("favorites")
-        private List<String> favorites;
+        private List<ObjectId> favorites;
 
         @JsonProperty("status")
         private ProfileStatus status;

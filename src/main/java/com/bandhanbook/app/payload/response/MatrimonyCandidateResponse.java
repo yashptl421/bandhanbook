@@ -2,6 +2,7 @@ package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.constants.*;
 import lombok.*;
+import org.bson.types.ObjectId;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -39,7 +40,7 @@ public class MatrimonyCandidateResponse {
 
     private PartnerPreferences partnerPreferences;
 
-    private List<String> favorites;
+    private List<ObjectId> favorites;
 
     private ProfileStatus status;
 

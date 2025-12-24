@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
 @Repository
-public interface MatrimonyRepository extends ReactiveMongoRepository<MatrimonyCandidate, String> {
+public interface MatrimonyRepository extends ReactiveMongoRepository<MatrimonyCandidate, ObjectId> {
     Mono<MatrimonyCandidate> findByUserId(ObjectId user_id);
 }

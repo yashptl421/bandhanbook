@@ -61,7 +61,7 @@ public class MatrimonyCandidate {
     private PartnerPreferences partnerPreferences;
 
     @Builder.Default
-    private List<String> favorites = null;
+    private List<ObjectId> favorites = null;
 
     @CreatedDate
     @Field("created_at")

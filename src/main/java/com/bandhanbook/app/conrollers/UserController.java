@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -121,6 +120,29 @@ public class UserController {
                                 .message(USER_UPDATED)
                                 .data(res)
                                 .build()
+                ));
+    }
+
+    @Operation(summary = "Add or Remove candidate from favorites", description = "Candidate can have favorite candidate list.")
+    @PostMapping({"/favorites"})
+    public Mono<ResponseEntity<ApiResponse<String>>> addRemoveToFavorites(@RequestBody String profileId, @CurrentUser Users authUser) {
+        return userService.addRemoveToFavorites(profileId, authUser).map(message -> ResponseEntity.ok(
+                ApiResponse.<String>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(message)
+                        .build()
+        ));
+    }
+
+    @Operation(summary = "Get favorite candidates of logged in user", description = "Fetch favorite candidates of logged in user.")
+    @GetMapping("/favorites")
+    public Mono<ResponseEntity<ApiResponse<List<PhoneLoginResponse>>>> getFavorites(@CurrentUser Users user) {
+        return userService.getFavorites(user)
+                .map(res -> ResponseEntity.ok(ApiResponse.<List<PhoneLoginResponse>>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(DATA_FOUND)
+                        .data(res)
+                        .build()
                 ));
     }
 }

@@ -34,10 +34,10 @@ import reactor.core.publisher.Mono;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.USER_REGISTERED;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 @Slf4j
 @Service
@@ -194,6 +194,10 @@ public class UserService {
     public Mono<MatrimonyCandidateResponse> updateCandidate(String userId, CandidateRequest req, Users authUser) {
 
         ObjectId userObjectId = new ObjectId(userId);
+        if (authUser.getRoles().contains(RoleNames.Candidate.name()) && !Objects.equals(authUser.getId(), userObjectId)) {
+            return Mono.error(new UnAuthorizedException("You are not authorized to update this profile"));
+        }
+
         Mono<Boolean> emailExists = Mono.justOrEmpty(req.getEmail())
                 .flatMap(email ->
                         userRepository.existsByEmailAndRolesContainingAndIdNot(
@@ -226,7 +230,7 @@ public class UserService {
                                         return res;
                                     });
                         });
-                    }));
+                    }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
         });
     }
 
@@ -462,6 +466,7 @@ public class UserService {
                 ));
     }
 
+    @Transactional
     public Mono<PhoneLoginResponse> myProfile(Users users) {
         return userDetailService.findById(users.getId())
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
@@ -482,6 +487,42 @@ public class UserService {
                         return res;
                     });
                 }).switchIfEmpty(Mono.error(new UnAuthorizedException("Error occurred during login")));
+    }
+
+    public Mono<List<PhoneLoginResponse>> getFavorites(Users authUser) {
+        return matrimonyRepository.findByUserId(authUser.getId())
+                .flatMapMany(candidateProfile -> {
+                    List<ObjectId> favoriteIds = candidateProfile.getFavorites() != null ? candidateProfile.getFavorites() : new ArrayList<>();
+                    return matrimonyRepository.findAllById(favoriteIds);
+                })
+                .flatMap(favoriteCandidate ->
+                        userRepository.findById(favoriteCandidate.getUserId())
+                                .map(user -> {
+                                    PhoneLoginResponse res = modelMapper.map(user, PhoneLoginResponse.class);
+                                    res.setMatrimony_data(modelMapper.map(favoriteCandidate, MatrimonyCandidateResponse.class));
+                                    return res;
+                                })
+                )
+                .collectList();
+    }
+
+    public Mono<String> addRemoveToFavorites(String profileId, Users authUser) {
+        ObjectId candidateId = new ObjectId(profileId);
+        return matrimonyRepository.findByUserId(authUser.getId())
+                .flatMap(candiateProfile ->
+                        matrimonyRepository.findById(candidateId)
+                                .flatMap(targetProfile -> {
+                                    List<ObjectId> favorites = candiateProfile.getFavorites() != null ? candiateProfile.getFavorites() : new ArrayList<>();
+                                    if (favorites.contains(targetProfile.getId())) {
+                                        favorites.remove(targetProfile.getId());
+                                    } else {
+                                        favorites.add(targetProfile.getId());
+                                    }
+                                    candiateProfile.setFavorites(favorites);
+                                    return matrimonyRepository.save(candiateProfile)
+                                            .thenReturn(FAVORITES_UPDATED);
+                                })
+                                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
     }
 
     private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, Users authUser) {
