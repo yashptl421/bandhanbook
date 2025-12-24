@@ -90,7 +90,7 @@ public class AuthService {
                         userDetailService.findByPhoneNumber(request.getPhoneNumber()))
                 .flatMap(user -> {
                     if (!user.getUsers().getRoles().contains(request.getRole())) {
-                        return Mono.error(new UnAuthorizedException(request.getRole() + " is not registered with this number"));
+                        return Mono.error(new RecordNotFoundException(request.getRole() + " is not registered with this number"));
                     }
                     // Check if user has the requested role
                     if (user.getUsers().getRoles().size() > 1) {
@@ -119,7 +119,7 @@ public class AuthService {
                         res.setRole(request.getRole());
                         return res;
                     });
-                }).switchIfEmpty(Mono.error(new UnAuthorizedException("Error occurred during login")));
+                }).switchIfEmpty(Mono.error(new RuntimeException("Error occurred during login")));
     }
 
     protected Mono<PhoneLoginResponse> getAgentDetails(String role, Users users) {
