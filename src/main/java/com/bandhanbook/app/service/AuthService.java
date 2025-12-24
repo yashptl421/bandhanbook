@@ -65,7 +65,7 @@ public class AuthService {
                         return Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS));
                     }
                     if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {
-                        return Mono.error(new UnAuthorizedException(loginRequest.getRole() + " is not registered with this number"));
+                        return Mono.error(new RecordNotFoundException(loginRequest.getRole() + " is not registered with this number"));
                     }
                     return otpService.requestOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
                 });
