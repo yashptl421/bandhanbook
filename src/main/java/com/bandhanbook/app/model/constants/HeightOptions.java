@@ -1,5 +1,7 @@
 package com.bandhanbook.app.model.constants;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 public enum HeightOptions {
     FEET_41("4'1\""),
     FEET_42("4'2\""),
@@ -50,7 +52,11 @@ public enum HeightOptions {
         this.label = label;
     }
 
-    public String getLabel() {
-        return label;
+    @JsonCreator
+    public static HeightOptions fromValue(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return HabitsOptions.valueOf(value.trim().toUpperCase());
     }
 }

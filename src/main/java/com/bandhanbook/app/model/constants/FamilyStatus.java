@@ -7,8 +7,6 @@ public enum FamilyStatus {
 
     FamilyStatus(String name) {
     }
-
-
     @JsonCreator
     public static FamilyStatus fromValue(String value) {
         if (value == null || value.trim().isEmpty()) {
