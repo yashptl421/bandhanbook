@@ -52,6 +52,8 @@ public class MatrimonyCandidateResponse {
 
     private int profileCompletion;
 
+    private boolean bloodDonated;
+
     @Getter
     @Setter
     @AllArgsConstructor

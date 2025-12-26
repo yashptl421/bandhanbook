@@ -1,10 +1,10 @@
 package com.bandhanbook.app.payload.request;
 
 import com.bandhanbook.app.model.constants.*;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import org.bson.types.ObjectId;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -12,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class CandidateRequest {
     private MatrimonyCandidate matrimonyData;
 
@@ -44,7 +45,9 @@ public class CandidateRequest {
 
         private List<ObjectId> favorites ;
 
-        private boolean profileCompleted;
+        private Boolean bloodDonated;
+
+        private Boolean profileCompleted;
 
         @Getter
         @Setter

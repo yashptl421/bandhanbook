@@ -140,7 +140,7 @@ public class UserService {
                                                 new Document("$lookup", new Document()
                                                         .append("from", "agents")
                                                         .append("localField", "added_by")
-                                                        .append("foreignField", "user_id")
+                                                        .append("foreignField", "_id")
                                                         .append("as", "agent_details")
                                                         .append("pipeline", List.of(
                                                                 new Document("$match", agentFilters),
@@ -582,6 +582,8 @@ public class UserService {
                 .partnerPreferences(MatrimonyCandidate.PartnerPreferences.builder().build())
                 .occupationDetails(MatrimonyCandidate.OccupationDetails.builder().build())
                 .favorites(new ArrayList<>())
+                .bloodDonated(false)
+                .profileCompleted(false)
                 .build();
     }
 

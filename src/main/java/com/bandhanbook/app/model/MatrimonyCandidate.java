@@ -74,6 +74,10 @@ public class MatrimonyCandidate {
     @Field("updated_at")
     private LocalDateTime updatedAt;
 
+    @Field("is_blood_donated")
+    private boolean bloodDonated = false;
+
+
     @Getter
     @Setter
     @AllArgsConstructor
@@ -127,10 +131,6 @@ public class MatrimonyCandidate {
         private MaritalStatus maritalStatus = MaritalStatus.SINGLE;
 
         private String kuldevi;
-
-        @Field("is_blood_donated")
-        private boolean bloodDonated;
-
     }
 
     @Getter
