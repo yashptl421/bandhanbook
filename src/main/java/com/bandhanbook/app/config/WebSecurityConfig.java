@@ -51,7 +51,7 @@ public class WebSecurityConfig {
                                 "/auth/**").permitAll()
                         .pathMatchers("/swagger-ui/index.html/*", " /swagger-ui/**").permitAll()
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .pathMatchers("/event/**").hasAnyRole(RoleNames.SuperUser.name(),RoleNames.Organization.name())
+                        .pathMatchers("/event/**").hasAnyRole(RoleNames.SuperUser.name(),RoleNames.Organization.name(), RoleNames.Agent.name())
                         .pathMatchers("/organization/**").hasRole(RoleNames.SuperUser.name())
                         .pathMatchers("/agent/**").hasAnyRole(RoleNames.SuperUser.name(),RoleNames.Organization.name(), RoleNames.Agent.name())
                         .pathMatchers("/user/**").hasAnyRole(RoleNames.Organization.name(), RoleNames.Candidate.name(), RoleNames.SuperUser.name(),RoleNames.Agent.name())
