@@ -57,6 +57,6 @@ public enum HeightOptions {
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
-        return HabitsOptions.valueOf(value.trim().toUpperCase());
+        return HeightOptions.valueOf(value.trim().toUpperCase());
     }
 }
