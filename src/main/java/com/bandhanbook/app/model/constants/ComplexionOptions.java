@@ -11,11 +11,10 @@ public enum ComplexionOptions {
     DUSKY("Dusky"),
     DARK("Dark");
 
-    private final String name;
 
     ComplexionOptions(String name) {
-        this.name = name;
     }
+
     @JsonCreator
     public static ComplexionOptions fromValue(String value) {
         if (value == null || value.trim().isEmpty()) {

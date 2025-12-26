@@ -46,10 +46,8 @@ public enum HeightOptions {
     FEET_75("7'5\""),
     FEET_76("7'6\"");
 
-    private final String label;
 
-    HeightOptions(String label) {
-        this.label = label;
+    HeightOptions(String name) {
     }
 
     @JsonCreator

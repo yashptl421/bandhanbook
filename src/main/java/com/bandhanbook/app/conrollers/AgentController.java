@@ -43,6 +43,7 @@ public class AgentController {
                         .build()
         ));
     }
+
     @PutMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<String>>> updateAgent(@Valid @RequestBody AgentRequest req, @PathVariable String id) {
         return agentService.updateAgent(req, id).thenReturn(ResponseEntity.ok(new ApiResponse<>(
@@ -70,6 +71,7 @@ public class AgentController {
                     .data(data)
                     .meta(new ApiResponse.Meta(page, limit, totalRecords, total))
                     .isOtp(null)
+                    .isFavorite(null)
                     .build());
         });
     }

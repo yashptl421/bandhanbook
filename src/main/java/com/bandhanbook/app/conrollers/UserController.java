@@ -128,10 +128,11 @@ public class UserController {
     @Operation(summary = "Add or Remove candidate from favorites", description = "Candidate can have favorite candidate list.")
     @PostMapping({"/favorites"})
     public Mono<ResponseEntity<ApiResponse<String>>> addRemoveToFavorites(@RequestBody FavoritesRequest request, @CurrentUser Users authUser) {
-        return userService.addRemoveToFavorites(request.getProfileId(), authUser).map(message -> ResponseEntity.ok(
+        return userService.addRemoveToFavorites(request.getProfileId(), authUser).map(res -> ResponseEntity.ok(
                 ApiResponse.<String>builder()
                         .status(HttpStatus.OK.value())
-                        .message(message)
+                        .message(res.getMessage())
+                        .isFavorite(res.isFavorite())
                         .build()
         ));
     }

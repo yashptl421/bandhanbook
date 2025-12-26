@@ -516,21 +516,25 @@ public class UserService {
                 .collectList();
     }
 
-    public Mono<String> addRemoveToFavorites(String profileId, Users authUser) {
+    public Mono<FavoriteResponse> addRemoveToFavorites(String profileId, Users authUser) {
         ObjectId candidateId = new ObjectId(profileId);
+
         return matrimonyRepository.findByUserId(authUser.getId())
                 .flatMap(candidateProfile ->
                         matrimonyRepository.findById(candidateId)
                                 .flatMap(targetProfile -> {
                                     List<ObjectId> favorites = candidateProfile.getFavorites() != null ? candidateProfile.getFavorites() : new ArrayList<>();
+                                    FavoriteResponse res =new FavoriteResponse();
                                     if (favorites.contains(targetProfile.getId())) {
                                         favorites.remove(targetProfile.getId());
                                     } else {
                                         favorites.add(targetProfile.getId());
+                                        res.setFavorite(true);
                                     }
                                     candidateProfile.setFavorites(favorites);
+                                    res.setMessage(FAVORITES_UPDATED);
                                     return matrimonyRepository.save(candidateProfile)
-                                            .thenReturn(FAVORITES_UPDATED);
+                                            .thenReturn(res);
                                 })
                                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
     }

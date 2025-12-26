@@ -20,6 +20,7 @@ public class ApiResponse<T> {
     private Map<String,String> error;
     private Meta meta;
     private Boolean isOtp=null;
+    private Boolean isFavorite=null;
 
     @Data
     @AllArgsConstructor
