@@ -1,6 +1,5 @@
 package com.bandhanbook.app.service;
 
-import com.bandhanbook.app.exception.EmailNotFoundException;
 import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
@@ -32,12 +31,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.PHONE_EXISTS;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 @Slf4j
@@ -199,21 +197,21 @@ public class UserService {
             return Mono.error(new UnAuthorizedException("You are not authorized to update this profile"));
         }
 
-        Mono<Boolean> emailExists = Mono.justOrEmpty(req.getEmail())
+      /*  Mono<Boolean> emailExists = Mono.justOrEmpty(req.getEmail())
                 .flatMap(email ->
                         userRepository.existsByEmailAndRolesContainingAndIdNot(
                                 email, RoleNames.Candidate.name(), userObjectId
                         )
                 )
-                .defaultIfEmpty(false);
+                .defaultIfEmpty(false);*/
 
-        return emailExists.flatMap(exists -> {
+      /*  return emailExists.flatMap(exists -> {
             if (exists) {
                 return Mono.error(new EmailNotFoundException(EMAIL_EXISTS));
-            }
-            return userRepository.findById(userObjectId).flatMap(users ->
-                    matrimonyRepository.findByUserId(userObjectId).flatMap(candidate -> {
-                        if (!req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail())) {
+            }*/
+        return userRepository.findById(userObjectId).flatMap(users ->
+                matrimonyRepository.findByUserId(userObjectId).flatMap(candidate -> {
+                        /*if (!req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail())) {
                             users.setEmail(req.getEmail());
                         }
                         if (!req.getFullName().isBlank() && !req.getFullName().equals(users.getFullName())) {
@@ -221,16 +219,16 @@ public class UserService {
                         }
                         if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
-                        }
-                        modelMapper.map(req.getMatrimonyData(), candidate);
-                        return userRepository.save(users).flatMap(user -> matrimonyRepository.save(candidate)
-                                .map(updatedCandidate -> {
-                                    MatrimonyCandidateResponse res = modelMapper.map(candidate, MatrimonyCandidateResponse.class);
-                                    res.setProfileCompletion(utilityHelper.getProfileCompletion(candidate));
-                                    return res;
-                                }));
-                    }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
-        });
+                        }*/
+                    modelMapper.map(req.getMatrimonyData(), candidate);
+                    return matrimonyRepository.save(candidate)
+                            .map(updatedCandidate -> {
+                                MatrimonyCandidateResponse res = modelMapper.map(candidate, MatrimonyCandidateResponse.class);
+                                res.setProfileCompletion(utilityHelper.getProfileCompletion(candidate));
+                                return res;
+                            });
+                }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
+        /*  });*/
     }
 
     public Mono<ApiResponse<List<CandidateResponse>>> listCandidates(Users authUser, Map<String, String> params, int page, int limit) {
@@ -353,31 +351,44 @@ public class UserService {
 
                     Aggregation aggregation = Aggregation.newAggregation(ops);
 
-                    return reactiveMongoTemplate.aggregate(aggregation, "users", CandidateWrapper.class)
-                            .next()
-                            .defaultIfEmpty(new CandidateWrapper())
-                            .map(result -> {
-                                List<CandidateResponse> res = result.getData();
-                                List<CandidateWrapper.RecordCount> metadata = result.getMetadata();
+                    return getFavouriteIdsMono(authUser).flatMap(favouriteIds ->
+                            reactiveMongoTemplate.aggregate(aggregation, "users", CandidateWrapper.class)
+                                    .next()
+                                    .defaultIfEmpty(new CandidateWrapper())
+                                    .map(result -> {
+                                        List<CandidateResponse> res = result.getData();
+                                        List<CandidateWrapper.RecordCount> metadata = result.getMetadata();
+                                        System.out.print(favouriteIds);
+                                        res.forEach(candidate -> {
+                                            if (candidate.getMatrimony_data() != null &&
+                                                    candidate.getMatrimony_data().get_id() != null) {
 
-                                long total = metadata.isEmpty()
-                                        ? 0
-                                        : metadata.get(0).getTotal();
+                                                String candidateMatrimonyId =
+                                                        candidate.getMatrimony_data().get_id();
 
-                                int totalPages = (int) Math.ceil((double) total / limit);
+                                                candidate.setIsFavorite(
+                                                        favouriteIds.contains(candidateMatrimonyId)
+                                                );
+                                            }
+                                        });
+                                        long total = metadata.isEmpty()
+                                                ? 0
+                                                : metadata.get(0).getTotal();
 
-                                return ApiResponse.<List<CandidateResponse>>builder()
-                                        .status(200)
-                                        .message(res.isEmpty() ? DATA_NOT_FOUND : DATA_FOUND)
-                                        .meta(ApiResponse.Meta.builder()
-                                                .page(page)
-                                                .limit(limit)
-                                                .totalRecords(total)
-                                                .totalPages(totalPages)
-                                                .build())
-                                        .data(res)
-                                        .build();
-                            });
+                                        int totalPages = (int) Math.ceil((double) total / limit);
+
+                                        return ApiResponse.<List<CandidateResponse>>builder()
+                                                .status(200)
+                                                .message(res.isEmpty() ? DATA_NOT_FOUND : DATA_FOUND)
+                                                .meta(ApiResponse.Meta.builder()
+                                                        .page(page)
+                                                        .limit(limit)
+                                                        .totalRecords(total)
+                                                        .totalPages(totalPages)
+                                                        .build())
+                                                .data(res)
+                                                .build();
+                                    }));
                 });
 
     }
@@ -451,7 +462,7 @@ public class UserService {
                         Mono.defer(() -> {
                             Users newUser = modelMapper.map(request, Users.class);
                             newUser.getRoles().add(role);
-                            newUser.setPassword(passwordEncoder.encode(request.getPassword()));
+                            //newUser.setPassword(passwordEncoder.encode(request.getPassword()));
                             return userRepository.save(newUser)
                                     .flatMap(savedUser ->
                                             matrimonyRepository.save(registerReqToCandidate(request, savedUser))
@@ -592,5 +603,17 @@ public class UserService {
 
         if (params.containsKey("eventId"))
             filter.put("event_id", new ObjectId(params.get("eventId")));
+    }
+
+    private Mono<Set<String>> getFavouriteIdsMono(Users authUser) {
+        return matrimonyRepository.findByUserId(authUser.getId())
+                .map(mp -> {
+                            return (mp.getFavorites() != null ? mp.getFavorites() : List.<ObjectId>of())
+                                    .stream()
+                                    .map(ObjectId::toHexString) // normalize
+                                    .collect(Collectors.toSet());
+                        }
+                )
+                .defaultIfEmpty(Set.of());
     }
 }

@@ -19,6 +19,7 @@ public class ApiResponse<T> {
     private T data;
     private Map<String,String> error;
     private Meta meta;
+    private Boolean isOtp=null;
 
     @Data
     @AllArgsConstructor

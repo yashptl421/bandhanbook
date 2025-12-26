@@ -29,7 +29,6 @@ public class UserRegisterRequest {
     @Size(max = 50)
     @Email(message = "Input must be in Email format")
     private String email;
-    private String password;
     private String address;
     private int country;
     private int state;

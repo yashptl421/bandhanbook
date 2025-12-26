@@ -61,10 +61,10 @@ public class EventController {
     }
 
     @GetMapping("")
-    public Mono<ResponseEntity<ApiResponse<List<EventResponse>>>> eventsList(@RequestParam Map<String, String> params) {
+    public Mono<ResponseEntity<ApiResponse<List<EventResponse>>>> eventsList(@RequestParam Map<String, String> params, @CurrentUser Users authUser) {
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
-        return eventService.eventsList(params).map(tuple -> ResponseEntity.ok(
+        return eventService.eventsList(params, authUser).map(tuple -> ResponseEntity.ok(
                 ApiResponse.<List<EventResponse>>builder()
                         .status(HttpStatus.OK.value())
                         .message(DATA_FOUND)

@@ -73,7 +73,7 @@ public class EventService {
         });
     }
 
-    public Mono<Tuple2<Long, List<EventResponse>>> eventsList(Map<String, String> params) {
+    public Mono<Tuple2<Long, List<EventResponse>>> eventsList(Map<String, String> params, Users authUser) {
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
         String search = params.getOrDefault("search", "");

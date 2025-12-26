@@ -69,6 +69,7 @@ public class AgentController {
                     .message(DATA_FOUND)
                     .data(data)
                     .meta(new ApiResponse.Meta(page, limit, totalRecords, total))
+                    .isOtp(null)
                     .build());
         });
     }

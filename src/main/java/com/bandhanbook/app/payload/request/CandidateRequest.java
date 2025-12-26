@@ -5,7 +5,6 @@ import lombok.*;
 import org.bson.types.ObjectId;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 
 @Getter
@@ -14,8 +13,6 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class CandidateRequest {
-    private String fullName;
-    private String email;
     private MatrimonyCandidate matrimonyData;
 
     @Getter
@@ -24,8 +21,6 @@ public class CandidateRequest {
     @NoArgsConstructor
     @Builder
     public static class MatrimonyCandidate {
-
-        private Address address;
 
         private ContactDetails contactDetails;
 
@@ -47,11 +42,7 @@ public class CandidateRequest {
 
         private PartnerPreferences partnerPreferences;
 
-        private List<String> favorites;
-
-        private ProfileStatus status;
-
-        private LocalDateTime createdAt;
+        private List<ObjectId> favorites ;
 
         private boolean profileCompleted;
 
@@ -62,39 +53,25 @@ public class CandidateRequest {
         @Builder
         public static class PersonalDetails {
 
-            private String birthTime;
-
-            private Date dob;
-
-            private GenderOptions gender;
-
-            private String height;
-
-            private String birthPlace;
+            private HeightOptions height;
 
             private BloodGroupOptions bloodGroup;
 
             private ComplexionOptions complexion;
 
-            private String motherTongue = "Hindi";
-
-            private String nationality = "Indian";
-
-            private String religion = "Hindu";
+            private MaritalStatus maritalStatus = MaritalStatus.SINGLE;
 
             private String gotra;
 
             private String maternalGotra;
 
-            private String caste;
-
             private ManglikOptions manglik = ManglikOptions.NO;
 
-            private MaritalStatus maritalStatus;
+            private String birthTime;
 
             private String kuldevi;
 
-            private boolean bloodDonated;
+            private String birthPlace;
 
         }
 
@@ -134,20 +111,6 @@ public class CandidateRequest {
             private String nativePlace;
 
             private String krashiBhumi;
-
-        }
-
-        @Getter
-        @Setter
-        @AllArgsConstructor
-        @NoArgsConstructor
-        @Builder
-        public static class Address {
-            private String address;
-            private int country = 101; // India
-            private int state = 4039; // Madhya Pradesh
-            private int city;
-            private String zip;
 
         }
 

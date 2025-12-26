@@ -47,6 +47,7 @@ public class AuthController {
                 .map(res -> ResponseEntity.ok(ApiResponse.<Void>builder()
                         .status(HttpStatus.OK.value())
                         .message(res)
+                        .isOtp(res.equalsIgnoreCase(OTP_SENT))
                         .build()
                 ));
     }

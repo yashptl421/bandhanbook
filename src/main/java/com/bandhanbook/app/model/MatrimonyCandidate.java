@@ -90,7 +90,7 @@ public class MatrimonyCandidate {
         @Builder.Default
         private GenderOptions gender = GenderOptions.MALE;
 
-        private String height;
+        private HeightOptions height;
 
         @Field("birth_place")
         private String birthPlace;

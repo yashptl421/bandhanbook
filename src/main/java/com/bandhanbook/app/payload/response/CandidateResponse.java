@@ -26,6 +26,7 @@ public class CandidateResponse {
     private List<String> role;
     private MatrimonyCandidate matrimony_data;
     private AgentResponse.OrganizationDetails organization_details;
+    private Boolean isFavorite;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @Getter

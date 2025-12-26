@@ -28,8 +28,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.USER_UPDATED;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 
 @Slf4j
@@ -52,6 +51,7 @@ public class UserController {
                 ApiResponse.<String>builder()
                         .status(HttpStatus.OK.value())
                         .message(message)
+                        .isOtp(message.equalsIgnoreCase(OTP_SENT))
                         .build()
         ));
     }
