@@ -223,14 +223,12 @@ public class UserService {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
                         modelMapper.map(req.getMatrimonyData(), candidate);
-                        return userRepository.save(users).flatMap(user -> {
-                            return matrimonyRepository.save(candidate)
-                                    .map(updatedCandidate -> {
-                                        MatrimonyCandidateResponse res = modelMapper.map(candidate, MatrimonyCandidateResponse.class);
-                                        res.setProfileCompletion(utilityHelper.getProfileCompletion(candidate));
-                                        return res;
-                                    });
-                        });
+                        return userRepository.save(users).flatMap(user -> matrimonyRepository.save(candidate)
+                                .map(updatedCandidate -> {
+                                    MatrimonyCandidateResponse res = modelMapper.map(candidate, MatrimonyCandidateResponse.class);
+                                    res.setProfileCompletion(utilityHelper.getProfileCompletion(candidate));
+                                    return res;
+                                }));
                     }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
         });
     }
@@ -271,16 +269,16 @@ public class UserService {
             userFilters.put("_id", new Document("$ne", authUser.getId()));
         }
 
-        if (authUser.getRoles().contains(RoleNames.Agent.name())) {
-            eventFilters.put("added_by", authUser.getId());
-        }
-        return resolveOrganizationId(authUser, params)
+        return resolveOrgAndAgentId(authUser, params)
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
-                .flatMap(orgId -> {
+                .flatMap(id -> {
 
                     Document organizationFilters = new Document();
-                    if (!orgId.isBlank()) {
-                        organizationFilters.put("organization_id", new ObjectId(orgId));
+                    if (!id.isBlank() && authUser.getRoles().contains(RoleNames.Organization.name())) {
+                        organizationFilters.put("organization_id", new ObjectId(id));
+                    }
+                    if (!id.isBlank() && authUser.getRoles().contains(RoleNames.Agent.name())) {
+                        eventFilters.put("added_by", new ObjectId(id));
                     }
 
                     List<Document> pipeline = List.of(
@@ -384,7 +382,7 @@ public class UserService {
 
     }
 
-    private Mono<String> resolveOrganizationId(Users authUser, Map<String, String> params) {
+    private Mono<String> resolveOrgAndAgentId(Users authUser, Map<String, String> params) {
         // SUPER USER → from request
         if (authUser.getRoles().contains(RoleNames.SuperUser.name())
                 && params.containsKey("organization")) {
@@ -394,15 +392,13 @@ public class UserService {
         // ORGANIZATION → find by user_id
         if (authUser.getRoles().contains(RoleNames.Organization.name())) {
             return organizationRepository.findByUserId(authUser.getId())
-                    .map(org -> {
-                        return String.valueOf(org.getId());
-                    });
+                    .map(org -> String.valueOf(org.getId()));
         }
 
         // AGENT → find agent → org
         if (authUser.getRoles().contains(RoleNames.Agent.name())) {
             return agentRepository.findByUserId(authUser.getId())
-                    .map(agent -> String.valueOf(agent.getOrganizationId()));
+                    .map(agent -> String.valueOf(agent.getId()));
         }
 
         return Mono.just("");
@@ -431,7 +427,8 @@ public class UserService {
                                                         return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
                                                     }
                                                     // Add candidate to new event
-                                                    return saveEventParticipant(candidate, request, authUser)
+                                                    return agentRepository.findByUserId(authUser.getId()).map(agent ->
+                                                                    saveEventParticipant(candidate, request, agent.getId()))
                                                             .thenReturn(USER_REGISTERED);
                                                 })
                                 )
@@ -443,9 +440,9 @@ public class UserService {
                                                             matrimonyRepository
                                                                     .save(registerReqToCandidate(request, savedUser))
                                                                     .flatMap(matrimonyCandidate ->
-                                                                            saveEventParticipant(matrimonyCandidate, request, authUser)
-                                                                                    .thenReturn(USER_REGISTERED)
-                                                                    )
+                                                                            agentRepository.findByUserId(authUser.getId()).map(agent ->
+                                                                                    saveEventParticipant(matrimonyCandidate, request, agent.getId())
+                                                                            )).thenReturn(USER_REGISTERED)
                                                     );
                                         })
                                 )
@@ -459,8 +456,9 @@ public class UserService {
                                     .flatMap(savedUser ->
                                             matrimonyRepository.save(registerReqToCandidate(request, savedUser))
                                                     .flatMap(matrimonyCandidate ->
-                                                            saveEventParticipant(matrimonyCandidate, request, authUser)
-                                                                    .thenReturn(USER_REGISTERED)
+                                                            agentRepository.findByUserId(authUser.getId()).map(agent ->
+                                                                    saveEventParticipant(matrimonyCandidate, request, agent.getId())
+                                                            ).thenReturn(USER_REGISTERED)
                                                     )
                                     );
                         })
@@ -510,24 +508,24 @@ public class UserService {
     public Mono<String> addRemoveToFavorites(String profileId, Users authUser) {
         ObjectId candidateId = new ObjectId(profileId);
         return matrimonyRepository.findByUserId(authUser.getId())
-                .flatMap(candiateProfile ->
+                .flatMap(candidateProfile ->
                         matrimonyRepository.findById(candidateId)
                                 .flatMap(targetProfile -> {
-                                    List<ObjectId> favorites = candiateProfile.getFavorites() != null ? candiateProfile.getFavorites() : new ArrayList<>();
+                                    List<ObjectId> favorites = candidateProfile.getFavorites() != null ? candidateProfile.getFavorites() : new ArrayList<>();
                                     if (favorites.contains(targetProfile.getId())) {
                                         favorites.remove(targetProfile.getId());
                                     } else {
                                         favorites.add(targetProfile.getId());
                                     }
-                                    candiateProfile.setFavorites(favorites);
-                                    return matrimonyRepository.save(candiateProfile)
+                                    candidateProfile.setFavorites(favorites);
+                                    return matrimonyRepository.save(candidateProfile)
                                             .thenReturn(FAVORITES_UPDATED);
                                 })
                                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
     }
 
     public Mono<String> updateProfile(OrganizationRequest request, Users authUser) {
-        if(authUser.getRoles().contains(RoleNames.Organization.name())){
+        if (authUser.getRoles().contains(RoleNames.Organization.name())) {
             return organizationRepository.findByUserId(authUser.getId())
                     .flatMap(organization -> {
                         modelMapper.map(request, organization);
@@ -540,11 +538,11 @@ public class UserService {
         }
     }
 
-    private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, Users authUser) {
+    private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, ObjectId agentId) {
         return eventParticipantRepo.save(EventParticipants.builder()
                 .candidateId(candidate.getId())
                 .eventId(new ObjectId(request.getEventId()))
-                .addedBy(authUser.getId())
+                .addedBy(agentId)
                 .build());
     }
 

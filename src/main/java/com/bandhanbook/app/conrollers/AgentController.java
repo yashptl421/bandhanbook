@@ -3,7 +3,6 @@ package com.bandhanbook.app.conrollers;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.AgentRequest;
-import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.response.AgentResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.AgentService;
@@ -47,13 +46,13 @@ public class AgentController {
     @PutMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<String>>> updateAgent(@Valid @RequestBody AgentRequest req, @PathVariable String id) {
         return agentService.updateAgent(req, id).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                ORGANIZATION_UPDATED,
+                AGENT_UPDATED,
                 HttpStatus.OK.value()
         )));
     }
 
     @GetMapping("")
-    public Mono<ResponseEntity<ApiResponse<List<AgentResponse>>>> listOrganization(@RequestParam Map<String, String> params, @CurrentUser Users authUser) {
+    public Mono<ResponseEntity<ApiResponse<List<AgentResponse>>>> listAgent(@RequestParam Map<String, String> params, @CurrentUser Users authUser) {
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
         return agentService.listAgents(authUser, params, page, limit).map(res ->
