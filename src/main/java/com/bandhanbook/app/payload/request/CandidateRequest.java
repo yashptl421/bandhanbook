@@ -72,7 +72,7 @@ public class CandidateRequest {
 
             private String birthPlace;
 
-            private String bloodGroup;
+            private BloodGroupOptions bloodGroup;
 
             private ComplexionOptions complexion;
 

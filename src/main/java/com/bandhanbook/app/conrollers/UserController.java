@@ -3,6 +3,8 @@ package com.bandhanbook.app.conrollers;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.CandidateRequest;
+import com.bandhanbook.app.payload.request.FavoritesRequest;
+import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
 import com.bandhanbook.app.payload.response.AgentResponse;
 import com.bandhanbook.app.payload.response.CandidateResponse;
@@ -125,8 +127,8 @@ public class UserController {
 
     @Operation(summary = "Add or Remove candidate from favorites", description = "Candidate can have favorite candidate list.")
     @PostMapping({"/favorites"})
-    public Mono<ResponseEntity<ApiResponse<String>>> addRemoveToFavorites(@RequestBody String profileId, @CurrentUser Users authUser) {
-        return userService.addRemoveToFavorites(profileId, authUser).map(message -> ResponseEntity.ok(
+    public Mono<ResponseEntity<ApiResponse<String>>> addRemoveToFavorites(@RequestBody FavoritesRequest request, @CurrentUser Users authUser) {
+        return userService.addRemoveToFavorites(request.getProfileId(), authUser).map(message -> ResponseEntity.ok(
                 ApiResponse.<String>builder()
                         .status(HttpStatus.OK.value())
                         .message(message)
@@ -144,5 +146,16 @@ public class UserController {
                         .data(res)
                         .build()
                 ));
+    }
+
+    @Operation(summary = "Update the organization", description = "Update organization profile")
+    @PostMapping({"/me"})
+    public Mono<ResponseEntity<ApiResponse<String>>> updateProfile(@Valid @RequestBody OrganizationRequest request, @CurrentUser Users authUser) {
+        return userService.updateProfile(request, authUser).map(message -> ResponseEntity.ok(
+                ApiResponse.<String>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(message)
+                        .build()
+        ));
     }
 }

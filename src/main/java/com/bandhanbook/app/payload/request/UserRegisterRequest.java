@@ -1,15 +1,10 @@
 package com.bandhanbook.app.payload.request;
 
 import com.bandhanbook.app.model.constants.GenderOptions;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
-import lombok.AccessLevel;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.bson.types.ObjectId;
 
 import java.util.Date;
 
@@ -26,7 +21,7 @@ public class UserRegisterRequest {
     @Size(min = 3, max = 100, message = "Full name must be between 3 and 100 characters")
     private String fullName;
 
-    @NotBlank(message = "Gender must not be blank")
+    @NotNull(message = "Gender must not be null")
     private GenderOptions gender;
 
     private Date dob;

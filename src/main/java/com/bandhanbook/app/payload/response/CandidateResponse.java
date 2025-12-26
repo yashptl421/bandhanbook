@@ -140,7 +140,7 @@ public class CandidateResponse {
             private String birth_place;
 
             @JsonProperty("bloodGroup")
-            private String blood_group;
+            private BloodGroupOptions blood_group;
 
             @JsonProperty("complexion")
             private ComplexionOptions complexion;

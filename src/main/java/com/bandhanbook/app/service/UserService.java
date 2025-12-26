@@ -9,6 +9,7 @@ import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.CandidateRequest;
+import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
 import com.bandhanbook.app.payload.response.CandidateResponse;
 import com.bandhanbook.app.payload.response.MatrimonyCandidateResponse;
@@ -523,6 +524,20 @@ public class UserService {
                                             .thenReturn(FAVORITES_UPDATED);
                                 })
                                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
+    }
+
+    public Mono<String> updateProfile(OrganizationRequest request, Users authUser) {
+        if(authUser.getRoles().contains(RoleNames.Organization.name())){
+            return organizationRepository.findByUserId(authUser.getId())
+                    .flatMap(organization -> {
+                        modelMapper.map(request, organization);
+                        return organizationRepository.save(organization)
+                                .thenReturn(ORGANIZATION_UPDATED);
+                    })
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+        } else {
+            return Mono.error(new UnAuthorizedException("You are not authorized to update organization profile"));
+        }
     }
 
     private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, Users authUser) {

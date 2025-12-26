@@ -1,5 +1,8 @@
 package com.bandhanbook.app.model.constants;
 
 public enum FamilyValues {
-    TRADITIONAL, MODERATE, LIBERAL
+    TRADITIONAL("Traditional"), MODERATE("Moderate"), LIBERAL("Liberal");
+
+    FamilyValues(String name) {
+    }
 }

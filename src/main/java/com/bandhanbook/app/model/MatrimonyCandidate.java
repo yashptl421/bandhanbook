@@ -96,10 +96,10 @@ public class MatrimonyCandidate {
         private String birthPlace;
 
         @Field("blood_group")
-        private String bloodGroup;
+        private BloodGroupOptions bloodGroup;
 
         @Field("complexion")
-        private ComplexionOptions complexion = ComplexionOptions.FAIR;
+        private String complexion = ComplexionOptions.FAIR.name();
 
         @Builder.Default
         @Field("mother_tongue")

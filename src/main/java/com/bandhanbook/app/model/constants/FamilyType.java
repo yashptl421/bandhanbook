@@ -1,5 +1,8 @@
 package com.bandhanbook.app.model.constants;
 
 public enum FamilyType {
-    NUCLEAR, JOINT
+    NUCLEAR("Nuclear"), JOINT("Joint"), EXTENDED("Extended");
+
+    FamilyType(String name) {
+    }
 }
