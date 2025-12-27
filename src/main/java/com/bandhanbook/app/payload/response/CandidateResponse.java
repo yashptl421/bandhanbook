@@ -1,6 +1,8 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.Address;
 import com.bandhanbook.app.model.constants.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
@@ -42,8 +44,11 @@ public class CandidateResponse {
         @JsonProperty("userId")
         private String user_id;
 
-        @JsonProperty("address")
+        @JsonIgnore
         private Address address;
+
+        @JsonProperty("address")
+        private com.bandhanbook.app.model.Address localAddress;
 
         @JsonProperty("contactDetails")
         private ContactDetails contact_details;
@@ -235,7 +240,6 @@ public class CandidateResponse {
             private int state = 4039; // Madhya Pradesh
             private int city;
             private String zip;
-
         }
 
         @Getter

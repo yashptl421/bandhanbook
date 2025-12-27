@@ -1,6 +1,9 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.Address;
 import com.bandhanbook.app.model.constants.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.bson.types.ObjectId;
 
@@ -18,7 +21,11 @@ public class MatrimonyCandidateResponse {
 
     private String userId; // Assuming ObjectId as String
 
+    @JsonIgnore
     private Address address;
+
+    @JsonProperty("address")
+    private com.bandhanbook.app.model.Address localAddress;
 
     private ContactDetails contactDetails;
 

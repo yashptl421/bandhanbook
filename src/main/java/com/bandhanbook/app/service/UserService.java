@@ -66,6 +66,8 @@ public class UserService {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private UtilityHelper utilityHelper;
+    @Autowired
+    CommonService commonService;
 
 
     public Users getUsers() {
@@ -79,6 +81,7 @@ public class UserService {
         Document matrimonyDataFilters = new Document();
         Document eventParticipantFilters = new Document();
         Document agentFilters = new Document();
+
         if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
             // candidate event filtering
             matrimonyRepository.findByUserId(authUser.getId())
@@ -104,7 +107,7 @@ public class UserService {
             return agentRepository.findByUserId(authUser.getId())
                     .flatMap(agent -> {
                         agentFilters.put("organization_id", agent.getOrganizationId());
-                        return runFullPipeline(targetUserId, matrimonyDataFilters, eventParticipantFilters, agentFilters);
+                        return runFullPipeline(targetUserId, matrimonyDataFilters, eventParticipantFilters, agentFilters).map(this::addAddressInResponse);
                     });
         }
         return getFavouriteIdsMono(authUser).flatMap(favouriteIds -> runFullPipeline(targetUserId, matrimonyDataFilters, eventParticipantFilters, agentFilters)
@@ -116,8 +119,8 @@ public class UserService {
                                 candidateResponse.getMatrimony_data().get_id();
 
                         candidateResponse.setIsFavorite(
-                                favouriteIds.contains(candidateMatrimonyId)
-                        );
+                                favouriteIds.contains(candidateMatrimonyId));
+                        addAddressInResponse(candidateResponse);
                     }
                     return candidateResponse;
                 }));
@@ -662,5 +665,11 @@ public class UserService {
                         }
                 )
                 .defaultIfEmpty(Set.of());
+    }
+
+    private CandidateResponse addAddressInResponse(CandidateResponse response) {
+        CandidateResponse.MatrimonyCandidate.Address add = response.getMatrimony_data().getAddress();
+        response.getMatrimony_data().setLocalAddress(commonService.getAddressByIds(add.getAddress(), add.getCountry(), add.getState(), add.getCity(), add.getZip()));
+        return response;
     }
 }

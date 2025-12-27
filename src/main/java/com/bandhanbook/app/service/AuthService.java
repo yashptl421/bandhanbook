@@ -1,6 +1,10 @@
 package com.bandhanbook.app.service;
 
-import com.bandhanbook.app.exception.*;
+import com.bandhanbook.app.exception.EmailNotFoundException;
+import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
+import com.bandhanbook.app.exception.PhoneOrEmailNotFoundException;
+import com.bandhanbook.app.exception.RecordNotFoundException;
+import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.RefreshToken;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
@@ -61,7 +65,7 @@ public class AuthService {
                 .switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(INVALID_CREDENTIALS)))
                 .flatMap(user -> {
 
-                    if (loginRequest.getPassword()!=null && !loginRequest.getPassword().isBlank() && !passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+                    if (loginRequest.getPassword() != null && !loginRequest.getPassword().isBlank() && !passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
                         return Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS));
                     }
                     if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {
@@ -148,6 +152,10 @@ public class AuthService {
                             List<EventParticipantsResponse> eventParticipant = eventParticipants.stream().map(entity -> modelMapper.map(entity, EventParticipantsResponse.class)).collect(Collectors.toList());
                             res.setEventParticipants(eventParticipant);
                             res.setMatrimony_data(modelMapper.map(candidate, MatrimonyCandidateResponse.class));
+                            if (candidate.getAddress() != null) {
+                                MatrimonyCandidate.Address add = candidate.getAddress();
+                                res.getMatrimony_data().setLocalAddress(commonService.getAddressByIds(add.getAddress(), add.getCountry(), add.getState(), add.getCity(), add.getZip()));
+                            }
                             return res;
                         }))
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
