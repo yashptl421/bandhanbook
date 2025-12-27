@@ -29,7 +29,7 @@ public class AgentRequest {
     private String organizationId;
 
     @NotBlank(message = "Gender must not be blank")
-    private String gender ;
+    private GenderOptions gender ;
 
     private String caste;
 

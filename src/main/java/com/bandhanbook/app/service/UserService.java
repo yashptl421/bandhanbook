@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -576,7 +577,16 @@ public class UserService {
             return Mono.error(new UnAuthorizedException("You are not authorized to update organization profile"));
         }
     }
-
+    public Mono<Void> deactivateAccount(Users authUser) {
+        return userRepository.findById(authUser.getId())
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .flatMap(user -> {
+                    user.setDeletedAt(LocalDateTime.now());
+                    user.setToken(null);
+                    return userRepository.save(user);
+                })
+                .then();
+    }
     private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, ObjectId agentId) {
         return eventParticipantRepo.save(EventParticipants.builder()
                 .candidateId(candidate.getId())

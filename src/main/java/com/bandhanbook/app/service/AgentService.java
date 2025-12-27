@@ -144,7 +144,7 @@ public class AgentService {
                                     return userRepository.save(users);
                                 });
                     }
-                    if (request.getGender() != null && !request.getGender().isEmpty())
+                    if (request.getGender() != null )
                         existingAgent.setGender(request.getGender());
                     if (request.getCaste() != null && !request.getCaste().isEmpty())
                         existingAgent.setCaste(request.getCaste());

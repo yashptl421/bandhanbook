@@ -1,6 +1,7 @@
 package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.Address;
+import com.bandhanbook.app.model.constants.GenderOptions;
 import com.bandhanbook.app.model.constants.ProfileStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -23,7 +24,7 @@ public class AgentResponse {
     private String user_id;
     @JsonProperty("organizationId")
     private String organization_id;
-    private String gender;
+    private GenderOptions gender;
     private String status;
     private Image profileImage;
     @JsonProperty("address")

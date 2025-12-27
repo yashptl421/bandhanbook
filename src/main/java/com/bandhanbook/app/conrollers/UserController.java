@@ -159,4 +159,17 @@ public class UserController {
                         .build()
         ));
     }
+
+    @DeleteMapping("/")
+    public Mono<ResponseEntity<ApiResponse<String>>> destroy(@CurrentUser Users authUser) {
+        return userService.deactivateAccount(authUser)
+                .thenReturn(
+                        ResponseEntity.ok(
+                                ApiResponse.<String>builder()
+                                        .status(200)
+                                        .message("Account removed successfully")
+                                        .build()
+                        )
+                );
+    }
 }

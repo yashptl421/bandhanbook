@@ -30,7 +30,7 @@ public class Agents {
     private ObjectId organizationId;
 
     @Builder.Default
-    private String gender = GenderOptions.MALE.name();
+    private GenderOptions gender = GenderOptions.MALE;
 
     @Field("profile_image")
     private Image profileImage;
