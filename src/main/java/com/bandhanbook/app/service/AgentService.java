@@ -59,7 +59,7 @@ public class AgentService {
         if (authUser.getRoles().contains(RoleNames.Organization.name())) {
             orgId = organizationRepository.findByUserId(authUser.getId())
                     .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
-                    .map(org-> org.getId().toHexString());
+                    .map(org -> org.getId().toHexString());
         }
         return orgId
                 .flatMap(org -> {
@@ -139,10 +139,12 @@ public class AgentService {
                     userRepository.findById(existingAgent.getUserId())
                             .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).map(users ->
                             {
-                                users.setFullName(request.getFullName());
+                                if (request.getFullName() != null && !request.getFullName().isEmpty())
+                                    users.setFullName(request.getFullName());
                                 return userRepository.save(users);
                             });
-
+                    if(request.getGender() != null && !request.getGender().isEmpty())
+                        existingAgent.setGender(request.getGender());
                     existingAgent.setStatus(request.getStatus());
                     existingAgent.setGender(request.getGender());
                     existingAgent.setAddress(request.getAddress());

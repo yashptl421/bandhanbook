@@ -491,7 +491,7 @@ public class UserService {
                                     .flatMap(savedUser ->
                                             matrimonyRepository.save(registerReqToCandidate(request, savedUser))
                                                     .flatMap(matrimonyCandidate ->
-                                                            agentRepository.findByUserId(authUser.getId()).map(agent ->
+                                                            agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
                                                                     saveEventParticipant(matrimonyCandidate, request, agent.getId())
                                                             ).thenReturn(USER_REGISTERED)
                                                     )

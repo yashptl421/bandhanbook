@@ -1,6 +1,5 @@
 package com.bandhanbook.app.payload.response;
 
-import com.bandhanbook.app.model.Address;
 import com.bandhanbook.app.model.constants.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -57,7 +56,7 @@ public class CandidateResponse {
         private PersonalDetails personal_details;
 
         @JsonProperty("profileImage")
-        private Image profileImage;
+        private Image profile_image;
 
         @JsonProperty("images")
         private Image images;
@@ -78,7 +77,7 @@ public class CandidateResponse {
         private PrivacySettings privacy_settings;
 
         @JsonProperty("partnerPreferences")
-        private PartnerPreferences partnerPreferences;
+        private PartnerPreferences partner_preferences;
 
         @JsonProperty("favorites")
         private List<ObjectId> favorites;
@@ -87,10 +86,10 @@ public class CandidateResponse {
         private ProfileStatus status;
 
         @JsonProperty("bloodDonated")
-        private boolean is_blood_donated;
+        private boolean blood_donated;
 
-        @JsonProperty("created_at")
-        private LocalDateTime createdAt;
+        @JsonProperty("createdAt")
+        private LocalDateTime created_at;
 
         @JsonProperty("profileCompleted")
         private boolean profile_completed;
@@ -214,17 +213,17 @@ public class CandidateResponse {
             @JsonProperty("familyStatus")
             private FamilyStatus family_status;
 
-            @JsonProperty("family_type")
-            private FamilyType familyType;
+            @JsonProperty("familyType")
+            private FamilyType family_type;
 
-            @JsonProperty("family_values")
-            private FamilyValues familyValues;
+            @JsonProperty("familyValues")
+            private FamilyValues family_values;
 
-            @JsonProperty("native_place")
-            private String nativePlace;
+            @JsonProperty("nativePlace")
+            private String native_place;
 
-            @JsonProperty("krashi_bhumi")
-            private String krashiBhumi;
+            @JsonProperty("krashiBhumi")
+            private String krashi_bhumi;
 
         }
 
@@ -250,8 +249,8 @@ public class CandidateResponse {
         @JsonInclude(JsonInclude.Include.NON_NULL)
         public static class EducationDetails {
 
-            @JsonProperty("highest_qualification")
-            private String highestQualification;
+            @JsonProperty("highestQualification")
+            private String highest_qualification;
             private String institution;
 
             // Getters and setters omitted for brevity
@@ -265,12 +264,12 @@ public class CandidateResponse {
         @JsonInclude(JsonInclude.Include.NON_NULL)
         public static class OccupationDetails {
             private String designation;
-            @JsonProperty("sector_type")
-            private SectorType sectorType;
-            @JsonProperty("company_name")
-            private String companyName;
-            @JsonProperty("annual_income")
-            private String annualIncome;
+            @JsonProperty("sectorType")
+            private SectorType sector_type;
+            @JsonProperty("companyName")
+            private String company_name;
+            @JsonProperty("annualIncome")
+            private String annual_income;
             private String location;
 
         }
@@ -282,9 +281,12 @@ public class CandidateResponse {
         @Builder
         @JsonInclude(JsonInclude.Include.NON_NULL)
         public static class LifestyleInterests {
-            private DietaryHabits dietaryHabits;
-            private HabitsOptions drinkingHabits;
-            private HabitsOptions smokingHabits;
+            @JsonProperty("dietaryHabits")
+            private DietaryHabits dietary_habits;
+            @JsonProperty("drinkingHabits")
+            private HabitsOptions drinking_habits;
+            @JsonProperty("smokingHabits")
+            private HabitsOptions smoking_habits;
 
         }
 
@@ -308,11 +310,14 @@ public class CandidateResponse {
         @Builder
         @JsonInclude(JsonInclude.Include.NON_NULL)
         public static class PrivacySettings {
-            private boolean isHideEmail = false;
-            private boolean isHidePhone = false;
-            private boolean isHideProfile = false;
-            private boolean isHideProfileImage = false;
-
+            @JsonProperty("isHideEmail")
+            private boolean hide_email;
+            @JsonProperty("isHidePhone")
+            private boolean hide_phone;
+            @JsonProperty("isHideProfile")
+            private boolean hide_profile;
+            @JsonProperty("isHideProfileImage")
+            private boolean hide_profile_image;
         }
 
         @Getter
@@ -322,14 +327,21 @@ public class CandidateResponse {
         @Builder
         @JsonInclude(JsonInclude.Include.NON_NULL)
         public static class PartnerPreferences {
-            private AgeRange ageRange;
-            private HeightRange heightRange;
-            private SalaryRange salaryRange;
-            private String drinkingHabits;
-            private String dietaryHabits;
-            private String smokingHabits;
+            @JsonProperty("ageRange")
+            private AgeRange age_range;
+            @JsonProperty("heightRange")
+            private HeightRange height_range;
+            @JsonProperty("salaryRange")
+            private SalaryRange salary_range;
+            @JsonProperty("drinkingHabits")
+            private String drinking_habits;
+            @JsonProperty("dietaryHabits")
+            private String dietary_habits;
+            @JsonProperty("smokingHabits")
+            private String smoking_habits;
             private String manglik;
-            private String maritalStatus;
+            @JsonProperty("maritalStatus")
+            private String marital_status;
 
             @Getter
             @Setter

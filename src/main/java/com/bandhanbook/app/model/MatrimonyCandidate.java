@@ -37,7 +37,7 @@ public class MatrimonyCandidate {
     @Field("personal_details")
     private PersonalDetails personalDetails;
 
-    @Field("profileImage")
+    @Field("profile_image")
     private Image profileImage;
 
     @Field("images")
@@ -58,6 +58,7 @@ public class MatrimonyCandidate {
     @Field("privacy_settings")
     private PrivacySettings privacySettings;
 
+    @Field("partner_preferences")
     private PartnerPreferences partnerPreferences;
 
     @Builder.Default
@@ -74,7 +75,7 @@ public class MatrimonyCandidate {
     @Field("updated_at")
     private LocalDateTime updatedAt;
 
-    @Field("is_blood_donated")
+    @Field("blood_donated")
     private boolean bloodDonated = false;
 
 
@@ -234,8 +235,11 @@ public class MatrimonyCandidate {
     @NoArgsConstructor
     @Builder
     public static class LifestyleInterests {
+        @Field("dietary_habits")
         private DietaryHabits dietaryHabits = DietaryHabits.VEGETARIAN;
+        @Field("drinking_habits")
         private HabitsOptions drinkingHabits = HabitsOptions.NO;
+        @Field("smoking_habits")
         private HabitsOptions smokingHabits = HabitsOptions.NO;
 
     }
@@ -258,19 +262,16 @@ public class MatrimonyCandidate {
     @NoArgsConstructor
     @Builder
     public static class PrivacySettings {
-        @Field("is_hide_email")
+        @Field("hide_email")
         private boolean isHideEmail;
 
-        @Builder.Default
-        @Field("is_hide_phone")
+        @Field("hide_phone")
         private boolean isHidePhone = false;
 
-        @Field("is_hide_profile")
-        @Builder.Default
+        @Field("hide_profile")
         private boolean isHideProfile = false;
 
-        @Field("is_hide_profile_image")
-        @Builder.Default
+        @Field("hide_profile_image")
         private boolean isHideProfileImage = false;
 
     }
@@ -281,14 +282,21 @@ public class MatrimonyCandidate {
     @NoArgsConstructor
     @Builder
     public static class PartnerPreferences {
+        @Field("age_range")
         private AgeRange ageRange;
+        @Field("height_range")
         private HeightRange heightRange;
+        @Field("salary_range")
         private SalaryRange salaryRange;
-        private String drinkingHabits = HabitsOptions.NO.name();
-        private String dietaryHabits = DietaryHabits.VEGETARIAN.name();
-        private String smokingHabits = HabitsOptions.NO.name();
-        private String manglik = ManglikOptions.NO.name();
-        private String maritalStatus = MaritalStatus.SINGLE.name();
+        @Field("drinking_habits")
+        private String drinkingHabits;
+        @Field("dietary_habits")
+        private String dietaryHabits ;
+        @Field("smoking_habits")
+        private String smokingHabits ;
+        private String manglik;
+        @Field("marital_status")
+        private String maritalStatus ;
 
         @Getter
         @Setter

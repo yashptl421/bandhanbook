@@ -1,6 +1,5 @@
 package com.bandhanbook.app.payload.response;
 
-import com.bandhanbook.app.model.Address;
 import com.bandhanbook.app.model.constants.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -200,10 +199,10 @@ public class MatrimonyCandidateResponse {
     @NoArgsConstructor
     @Builder
     public static class PrivacySettings {
-        private boolean isHideEmail = false;
-        private boolean isHidePhone = false;
-        private boolean isHideProfile = false;
-        private boolean isHideProfileImage = false;
+        private boolean isHideEmail ;
+        private boolean isHidePhone ;
+        private boolean isHideProfile ;
+        private boolean isHideProfileImage ;
 
     }
 

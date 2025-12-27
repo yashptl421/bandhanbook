@@ -3,6 +3,7 @@ package com.bandhanbook.app.service;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.Events;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.EventRequest;
 import com.bandhanbook.app.payload.response.EventResponse;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
@@ -86,10 +87,9 @@ public class EventService {
 
                     boolean match = true;
 
-                    if (organizationId != null && !organizationId.isEmpty()) {
+                    if (authUser.getRoles().contains(RoleNames.SuperUser.name()) && organizationId != null && !organizationId.isEmpty()) {
                         match = event.getId().toHexString().equals(organizationId);
                     }
-
                     if (createdBy != null && !createdBy.isEmpty()) {
                         match = match && createdBy.equalsIgnoreCase(event.getCreatedBy().toHexString());
                     }
@@ -119,16 +119,16 @@ public class EventService {
         // 5. Convert to response
         Flux<EventResponse> responseFlux = pagedFlux.flatMap(event -> {
             return organizationRepository.findById(event.getOrganizationId()).switchIfEmpty(
-                    Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))
-            ).flatMap(org -> userRepository.findById(org.getUserId())
+                   Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))
+           ).flatMap(org -> userRepository.findById(org.getUserId())
 
-                    .map(user -> {
-                        EventResponse res = modelMapper.map(event, EventResponse.class);
-                        UserResponse userResponse = modelMapper.map(user, UserResponse.class);
-                        res.setOrganization_details(modelMapper.map(org, OrganizationResponse.class));
-                        res.setCreated_by_details(userResponse);
-                        return res;
-                    }));
+                   .map(user -> {
+                       EventResponse res = modelMapper.map(event, EventResponse.class);
+                       UserResponse userResponse = modelMapper.map(user, UserResponse.class);
+                       res.setOrganization_details(modelMapper.map(org, OrganizationResponse.class));
+                       res.setCreated_by_details(userResponse);
+                       return res;
+                   }));
         });
         return totalMono.zipWith(responseFlux.collectList());
     }
