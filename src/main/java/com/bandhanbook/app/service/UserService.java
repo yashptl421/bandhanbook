@@ -6,6 +6,7 @@ import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.model.EventParticipants;
 import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.constants.ProfileStatus;
 import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.CandidateRequest;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
@@ -106,7 +107,20 @@ public class UserService {
                         return runFullPipeline(targetUserId, matrimonyDataFilters, eventParticipantFilters, agentFilters);
                     });
         }
-        return runFullPipeline(targetUserId, matrimonyDataFilters, eventParticipantFilters, agentFilters);
+        return getFavouriteIdsMono(authUser).flatMap(favouriteIds -> runFullPipeline(targetUserId, matrimonyDataFilters, eventParticipantFilters, agentFilters)
+                .map(candidateResponse -> {
+                    if (candidateResponse.getMatrimony_data() != null &&
+                            candidateResponse.getMatrimony_data().get_id() != null) {
+
+                        String candidateMatrimonyId =
+                                candidateResponse.getMatrimony_data().get_id();
+
+                        candidateResponse.setIsFavorite(
+                                favouriteIds.contains(candidateMatrimonyId)
+                        );
+                    }
+                    return candidateResponse;
+                }));
     }
 
     private Mono<CandidateResponse> runFullPipeline(
@@ -524,7 +538,7 @@ public class UserService {
                         matrimonyRepository.findById(candidateId)
                                 .flatMap(targetProfile -> {
                                     List<ObjectId> favorites = candidateProfile.getFavorites() != null ? candidateProfile.getFavorites() : new ArrayList<>();
-                                    FavoriteResponse res =new FavoriteResponse();
+                                    FavoriteResponse res = new FavoriteResponse();
                                     if (favorites.contains(targetProfile.getId())) {
                                         favorites.remove(targetProfile.getId());
                                     } else {
@@ -582,6 +596,7 @@ public class UserService {
                 .partnerPreferences(MatrimonyCandidate.PartnerPreferences.builder().build())
                 .occupationDetails(MatrimonyCandidate.OccupationDetails.builder().build())
                 .favorites(new ArrayList<>())
+                .status(ProfileStatus.pending)
                 .bloodDonated(false)
                 .profileCompleted(false)
                 .build();
@@ -589,25 +604,51 @@ public class UserService {
 
     private void applyMatrimonyFilters(Map<String, String> params, Document filter) {
 
-        if (params.containsKey("gender"))
+        if (params.containsKey("gender") && null != params.get("gender") && !params.get("gender").isBlank())
             filter.put("personal_details.gender", params.get("gender"));
 
-        if (params.containsKey("city"))
+        if (params.containsKey("city") && null != params.get("city") && !params.get("city").isBlank())
             filter.put("address.city", params.get("city"));
 
-        if (params.containsKey("zip"))
+        if (params.containsKey("zip") && null != params.get("zip") && !params.get("zip").isBlank())
             filter.put("address.zip", params.get("zip"));
 
-        if (params.containsKey("status"))
+        if (params.containsKey("status") && null != params.get("status") && !params.get("status").isBlank())
             filter.put("status", params.get("status"));
+        if (params.containsKey("gotra") && null != params.get("gotra") && !params.get("gotra").isBlank())
+            filter.put("personal_details.gotra", params.get("gotra"));
+
+        if (params.containsKey("maternalGotra") && null != params.get("maternalGotra") && !params.get("maternalGotra").isBlank())
+            filter.put("personal_details.maternal_gotra", params.get("maternalGotra"));
+
+        if (params.containsKey("manglik") && null != params.get("manglik") && !params.get("manglik").isBlank())
+            filter.put("personal_details.manglik", Boolean.parseBoolean(params.get("manglik")));
+
+        if (params.containsKey("maritalStatus") && null != params.get("maritalStatus") && !params.get("maritalStatus").isBlank())
+            filter.put("personal_details.marital_status", params.get("maritalStatus"));
+
+        if (params.containsKey("bloodGroup") && null != params.get("bloodGroup") && !params.get("bloodGroup").isBlank())
+            filter.put("personal_details.blood_group", params.get("bloodGroup"));
+
+        if (params.containsKey("complexion") && null != params.get("complexion") && !params.get("complexion").isBlank())
+            filter.put("personal_details.complexion", params.get("complexion"));
+
+        if (params.containsKey("bloodDonated") && null != params.get("bloodDonated") && !params.get("bloodDonated").isBlank())
+            filter.put("is_blood_donated", Boolean.parseBoolean(params.get("bloodDonated")));
+
+        /*if(params.containsKey("height")){
+           MatrimonyCandidate.PartnerPreferences.HeightRange range=(MatrimonyCandidate.PartnerPreferences.HeightRange)  params.get("height");
+            filter.put("personal_details.height",params.get("height"));
+        }*/
+
     }
 
     private void applyEventFilters(Map<String, String> params, Document filter) {
 
-        if (params.containsKey("agentId"))
+        if (params.containsKey("agentId") && null != params.get("agentId") && !params.get("agentId").isBlank())
             filter.put("added_by", new ObjectId(params.get("agentId")));
 
-        if (params.containsKey("eventId"))
+        if (params.containsKey("eventId") && null != params.get("eventId") && !params.get("eventId").isBlank())
             filter.put("event_id", new ObjectId(params.get("eventId")));
     }
 
