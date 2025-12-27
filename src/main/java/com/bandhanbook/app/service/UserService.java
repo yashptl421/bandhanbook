@@ -103,7 +103,14 @@ public class UserService {
                     );
 
         }
-        if (authUser.getRoles().contains(RoleNames.Agent.name()) || authUser.getRoles().contains(RoleNames.Organization.name())) {
+        if (authUser.getRoles().contains(RoleNames.Organization.name())) {
+            return organizationRepository.findByUserId(authUser.getId())
+                    .flatMap(org -> {
+                        agentFilters.put("organization_id", org.getId());
+                        return runFullPipeline(targetUserId, matrimonyDataFilters, eventParticipantFilters, agentFilters).map(this::addAddressInResponse);
+                    });
+        }
+        if (authUser.getRoles().contains(RoleNames.Agent.name())) {
             return agentRepository.findByUserId(authUser.getId())
                     .flatMap(agent -> {
                         agentFilters.put("organization_id", agent.getOrganizationId());

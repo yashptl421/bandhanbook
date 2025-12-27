@@ -167,6 +167,7 @@ public class AuthService {
             res.setAgent(false);
             res.setRole(role);
             res.setOrganization_details(modelMapper.map(organization, OrganizationResponse.class));
+            res.getOrganization_details().setLocalAddress(commonService.getAddressByIds(organization.getAddress(), organization.getCountry(), organization.getState(), organization.getCity(), organization.getZip()));
             return res;
         }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }

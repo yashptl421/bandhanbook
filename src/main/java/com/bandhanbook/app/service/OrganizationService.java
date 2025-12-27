@@ -53,6 +53,8 @@ public class OrganizationService {
     private OrgSubscriptionsRepository orgSubscriptionsRepository;
     @Autowired
     private ReactiveMongoTemplate template;
+    @Autowired
+    CommonService commonService;
 
     private List<PricingPlans> cachedPlans = null;
 
@@ -124,6 +126,7 @@ public class OrganizationService {
                                             OrganizationResponse res = modelMapper.map(org, OrganizationResponse.class);
                                             res.setUser_details(modelMapper.map(user, UserResponse.class));
                                             res.setSubscription(modelMapper.map(subscription, OrgSubscriptionsResponse.class));
+                                            res.setLocalAddress(commonService.getAddressByIds(res.getAddress(), res.getCountry(), res.getState(), res.getCity(), res.getZip()));
                                             return res;
                                         })
                 );
