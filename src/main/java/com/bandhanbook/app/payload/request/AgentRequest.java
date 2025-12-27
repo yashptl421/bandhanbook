@@ -2,10 +2,7 @@ package com.bandhanbook.app.payload.request;
 
 import com.bandhanbook.app.model.constants.GenderOptions;
 import com.bandhanbook.app.model.constants.ProfileStatus;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -28,7 +25,7 @@ public class AgentRequest {
 
     private String organizationId;
 
-    @NotBlank(message = "Gender must not be blank")
+    @NotNull(message = "Gender is required")
     private GenderOptions gender ;
 
     private String caste;
