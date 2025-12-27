@@ -29,7 +29,7 @@ public class AgentRequest {
     private String organizationId;
 
     @NotBlank(message = "Gender must not be blank")
-    private String gender = GenderOptions.MALE.name();
+    private String gender ;
 
     private String caste;
 
@@ -37,12 +37,12 @@ public class AgentRequest {
 
     private String phoneVerificationCode;
 
-    private String status = ProfileStatus.pending.name();
+    private String status ;
 
     private String address;
     private int country = 101; // India
     private int state = 4039; // Madhya Pradesh
-    private Integer city;
+    private int city;
     private String zip;
 
     private LocalDateTime createdAt;

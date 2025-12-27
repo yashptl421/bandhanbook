@@ -136,22 +136,31 @@ public class AgentService {
         return agentRepository.findById(agentId)
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .flatMap(existingAgent -> {
-                    userRepository.findById(existingAgent.getUserId())
-                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).map(users ->
-                            {
-                                if (request.getFullName() != null && !request.getFullName().isEmpty())
+                    if (request.getFullName() != null && !request.getFullName().isEmpty()) {
+                        userRepository.findById(existingAgent.getUserId())
+                                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).map(users ->
+                                {
                                     users.setFullName(request.getFullName());
-                                return userRepository.save(users);
-                            });
-                    if(request.getGender() != null && !request.getGender().isEmpty())
+                                    return userRepository.save(users);
+                                });
+                    }
+                    if (request.getGender() != null && !request.getGender().isEmpty())
                         existingAgent.setGender(request.getGender());
-                    existingAgent.setStatus(request.getStatus());
-                    existingAgent.setGender(request.getGender());
-                    existingAgent.setAddress(request.getAddress());
-                    existingAgent.setCity(request.getCity());
-                    existingAgent.setState(request.getState());
-                    existingAgent.setCountry(request.getCountry());
-                    existingAgent.setZip(request.getZip());
+                    if (request.getCaste() != null && !request.getCaste().isEmpty())
+                        existingAgent.setCaste(request.getCaste());
+                    if (request.getStatus() != null && !request.getStatus().isEmpty())
+                        existingAgent.setStatus(request.getStatus());
+                    if (request.getAddress() != null && !request.getAddress().isEmpty())
+                        existingAgent.setAddress(request.getAddress());
+                    if (request.getCity() != 0)
+                        existingAgent.setCity(request.getCity());
+                    if (request.getState() != 0)
+                        existingAgent.setState(request.getState());
+                    if (request.getCountry() != 0)
+                        existingAgent.setCountry(request.getCountry());
+                    if (request.getZip() != null && !request.getZip().isEmpty())
+                        existingAgent.setZip(request.getZip());
+
                     return agentRepository.save(existingAgent)
                             .thenReturn(AGENT_UPDATED);
                 });

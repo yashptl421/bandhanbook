@@ -462,7 +462,7 @@ public class UserService {
                                                         return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
                                                     }
                                                     // Add candidate to new event
-                                                    return agentRepository.findByUserId(authUser.getId()).map(agent ->
+                                                    return agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
                                                                     saveEventParticipant(candidate, request, agent.getId()))
                                                             .thenReturn(USER_REGISTERED);
                                                 })
@@ -475,7 +475,7 @@ public class UserService {
                                                             matrimonyRepository
                                                                     .save(registerReqToCandidate(request, savedUser))
                                                                     .flatMap(matrimonyCandidate ->
-                                                                            agentRepository.findByUserId(authUser.getId()).map(agent ->
+                                                                            agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
                                                                                     saveEventParticipant(matrimonyCandidate, request, agent.getId())
                                                                             )).thenReturn(USER_REGISTERED)
                                                     );
