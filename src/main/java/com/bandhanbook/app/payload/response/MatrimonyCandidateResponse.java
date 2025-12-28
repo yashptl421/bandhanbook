@@ -212,14 +212,15 @@ public class MatrimonyCandidateResponse {
     @NoArgsConstructor
     @Builder
     public static class PartnerPreferences {
-        private PartnerPreferences.AgeRange ageRange;
-        private PartnerPreferences.HeightRange heightRange;
-        private PartnerPreferences.SalaryRange salaryRange;
+        private AgeRange ageRange;
+        private HeightRange heightRange;
+        private SalaryRange salaryRange;
         private String drinkingHabits;
         private String dietaryHabits;
         private String smokingHabits;
         private String manglik;
         private String maritalStatus;
+        private ComplexionOptions complexion;
 
         @Getter
         @Setter

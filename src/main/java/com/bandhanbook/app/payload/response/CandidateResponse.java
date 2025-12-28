@@ -342,6 +342,7 @@ public class CandidateResponse {
             private String manglik;
             @JsonProperty("maritalStatus")
             private String marital_status;
+            private ComplexionOptions complexion;
 
             @Getter
             @Setter

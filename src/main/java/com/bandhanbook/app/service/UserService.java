@@ -292,7 +292,7 @@ public class UserService {
         if (authUser.getRoles().contains("Candidate")) {
             matrimonyFilters.put("status", "active");
             matrimonyFilters.put("profile_completed", true);
-            matrimonyFilters.put("privacy_settings.is_hide_profile", false);
+            matrimonyFilters.put("privacy_settings.hide_profile", false);
             userFilters.put("_id", new Document("$ne", authUser.getId()));
         }
 

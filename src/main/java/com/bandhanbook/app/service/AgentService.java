@@ -21,6 +21,8 @@ import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
@@ -131,39 +133,61 @@ public class AgentService {
                             .thenReturn(AGENT_CREATED);
                 });
     }
-
+    @Transactional
     public Mono<String> updateAgent(AgentRequest request, String agentId) {
+
         return agentRepository.findById(agentId)
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
-                .flatMap(existingAgent -> {
-                    if (request.getFullName() != null && !request.getFullName().isEmpty()) {
-                        userRepository.findById(existingAgent.getUserId())
-                                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).map(users ->
-                                {
-                                    users.setFullName(request.getFullName());
-                                    return userRepository.save(users);
-                                });
-                    }
-                    if (request.getGender() != null )
-                        existingAgent.setGender(request.getGender());
-                    if (request.getCaste() != null && !request.getCaste().isEmpty())
-                        existingAgent.setCaste(request.getCaste());
-                    if (request.getStatus() != null && !request.getStatus().isEmpty())
-                        existingAgent.setStatus(request.getStatus());
-                    if (request.getAddress() != null && !request.getAddress().isEmpty())
-                        existingAgent.setAddress(request.getAddress());
-                    if (request.getCity() != 0)
-                        existingAgent.setCity(request.getCity());
-                    if (request.getState() != 0)
-                        existingAgent.setState(request.getState());
-                    if (request.getCountry() != 0)
-                        existingAgent.setCountry(request.getCountry());
-                    if (request.getZip() != null && !request.getZip().isEmpty())
-                        existingAgent.setZip(request.getZip());
+                .flatMap(agent ->
 
-                    return agentRepository.save(existingAgent)
-                            .thenReturn(AGENT_UPDATED);
-                });
+                        updateUserIfRequired(agent.getUserId(), request)
+
+                                .then(updateAgentFields(agent, request))
+                                .flatMap(agentRepository::save)
+                )
+                .thenReturn(AGENT_UPDATED);
+    }
+    private Mono<Void> updateUserIfRequired(ObjectId userId, AgentRequest request) {
+
+        if (request.getFullName() == null || request.getFullName().isBlank()) {
+            return Mono.empty();
+        }
+
+        return userRepository.findById(userId)
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .flatMap(user -> {
+                    user.setFullName(request.getFullName());
+                    return userRepository.save(user);
+                })
+                .then();
+    }
+    private Mono<Agents> updateAgentFields(Agents agent, AgentRequest request) {
+
+        if (request.getGender() != null)
+            agent.setGender(request.getGender());
+
+        if (StringUtils.hasText(request.getCaste()))
+            agent.setCaste(request.getCaste());
+
+        if (StringUtils.hasText(request.getStatus()))
+            agent.setStatus(request.getStatus());
+
+        if (StringUtils.hasText(request.getAddress()))
+            agent.setAddress(request.getAddress());
+
+        if (request.getCity() != 0)
+            agent.setCity(request.getCity());
+
+        if (request.getState() != 0)
+            agent.setState(request.getState());
+
+        if (request.getCountry() != 0)
+            agent.setCountry(request.getCountry());
+
+        if (StringUtils.hasText(request.getZip()))
+            agent.setZip(request.getZip());
+
+        return Mono.just(agent);
     }
 
     public Mono<List<AgentWrapper>> listAgents(Users authUser, Map<String, String> filterReq, int page, int limit) {

@@ -219,6 +219,7 @@ public class CandidateRequest {
             private String smokingHabits;
             private String manglik;
             private String maritalStatus;
+            private ComplexionOptions complexion;
 
             @Getter
             @Setter

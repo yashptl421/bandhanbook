@@ -298,6 +298,8 @@ public class MatrimonyCandidate {
         @Field("marital_status")
         private String maritalStatus ;
 
+        private ComplexionOptions complexion;
+
         @Getter
         @Setter
         @AllArgsConstructor
