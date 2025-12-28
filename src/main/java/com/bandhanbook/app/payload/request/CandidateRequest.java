@@ -14,6 +14,8 @@ import java.util.List;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class CandidateRequest {
+    private String fullName;
+    private String email;
     private MatrimonyCandidate matrimonyData;
 
     @Getter
@@ -24,6 +26,8 @@ public class CandidateRequest {
     public static class MatrimonyCandidate {
 
         private ContactDetails contactDetails;
+
+        private Address address;
 
         private PersonalDetails personalDetails;
 
@@ -48,6 +52,8 @@ public class CandidateRequest {
         private Boolean bloodDonated;
 
         private Boolean profileCompleted;
+
+        private ProfileStatus status;
 
         @Getter
         @Setter
@@ -116,7 +122,19 @@ public class CandidateRequest {
             private String krashiBhumi;
 
         }
+        @Getter
+        @Setter
+        @AllArgsConstructor
+        @NoArgsConstructor
+        @Builder
+        public static class Address {
+            private String address;
+            private int country = 101; // India
+            private int state = 4039; // Madhya Pradesh
+            private int city;
+            private String zip;
 
+        }
         @Getter
         @Setter
         @AllArgsConstructor

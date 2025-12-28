@@ -3,6 +3,7 @@ package com.bandhanbook.app.model.constants;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 public enum HeightOptions {
+    FEET_40("4 ft"),
     FEET_41("4'1\""),
     FEET_42("4'2\""),
     FEET_43("4'3\""),
