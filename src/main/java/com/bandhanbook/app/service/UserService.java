@@ -245,6 +245,10 @@ public class UserService {
                         if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
+                        if((authUser.getRoles().contains(RoleNames.Organization.name()) || authUser.getRoles().contains(RoleNames.Agent.name())) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)){
+                            req.getMatrimonyData().setStatus(candidate.getStatus());
+                        }
+
                     modelMapper.map(req.getMatrimonyData(), candidate);
                     return userRepository.save(users).flatMap(user -> matrimonyRepository.save(candidate)
                             .map(updatedCandidate -> {

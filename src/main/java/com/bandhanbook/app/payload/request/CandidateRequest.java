@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import org.bson.types.ObjectId;
 
+import java.util.Date;
 import java.util.List;
 
 @Getter
@@ -77,6 +78,8 @@ public class CandidateRequest {
             private ManglikOptions manglik = ManglikOptions.NO;
 
             private String birthTime;
+
+            private Date dob;
 
             private String kuldevi;
 
