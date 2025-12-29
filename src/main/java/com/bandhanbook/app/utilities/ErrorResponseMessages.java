@@ -11,6 +11,11 @@ public interface ErrorResponseMessages {
     String INVALID_OTP = "Invalid or expired OTP";
     String INVALID_CREDENTIALS = "Invalid credentials";
     String INCORRECT_PASSWORD = "Current password is incorrect";
+    String USER_NOT_FOUND = "User not found";
+    String UNAUTHORIZED_ACCESS = "Unauthorized access";
+    String FILE_UPLOAD_ERROR = "Error uploading file";
+    String RECORD_NOT_FOUND = "Record not found";
+    String INVALID_FILE_TYPE = "Invalid file type";
     String PLAN_NOT_FOUND = "Selected plan is not available currently";
-
+    String IMAGE_SIZE_EXCEEDED = "Image size exceeds the maximum allowed limit of 5 MB";
 }

@@ -33,6 +33,9 @@ public class EventParticipants {
     @Field("added_by")
     private ObjectId addedBy;
 
+    @Field("organization_id")
+    private ObjectId organizationId;
+
     @Field("created_at")
     @CreatedDate
     private LocalDateTime createdAt;

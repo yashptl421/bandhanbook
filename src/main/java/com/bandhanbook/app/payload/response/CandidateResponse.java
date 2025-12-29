@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.Image;
 import com.bandhanbook.app.model.constants.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -59,7 +60,7 @@ public class CandidateResponse {
         private Image profile_image;
 
         @JsonProperty("images")
-        private Image images;
+        private List<Image> images;
 
         @JsonProperty("familyDetails")
         private FamilyDetails family_details;
@@ -174,17 +175,6 @@ public class CandidateResponse {
 
             private String kuldevi;
 
-        }
-
-        @Getter
-        @Setter
-        @AllArgsConstructor
-        @NoArgsConstructor
-        @Builder
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        public static class Image {
-            private String url;
-            private String id; // cloudinary unique ID for the image
         }
 
         @Getter

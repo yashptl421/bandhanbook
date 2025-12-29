@@ -20,4 +20,7 @@ public interface SuccessResponseMessages {
     String ORGANIZATION_UPDATED = "Organization updated successfully";
     String FAVORITES_UPDATED = "Favorites updated successfully";
     String PROFILE_UPDATED = "Profile updated successfully";
+    String IMAGE_UPLOADED = "Images uploaded successfully";
+    String PROFILE_IMAGE_REMOVED= "Profile image removed successfully";
+    String IMAGES_REMOVED = "Images removed successfully";
 }

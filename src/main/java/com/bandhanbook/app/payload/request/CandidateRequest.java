@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.request;
 
+import com.bandhanbook.app.model.Image;
 import com.bandhanbook.app.model.constants.*;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
@@ -34,7 +35,7 @@ public class CandidateRequest {
 
         private Image profileImage;
 
-        private Image images;
+        private List<Image> images;
 
         private FamilyDetails familyDetails;
 
@@ -85,16 +86,6 @@ public class CandidateRequest {
 
             private String birthPlace;
 
-        }
-
-        @Getter
-        @Setter
-        @AllArgsConstructor
-        @NoArgsConstructor
-        @Builder
-        public static class Image {
-            private String url;
-            private String id;
         }
 
         @Getter

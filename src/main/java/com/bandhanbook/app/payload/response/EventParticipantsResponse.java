@@ -14,6 +14,7 @@ public class EventParticipantsResponse {
     private String candidateId;
     private String eventId;
     private String addedBy;
+    private String organizationId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

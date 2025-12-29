@@ -38,3 +38,25 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
+
+# Cloudinary Config
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+
+# ImageKit Config
+imagekit:
+  public-key: ${IMAGEKIT_PUBLIC_KEY}
+  private-key: ${IMAGEKIT_PRIVATE_KEY}
+  url-endpoint: ${IMAGEKIT_URL_ENDPOINT}
+  imageKitId: glif9uu15
+# Application specific configs
+images:
+  max_size_mb : 5242880
+  base.path : /uploads/
+  candidate.path : /candidates/
+  agent.path : /agents/
+  organization.path : /organizations/
+  superUser.path : /superusers/
+  banner.path : /banner/

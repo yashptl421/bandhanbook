@@ -41,7 +41,7 @@ public class MatrimonyCandidate {
     private Image profileImage;
 
     @Field("images")
-    private Image images;
+    private List<Image> images;
 
     @Field("family_details")
     private FamilyDetails familyDetails;
@@ -134,7 +134,7 @@ public class MatrimonyCandidate {
         private String kuldevi;
     }
 
-    @Getter
+   /* @Getter
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
@@ -142,7 +142,7 @@ public class MatrimonyCandidate {
     public static class Image {
         private String url;
         private String id; // cloudinary unique ID for the image
-    }
+    }*/
 
     @Getter
     @Setter

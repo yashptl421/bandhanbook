@@ -141,7 +141,7 @@ public class AuthService {
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 
-    protected Mono<PhoneLoginResponse> getMatrimonyDetails(String role, Users users) {
+    public Mono<PhoneLoginResponse> getMatrimonyDetails(String role, Users users) {
 
         return matrimonyRepository.findByUserId(users.getId())
                 .flatMap(candidate ->

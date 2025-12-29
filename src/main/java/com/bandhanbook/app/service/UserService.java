@@ -4,6 +4,7 @@ import com.bandhanbook.app.exception.EmailNotFoundException;
 import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
+import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.EventParticipants;
 import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.Users;
@@ -234,8 +235,8 @@ public class UserService {
             if (exists) {
                 return Mono.error(new EmailNotFoundException(EMAIL_EXISTS));
             }
-        return userRepository.findById(userObjectId).flatMap(users ->
-                matrimonyRepository.findByUserId(userObjectId).flatMap(candidate -> {
+            return userRepository.findById(userObjectId).flatMap(users ->
+                    matrimonyRepository.findByUserId(userObjectId).flatMap(candidate -> {
                         if (null != req.getEmail() && !req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail())) {
                             users.setEmail(req.getEmail());
                         }
@@ -245,19 +246,19 @@ public class UserService {
                         if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
-                        if((authUser.getRoles().contains(RoleNames.Organization.name()) || authUser.getRoles().contains(RoleNames.Agent.name())) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)){
+                        if ((authUser.getRoles().contains(RoleNames.Organization.name()) || authUser.getRoles().contains(RoleNames.Agent.name())) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
 
-                    modelMapper.map(req.getMatrimonyData(), candidate);
-                    return userRepository.save(users).flatMap(user -> matrimonyRepository.save(candidate)
-                            .map(updatedCandidate -> {
-                                MatrimonyCandidateResponse res = modelMapper.map(candidate, MatrimonyCandidateResponse.class);
-                                res.setProfileCompletion(utilityHelper.getProfileCompletion(candidate));
-                                return res;
-                            }));
-                }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
-         });
+                        modelMapper.map(req.getMatrimonyData(), candidate);
+                        return userRepository.save(users).flatMap(user -> matrimonyRepository.save(candidate)
+                                .map(updatedCandidate -> {
+                                    MatrimonyCandidateResponse res = modelMapper.map(candidate, MatrimonyCandidateResponse.class);
+                                    res.setProfileCompletion(utilityHelper.getProfileCompletion(candidate));
+                                    return res;
+                                }));
+                    }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
+        });
     }
 
     public Mono<ApiResponse<List<CandidateResponse>>> listCandidates(Users authUser, Map<String, String> params, int page, int limit) {
@@ -468,7 +469,7 @@ public class UserService {
                                                     }
                                                     // Add candidate to new event
                                                     return agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
-                                                                    saveEventParticipant(candidate, request, agent.getId()))
+                                                                    saveEventParticipant(candidate, request, agent))
                                                             .thenReturn(USER_REGISTERED);
                                                 })
                                 )
@@ -481,7 +482,7 @@ public class UserService {
                                                                     .save(registerReqToCandidate(request, savedUser))
                                                                     .flatMap(matrimonyCandidate ->
                                                                             agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
-                                                                                    saveEventParticipant(matrimonyCandidate, request, agent.getId())
+                                                                                    saveEventParticipant(matrimonyCandidate, request, agent)
                                                                             )).thenReturn(USER_REGISTERED)
                                                     );
                                         })
@@ -497,7 +498,7 @@ public class UserService {
                                             matrimonyRepository.save(registerReqToCandidate(request, savedUser))
                                                     .flatMap(matrimonyCandidate ->
                                                             agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
-                                                                    saveEventParticipant(matrimonyCandidate, request, agent.getId())
+                                                                    saveEventParticipant(matrimonyCandidate, request, agent)
                                                             ).thenReturn(USER_REGISTERED)
                                                     )
                                     );
@@ -545,6 +546,8 @@ public class UserService {
                 .collectList();
     }
 
+
+    @Transactional
     public Mono<FavoriteResponse> addRemoveToFavorites(String profileId, Users authUser) {
         ObjectId candidateId = new ObjectId(profileId);
 
@@ -581,6 +584,7 @@ public class UserService {
             return Mono.error(new UnAuthorizedException("You are not authorized to update organization profile"));
         }
     }
+
     public Mono<Void> deactivateAccount(Users authUser) {
         return userRepository.findById(authUser.getId())
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
@@ -591,11 +595,13 @@ public class UserService {
                 })
                 .then();
     }
-    private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, ObjectId agentId) {
+
+    private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, Agents agent) {
         return eventParticipantRepo.save(EventParticipants.builder()
                 .candidateId(candidate.getId())
                 .eventId(new ObjectId(request.getEventId()))
-                .addedBy(agentId)
+                .addedBy(agent.getId())
+                .organizationId(agent.getOrganizationId())
                 .build());
     }
 

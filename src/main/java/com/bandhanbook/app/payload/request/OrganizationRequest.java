@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.request;
 
+import com.bandhanbook.app.model.Image;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -39,5 +40,7 @@ public class OrganizationRequest {
 
     @Future(message = "The date must be in the future.")
     private LocalDateTime planStartDate;
+
+    private Image profileImage;
 
 }

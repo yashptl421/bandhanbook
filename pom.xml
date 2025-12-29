@@ -8,6 +8,12 @@
         <version>3.5.7</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
     <groupId>com.bandhanbook.app</groupId>
     <artifactId>bandhanbook</artifactId>
     <version>0.0.1-SNAPSHOT</version>
@@ -31,6 +37,7 @@
         <spring-ai.version>1.0.3</spring-ai.version>
         <springdoc-openapi-starter-webflux-ui.version>2.8.5</springdoc-openapi-starter-webflux-ui.version>
         <io.jsonwebtoken>0.12.6</io.jsonwebtoken>
+        <IMAGEKIT.VERSION>1.0.1</IMAGEKIT.VERSION>
     </properties>
     <dependencies>
         <dependency>
@@ -70,7 +77,32 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!--Image Upload-->
+        <dependency>
+            <groupId>com.cloudinary</groupId>
+            <artifactId>cloudinary-http44</artifactId>
+            <version>1.37.0</version>
+        </dependency>
+        <!-- ImageKit SDK -->
+        <dependency>
+            <groupId>com.github.imagekit-developer</groupId>
+            <artifactId>imagekit-java</artifactId>
+            <version>2.0.1</version>
+        </dependency>
 
+        <!-- Image processing -->
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>0.4.20</version>
+        </dependency>
+
+        <!-- MIME spoof protection -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>2.9.0</version>
+        </dependency>
         <!--Json web token-->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

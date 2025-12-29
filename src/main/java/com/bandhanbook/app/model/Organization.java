@@ -39,7 +39,6 @@ public class Organization {
 
     private int city;
 
-
     private String zip;
 
     @Field("phone_verified_at")
@@ -63,5 +62,8 @@ public class Organization {
     @Field("deleted_at")
     @Builder.Default
     private LocalDateTime deletedAt = null;
+
+    @Field("profile_image")
+    private Image profileImage;
 
 }

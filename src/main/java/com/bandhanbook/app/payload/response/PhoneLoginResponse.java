@@ -1,7 +1,6 @@
 package com.bandhanbook.app.payload.response;
 
-import com.bandhanbook.app.model.EventParticipants;
-import com.bandhanbook.app.model.MatrimonyCandidate;
+import com.bandhanbook.app.model.Image;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
@@ -20,7 +19,7 @@ public class PhoneLoginResponse {
     private String email;
     private String fullName;
     private String role;
-    private boolean isAgent=false;
+    private boolean isAgent = false;
     private Image profileImage;
     @JsonProperty("token")
     private String accessToken;
@@ -30,16 +29,4 @@ public class PhoneLoginResponse {
     private List<EventParticipantsResponse> eventParticipants;
     private AgentResponse agent_details;
     private OrganizationResponse organization_details;
-
-
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class Image {
-        private String url;
-        private String id;
-    }
 }

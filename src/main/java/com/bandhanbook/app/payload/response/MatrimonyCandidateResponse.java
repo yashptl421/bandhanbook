@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.Image;
 import com.bandhanbook.app.model.constants.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -32,7 +33,7 @@ public class MatrimonyCandidateResponse {
 
     private Image profileImage;
 
-    private Image images;
+    private List<Image> images;
 
     private FamilyDetails familyDetails;
 
@@ -70,6 +71,7 @@ public class MatrimonyCandidateResponse {
         private String birthTime;
 
         private Date dob;
+
         private GenderOptions gender = GenderOptions.MALE;
 
         private String height;
@@ -98,16 +100,6 @@ public class MatrimonyCandidateResponse {
 
         private String kuldevi;
 
-    }
-
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class Image {
-        private String url;
-        private String id; // cloudinary unique ID for the image
     }
 
     @Getter
@@ -199,10 +191,10 @@ public class MatrimonyCandidateResponse {
     @NoArgsConstructor
     @Builder
     public static class PrivacySettings {
-        private boolean isHideEmail ;
-        private boolean isHidePhone ;
-        private boolean isHideProfile ;
-        private boolean isHideProfileImage ;
+        private boolean isHideEmail;
+        private boolean isHidePhone;
+        private boolean isHideProfile;
+        private boolean isHideProfileImage;
 
     }
 

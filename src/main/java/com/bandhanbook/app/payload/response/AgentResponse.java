@@ -1,6 +1,7 @@
 package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.Address;
+import com.bandhanbook.app.model.Image;
 import com.bandhanbook.app.model.constants.GenderOptions;
 import com.bandhanbook.app.model.constants.ProfileStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -56,16 +57,6 @@ public class AgentResponse {
         private String full_name;
         private String email;
         private String role;
-    }
-
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class Image {
-        private String url;
-        private String id;
     }
 
     @Getter

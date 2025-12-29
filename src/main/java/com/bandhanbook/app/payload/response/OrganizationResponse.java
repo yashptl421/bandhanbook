@@ -1,6 +1,7 @@
 package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.Address;
+import com.bandhanbook.app.model.Image;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -40,4 +41,6 @@ public class OrganizationResponse {
 
     private UserResponse user_details;
     private OrgSubscriptionsResponse subscription;
+
+    private Image profileImage;
 }

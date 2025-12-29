@@ -1,6 +1,7 @@
 package com.bandhanbook.app.conrollers;
 
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
+import com.bandhanbook.app.model.Image;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.CandidateRequest;
 import com.bandhanbook.app.payload.request.FavoritesRequest;
@@ -12,6 +13,7 @@ import com.bandhanbook.app.payload.response.MatrimonyCandidateResponse;
 import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.CommonService;
+import com.bandhanbook.app.service.ProfileService;
 import com.bandhanbook.app.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,8 +23,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -43,6 +48,7 @@ public class UserController {
     private final UserService userService;
     private final CommonService commonService;
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+    private final ProfileService profileService;
 
     @Operation(summary = "Register a new Candidate", description = "Registers a new user with the provided details.")
     @PostMapping({"/signup", "/register"})
@@ -170,6 +176,65 @@ public class UserController {
                                         .message("Account removed successfully")
                                         .build()
                         )
+                );
+    }
+
+    @Operation(summary = "Upload profile image", description = "User can upload profile image.")
+    @PostMapping(value = "/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Mono<ResponseEntity<ApiResponse<Map<String, String>>>> uploadProfileImage(
+            @CurrentUser Users authUser,
+            @RequestPart("file") FilePart file
+    ) {
+        return profileService.uploadProfileImage(authUser, file)
+                .map(imageUrl -> ResponseEntity.ok(
+                        ApiResponse.<Map<String, String>>builder()
+                                .status(200)
+                                .message(PROFILE_UPDATED)
+                                .data(Map.of("image", imageUrl))
+                                .build()
+                ));
+    }
+
+    @Operation(summary = "Remove Profile Image ", description = "User can remove profile image.")
+    @DeleteMapping("/profile-image")
+    public Mono<ApiResponse<String>> removeProfileImage(@CurrentUser Users authUser) {
+        return profileService.removeProfileImage(authUser)
+                .thenReturn(
+                        ApiResponse.<String>builder()
+                                .status(200)
+                                .message(PROFILE_IMAGE_REMOVED)
+                                .build()
+                );
+    }
+
+    @Operation(summary = "Upload Candidate images", description = "Candidate can upload multiple images for matrimony profile.")
+    @PostMapping(value = "/matrimony-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Mono<ApiResponse<List<Image>>> uploadMatrimonyImages(
+            @RequestPart("files") Flux<FilePart> files,
+            @CurrentUser Users authUser
+    ) {
+        return profileService.uploadMatrimonyImages(files, authUser)
+                .collectList()
+                .map(list -> ApiResponse.<List<Image>>builder()
+                        .status(200)
+                        .message(IMAGE_UPLOADED)
+                        .data(list)
+                        .build()
+                );
+    }
+
+    @Operation(summary = "Upload Candidate images", description = "Candidate can upload multiple images for matrimony profile.")
+    @DeleteMapping("/matrimony-image")
+    public Mono<ApiResponse<String>> removeMatrimonyImages(
+            @RequestBody Flux<Image> images,
+            @CurrentUser Users authUser
+    ) {
+        return profileService.removeMatrimonyImages(images, authUser)
+                .thenReturn(
+                        ApiResponse.<String>builder()
+                                .status(200)
+                                .message(IMAGES_REMOVED)
+                                .build()
                 );
     }
 }

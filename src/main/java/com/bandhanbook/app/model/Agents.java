@@ -66,16 +66,4 @@ public class Agents {
     @Field("deleted_at")
     @Builder.Default
     private LocalDateTime deletedAt = null;
-
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class Image {
-        @Builder.Default
-        private String url = null;
-        @Builder.Default
-        private String id = null;
-    }
 }
