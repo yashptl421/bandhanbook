@@ -21,11 +21,11 @@ import com.bandhanbook.app.repository.*;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
 import com.bandhanbook.app.utilities.UtilityHelper;
 import com.bandhanbook.app.wrappers.CandidateWrapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
@@ -43,33 +43,21 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserService {
-    @Autowired
-    UserRepository userRepository;
-    @Autowired
-    MatrimonyRepository matrimonyRepository;
-    @Autowired
-    UserDetailService userDetailService;
-    @Autowired
-    private ModelMapper modelMapper;
-    @Autowired
-    private EventParticipantsRepository eventParticipantRepo;
-    @Autowired
-    private OtpService otpService;
-    @Autowired
-    private AgentRepository agentRepository;
-    @Autowired
-    AuthService authService;
-    @Autowired
-    private OrganizationRepository organizationRepository;
-    @Autowired
-    private ReactiveMongoTemplate reactiveMongoTemplate;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    private UtilityHelper utilityHelper;
-    @Autowired
-    CommonService commonService;
+    private final UserRepository userRepository;
+    private final MatrimonyRepository matrimonyRepository;
+    private final UserDetailService userDetailService;
+    private final ModelMapper modelMapper;
+    private final EventParticipantsRepository eventParticipantRepo;
+    private final OtpService otpService;
+    private final AgentRepository agentRepository;
+    private final AuthService authService;
+    private final OrganizationRepository organizationRepository;
+    private final ReactiveMongoTemplate reactiveMongoTemplate;
+    private final PasswordEncoder passwordEncoder;
+    private final UtilityHelper utilityHelper;
+    private final CommonService commonService;
 
 
     public Users getUsers() {

@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
-import org.bson.types.ObjectId;
 
 import java.time.LocalDateTime;
 
@@ -28,6 +27,8 @@ public class AgentResponse {
     private GenderOptions gender;
     private String status;
     private Image profileImage;
+    @JsonProperty("createdAt")
+    private LocalDateTime created_at;
     @JsonProperty("address")
     private Address localAddress;
     @JsonIgnore
@@ -35,7 +36,7 @@ public class AgentResponse {
     @JsonIgnore
     private int country;
     @JsonIgnore
-    private int state ;
+    private int state;
     @JsonIgnore
     private int city;
     @JsonIgnore

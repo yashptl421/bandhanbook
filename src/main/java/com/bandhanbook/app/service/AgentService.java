@@ -5,6 +5,7 @@ import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
+import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.AgentRequest;
 import com.bandhanbook.app.payload.response.AgentResponse;
 import com.bandhanbook.app.repository.AgentRepository;
@@ -133,6 +134,7 @@ public class AgentService {
                             .thenReturn(AGENT_CREATED);
                 });
     }
+
     @Transactional
     public Mono<String> updateAgent(AgentRequest request, String agentId) {
 
@@ -147,20 +149,24 @@ public class AgentService {
                 )
                 .thenReturn(AGENT_UPDATED);
     }
+
     private Mono<Void> updateUserIfRequired(ObjectId userId, AgentRequest request) {
-
-        if (request.getFullName() == null || request.getFullName().isBlank()) {
-            return Mono.empty();
-        }
-
         return userRepository.findById(userId)
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .flatMap(user -> {
-                    user.setFullName(request.getFullName());
+                    if (request.getFullName() != null && !request.getFullName().isBlank()) {
+                        user.setFullName(request.getFullName());
+                    }
+                    if (request.getStatus() != null && request.getStatus().equalsIgnoreCase(Status.blocked.name())) {
+                        user.setLocked(true);
+                    } else if (request.getStatus() != null && request.getStatus().equalsIgnoreCase(Status.active.name())) {
+                        user.setLocked(false);
+                    }
                     return userRepository.save(user);
                 })
                 .then();
     }
+
     private Mono<Agents> updateAgentFields(Agents agent, AgentRequest request) {
 
         if (request.getGender() != null)

@@ -8,6 +8,7 @@ import com.bandhanbook.app.payload.response.EventParticipantsResponse;
 import com.bandhanbook.app.repository.AgentRepository;
 import com.bandhanbook.app.repository.MatrimonyRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,15 +27,12 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.IMAGES_REMOV
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ProfileService {
-    @Autowired
-    private MatrimonyRepository matrimonyRepository;
-    @Autowired
-    private AgentRepository agentRepository;
-    @Autowired
-    private OrganizationRepository orgRepository;
-    @Autowired
-    private AuthService authService;
+    private final MatrimonyRepository matrimonyRepository;
+    private final AgentRepository agentRepository;
+    private final OrganizationRepository orgRepository;
+    private final AuthService authService;
 
     @Value("${images.base.path}")
     private String basePath;
