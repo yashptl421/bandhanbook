@@ -278,7 +278,7 @@ public class UserService {
         applyMatrimonyFilters(params, matrimonyFilters);
         applyEventFilters(params, eventFilters);
 
-        if (authUser.getRoles().contains("Candidate")) {
+        if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
             matrimonyFilters.put("status", "active");
             matrimonyFilters.put("profile_completed", true);
             matrimonyFilters.put("privacy_settings.hide_profile", false);
@@ -380,7 +380,7 @@ public class UserService {
                                         res.forEach(candidate -> {
                                             if (candidate.getMatrimony_data() != null &&
                                                     candidate.getMatrimony_data().get_id() != null) {
-
+                                                maskPII(candidate);
                                                 String candidateMatrimonyId =
                                                         candidate.getMatrimony_data().get_id();
 
@@ -653,6 +653,9 @@ public class UserService {
 
         if (params.containsKey("bloodDonated") && null != params.get("bloodDonated") && !params.get("bloodDonated").isBlank())
             filter.put("is_blood_donated", Boolean.parseBoolean(params.get("bloodDonated")));
+        /*if(params.containsKey("myPreference") && null != params.get("myPreference") && !params.get("myPreference").isBlank() && Boolean.parseBoolean(params.get("myPreference"))){
+            filter.put("partner_preferences.user_id",new ObjectId(params.get("userId")));
+        }*/
 
         /*if(params.containsKey("height")){
            MatrimonyCandidate.PartnerPreferences.HeightRange range=(MatrimonyCandidate.PartnerPreferences.HeightRange)  params.get("height");
@@ -686,5 +689,16 @@ public class UserService {
         CandidateResponse.MatrimonyCandidate.Address add = response.getMatrimony_data().getAddress();
         response.getMatrimony_data().setLocalAddress(commonService.getAddressByIds(add.getAddress(), add.getCountry(), add.getState(), add.getCity(), add.getZip()));
         return response;
+    }
+
+    public void maskPII(CandidateResponse response) {
+        if (response.getMatrimony_data() != null && response.getMatrimony_data().getPrivacy_settings() != null) {
+            if (response.getMatrimony_data().getPrivacy_settings().isHide_phone()) {
+                response.setPhone_number(UtilityHelper.maskPhoneNumber(response.getPhone_number()));
+            }
+            if (response.getMatrimony_data().getPrivacy_settings().isHide_email()) {
+                response.setEmail(UtilityHelper.maskEmail(response.getEmail()));
+            }
+        }
     }
 }

@@ -30,7 +30,7 @@ public class UserDetailService implements ReactiveUserDetailsService {
             }
 
             if (!users.isEnabled()) {
-                throw new CommontException("You have removed your account, Please contact to agent or administrator to activate it.");
+                throw new CommontException("Account has been removed, Please contact to agent or administrator to activate it.");
             }
             return users;
         });

@@ -3,10 +3,7 @@ package com.bandhanbook.app.conrollers;
 
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
-import com.bandhanbook.app.payload.request.LoginRequest;
-import com.bandhanbook.app.payload.request.PhoneLoginRequest;
-import com.bandhanbook.app.payload.request.RefreshRequest;
-import com.bandhanbook.app.payload.request.UserRegisterRequest;
+import com.bandhanbook.app.payload.request.*;
 import com.bandhanbook.app.payload.response.LoginResponse;
 import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
@@ -16,7 +13,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,7 +33,6 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 @RequestMapping("/auth")
 public class AuthController {
 
-    @Autowired
     private final AuthService authService;
 
     @Operation(summary = "Login from mobile application")
@@ -102,6 +97,40 @@ public class AuthController {
                         .status(HttpStatus.OK.value())
                         .message(OTP_VERIFIED)
                         .data(res)
+                        .build()
+                ));
+    }
+
+    @Operation(summary = "Resend Otp to user's phone")
+    @PostMapping("/resend-otp")
+    public Mono<ResponseEntity<ApiResponse<Void>>> resendOtp(@RequestBody PhoneLoginRequest request) {
+        return authService.resendOtp(request)
+                .map(res -> ResponseEntity.ok(ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(res)
+                        .build()
+                ));
+    }
+
+
+    @Operation(summary = "forgot password - resend Otp to user's phone")
+    @PostMapping("/forgot-password")
+    public Mono<ResponseEntity<ApiResponse<Void>>> forgotPassword(@RequestBody LoginRequest request) {
+        return authService.forgotPassword(request)
+                .map(res -> ResponseEntity.ok(ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(res)
+                        .build()
+                ));
+    }
+
+    @Operation(summary = "change password using otp")
+    @PostMapping("/change-password")
+    public Mono<ResponseEntity<ApiResponse<Void>>> changePassword(@CurrentUser Users authUser,@RequestBody ChangePasswordRequest request) {
+        return authService.changePassword(authUser, request)
+                .map(res -> ResponseEntity.ok(ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(res)
                         .build()
                 ));
     }

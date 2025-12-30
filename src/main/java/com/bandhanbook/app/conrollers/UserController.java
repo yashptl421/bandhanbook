@@ -69,11 +69,10 @@ public class UserController {
                 .map(response -> {
                     if (response.getMatrimony_data() != null &&
                             response.getMatrimony_data().getEvent_participant() != null) {
-
+                        userService.maskPII(response);
                         response.getMatrimony_data()
                                 .getEvent_participant()
                                 .forEach(eventParticipant -> {
-
                                     AgentResponse agent = eventParticipant.getAgent_details();
                                     if (agent != null) {
                                         agent.setLocalAddress(

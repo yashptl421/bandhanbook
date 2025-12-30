@@ -1,13 +1,11 @@
 package com.bandhanbook.app.service;
 
-import com.bandhanbook.app.exception.EmailNotFoundException;
-import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
-import com.bandhanbook.app.exception.PhoneOrEmailNotFoundException;
-import com.bandhanbook.app.exception.RecordNotFoundException;
+import com.bandhanbook.app.exception.*;
 import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.RefreshToken;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
+import com.bandhanbook.app.payload.request.ChangePasswordRequest;
 import com.bandhanbook.app.payload.request.LoginRequest;
 import com.bandhanbook.app.payload.request.PhoneLoginRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
@@ -16,6 +14,7 @@ import com.bandhanbook.app.repository.*;
 import com.bandhanbook.app.security.jwt.JwtService;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
 import io.jsonwebtoken.Claims;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +28,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.PASSWORD_UPDATED;
 
 @Slf4j
 @Service
@@ -246,6 +246,36 @@ public class AuthService {
                 .then();
     }
 
+    public Mono<String> resendOtp(PhoneLoginRequest loginRequest) {
+
+        return userDetailService.findByPhoneNumber(loginRequest.getPhoneNumber())
+                .switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(INVALID_CREDENTIALS)))
+                .flatMap(user -> {
+
+                    if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {
+                        return Mono.error(new RecordNotFoundException(loginRequest.getRole() + " is not registered with this number"));
+                    }
+                    return otpService.requestOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
+                });
+    }
+
+    public Mono<String> forgotPassword(LoginRequest req) {
+        return userRepository.findByPhoneNumberOrEmail(null, req.getEmail())
+                .flatMap(user -> {
+                    String role = req.getRole() != null ? req.getRole() : RoleNames.Organization.name();
+                    if (!user.getRoles().contains(role)) {
+                        return Mono.error(new RecordNotFoundException(role + " is not registered with this email"));
+                    }
+                    if (req.getOtp() != null && !req.getOtp().isBlank() && req.getPassword() != null && !req.getPassword().isBlank()) {
+                        user.setPassword(passwordEncoder.encode(req.getPassword()));
+                        return otpService.verifyOtp(user.getPhoneNumber(), role, req.getOtp()).flatMap(s ->
+                                userRepository.save(user)).thenReturn(PASSWORD_UPDATED);
+                    } else {
+                        return otpService.requestOtp(user.getPhoneNumber(), role);
+                    }
+                }).switchIfEmpty(Mono.error(new EmailNotFoundException(USER_NOT_FOUND)));
+    }
+
     public Mono<Users> getValidatedUser(String phoneNumber, String email, String role) {
         return userRepository
                 .findByPhoneNumberOrEmail(phoneNumber, email).flatMap(existingUser -> {
@@ -254,5 +284,19 @@ public class AuthService {
                     }
                     return Mono.just(existingUser);
                 }).switchIfEmpty(Mono.empty());
+    }
+
+    public Mono<String> changePassword(Users authUser, @Valid ChangePasswordRequest request) {
+        if (request.getCurrentPassword().equalsIgnoreCase(request.getNewPassword())) {
+            return Mono.error(new ValidationExceptions("current password and new password cannot be same"));
+        }
+        return userRepository.findById(authUser.getId())
+                .flatMap(user -> {
+                    if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+                        return Mono.error(new RecordNotFoundException(INCORRECT_PASSWORD));
+                    }
+                    user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+                    return userRepository.save(user);
+                }).thenReturn(PASSWORD_UPDATED);
     }
 }

@@ -22,8 +22,8 @@ public class UtilityHelper {
         if (phoneNumber == null || phoneNumber.length() < 4) {
             return phoneNumber;
         }
-        String lastFourDigits = phoneNumber.substring(phoneNumber.length() - 4);
-        return "XXXXXX" + lastFourDigits;
+        String lastThreeDigits = phoneNumber.substring(phoneNumber.length() - 3);
+        return "******" + lastThreeDigits;
     }
 
     public static String maskEmail(String email) {
@@ -35,17 +35,14 @@ public class UtilityHelper {
         String domainPart = parts[1];
 
         if (localPart.length() <= 2) {
-            return "X@" + domainPart;
+            return "*@" + domainPart;
         }
 
-        StringBuilder maskedLocalPart = new StringBuilder();
-        maskedLocalPart.append(localPart.charAt(0));
-        for (int i = 1; i < localPart.length() - 1; i++) {
-            maskedLocalPart.append("X");
-        }
-        maskedLocalPart.append(localPart.charAt(localPart.length() - 1));
+        String maskedLocalPart = localPart.charAt(0) +
+                "*".repeat(localPart.length() - 2) +
+                localPart.charAt(localPart.length() - 1);
 
-        return maskedLocalPart.toString() + "@" + domainPart;
+        return maskedLocalPart + "@" + domainPart;
     }
 
     public static String generateRandomPassword(int length) {

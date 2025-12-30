@@ -1,5 +1,6 @@
 package com.bandhanbook.app.config.currentUserConfig;
 
+import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.security.userprinciple.UserPrinciple;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
@@ -10,6 +11,8 @@ import org.springframework.web.reactive.BindingContext;
 import org.springframework.web.reactive.result.method.HandlerMethodArgumentResolver;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.INVALID_RESOURCE;
 
 @Component
 public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolver {
@@ -26,6 +29,8 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
                 .map(SecurityContext::getAuthentication)
                 .map(Authentication::getPrincipal)
                 .cast(UserPrinciple.class)
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(INVALID_RESOURCE)))
                 .map(UserPrinciple::getUsers);
+
     }
 }
