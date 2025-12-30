@@ -3,43 +3,40 @@ package com.bandhanbook.app.service;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.Events;
 import com.bandhanbook.app.model.Users;
-import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.EventRequest;
 import com.bandhanbook.app.payload.response.EventResponse;
-import com.bandhanbook.app.payload.response.OrganizationResponse;
-import com.bandhanbook.app.payload.response.UserResponse;
 import com.bandhanbook.app.repository.EventsRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
-import com.bandhanbook.app.repository.UserRepository;
+import com.bandhanbook.app.wrappers.EventWrapper;
+import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
 
 @Service
+@RequiredArgsConstructor
 public class EventService {
     private static final Logger logger = LoggerFactory.getLogger(EventService.class);
-    @Autowired
-    private EventsRepository eventsRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private OrganizationRepository organizationRepository;
+    private final EventsRepository eventsRepository;
+    private final ModelMapper modelMapper;
+    private final OrganizationRepository orgRepository;
+    private final AgentService agentService;
 
     @Autowired
     private ReactiveMongoTemplate template;
@@ -47,7 +44,7 @@ public class EventService {
     @Transactional
     public Mono<Void> createEvent(EventRequest eventRequest, Users user) {
         logger.info("Created Event of {}", eventRequest.getName());
-        return organizationRepository.findById(new ObjectId(eventRequest.getOrganizationId()))
+        return orgRepository.findById(new ObjectId(eventRequest.getOrganizationId()))
                 .flatMap(organization -> {
                     Events events = modelMapper.map(eventRequest, Events.class);
                     events.setOrganizationId(organization.getId());
@@ -69,67 +66,72 @@ public class EventService {
 
     public Mono<EventResponse> getEventById(String id) {
         logger.info("get Event By event id {}", id);
-        return eventsRepository.findById(id).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).map(events -> {
-            return modelMapper.map(events, EventResponse.class);
-        });
+        return eventsRepository.findById(id).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .map(events -> modelMapper.map(events, EventResponse.class));
     }
 
-    public Mono<Tuple2<Long, List<EventResponse>>> eventsList(Map<String, String> params, Users authUser) {
-        int page = Integer.parseInt(params.getOrDefault("page", "1"));
-        int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
-        String search = params.getOrDefault("search", "");
-        String organizationId = params.get("organizationId");
+    public Mono<EventWrapper> eventsList(
+            Users authUser,
+            Map<String, String> params,
+            int page,
+            int limit
+    ) {
+        int skip = (page - 1) * limit;
+
+        String search = params.get("search");
         String createdBy = params.get("createdBy");
 
-        // 1. Base Event stream
-        Flux<Events> eventsFlux = eventsRepository.findAll()
-                .filter(event -> {
-
-                    boolean match = true;
-
-                    if (authUser.getRoles().contains(RoleNames.SuperUser.name()) && organizationId != null && !organizationId.isEmpty()) {
-                        match = event.getId().toHexString().equals(organizationId);
+        List<AggregationOperation> pipeline = new ArrayList<>();
+        // -------------------------
+        // 1. MATCH FILTERS
+        // -------------------------
+        Criteria criteria = new Criteria();
+        return agentService.getOrgIdMono(authUser, params)
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .flatMap(id -> {
+                    if (!id.isBlank()) {
+                        criteria.and("organization_id").is(new ObjectId(id));
                     }
-                    if (createdBy != null && !createdBy.isEmpty()) {
-                        match = match && createdBy.equalsIgnoreCase(event.getCreatedBy().toHexString());
+                    if (createdBy != null && !createdBy.isBlank()) {
+                        criteria.and("created_by").is(new ObjectId(createdBy));
                     }
 
-                    return match;
-                });
-
-        // 2. Email search filter
-        if (!search.isBlank()) {
-            eventsFlux = eventsFlux
-                    .flatMap(events ->
-                            organizationRepository.findById(events.getOrganizationId())
-                                    .filter(org -> org.getOrganizationName() != null &&
-                                            org.getOrganizationName().toLowerCase().contains(search.toLowerCase()))
-                                    .map(org -> events)
+                    pipeline.add(Aggregation.match(criteria));
+                    pipeline.add(Aggregation.lookup(
+                            "organizations",
+                            "organization_id",
+                            "_id",
+                            "organization_details"
+                    ));
+                    pipeline.add(Aggregation.unwind("organization_details"));
+                    if (search != null && !search.isBlank()) {
+                        pipeline.add(Aggregation.match(
+                                Criteria.where("organization_details.organizationName")
+                                        .regex(search, "i")
+                        ));
+                    }
+                    pipeline.add(Aggregation.lookup(
+                            "users",
+                            "organization_details.user_id",
+                            "_id",
+                            "created_by_details"
+                    ));
+                    pipeline.add(Aggregation.unwind("created_by_details"));
+                    pipeline.add(
+                            Aggregation.facet(
+                                            Aggregation.sort(Sort.Direction.DESC, "created_at"),
+                                            Aggregation.skip(skip),
+                                            Aggregation.limit(limit)
+                                    ).as("data")
+                                    .and(Aggregation.count().as("total"))
+                                    .as("totalRecords")
                     );
-        }
 
-        // 3. Count total before pagination
-        Mono<Long> totalMono = eventsFlux.count();
+                    Aggregation aggregation = Aggregation.newAggregation(pipeline);
 
-        // 4. Paginate
-        Flux<Events> pagedFlux = eventsFlux
-                .skip((long) (page - 1) * limit)
-                .take(limit);
-
-        // 5. Convert to response
-        Flux<EventResponse> responseFlux = pagedFlux.flatMap(event -> {
-            return organizationRepository.findById(event.getOrganizationId()).switchIfEmpty(
-                   Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))
-           ).flatMap(org -> userRepository.findById(org.getUserId())
-
-                   .map(user -> {
-                       EventResponse res = modelMapper.map(event, EventResponse.class);
-                       UserResponse userResponse = modelMapper.map(user, UserResponse.class);
-                       res.setOrganization_details(modelMapper.map(org, OrganizationResponse.class));
-                       res.setCreated_by_details(userResponse);
-                       return res;
-                   }));
-        });
-        return totalMono.zipWith(responseFlux.collectList());
+                    return template.aggregate(aggregation, "events", EventWrapper.class)
+                            .next() // ✅ only ONE document
+                            .defaultIfEmpty(new EventWrapper());
+                });
     }
 }

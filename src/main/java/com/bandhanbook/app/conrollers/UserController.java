@@ -69,7 +69,7 @@ public class UserController {
                 .map(response -> {
                     if (response.getMatrimony_data() != null &&
                             response.getMatrimony_data().getEvent_participant() != null) {
-                        userService.maskPII(response);
+                        userService.maskPII(response, authUser);
                         response.getMatrimony_data()
                                 .getEvent_participant()
                                 .forEach(eventParticipant -> {

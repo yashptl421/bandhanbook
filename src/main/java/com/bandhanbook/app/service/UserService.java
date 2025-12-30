@@ -86,7 +86,7 @@ public class UserService {
                                                                 .toList()
                                                 )
                                         );
-                                        matrimonyDataFilters.put("status", "active");
+                                        matrimonyDataFilters.put("status", ProfileStatus.active.name());
                                         matrimonyDataFilters.put("profile_completed", false);
                                     })
 
@@ -225,8 +225,11 @@ public class UserService {
             }
             return userRepository.findById(userObjectId).flatMap(users ->
                     matrimonyRepository.findByUserId(userObjectId).flatMap(candidate -> {
-                        if (null != req.getEmail() && !req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail())) {
+                        if (null != req.getEmail() && !req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail()) && users.getRoles().contains(RoleNames.Candidate.name())) {
                             users.setEmail(req.getEmail());
+                        } else {
+                            req.getMatrimonyData().setProfileImage(candidate.getProfileImage());
+                            req.setEmail(users.getEmail());
                         }
                         if (null != req.getFullName() && !req.getFullName().isBlank() && !req.getFullName().equals(users.getFullName())) {
                             users.setFullName(req.getFullName());
@@ -376,15 +379,14 @@ public class UserService {
                                     .map(result -> {
                                         List<CandidateResponse> res = result.getData();
                                         List<CandidateWrapper.RecordCount> metadata = result.getMetadata();
-                                        System.out.print(favouriteIds);
-                                        res.forEach(candidate -> {
-                                            if (candidate.getMatrimony_data() != null &&
-                                                    candidate.getMatrimony_data().get_id() != null) {
-                                                maskPII(candidate);
+                                        res.forEach(candidateRes -> {
+                                            if (candidateRes.getMatrimony_data() != null &&
+                                                    candidateRes.getMatrimony_data().get_id() != null) {
+                                                maskPII(candidateRes, authUser);
                                                 String candidateMatrimonyId =
-                                                        candidate.getMatrimony_data().get_id();
+                                                        candidateRes.getMatrimony_data().get_id();
 
-                                                candidate.setIsFavorite(
+                                                candidateRes.setIsFavorite(
                                                         favouriteIds.contains(candidateMatrimonyId)
                                                 );
                                             }
@@ -411,7 +413,7 @@ public class UserService {
 
     }
 
-    private Mono<String> resolveOrgAndAgentId(Users authUser, Map<String, String> params) {
+    public Mono<String> resolveOrgAndAgentId(Users authUser, Map<String, String> params) {
         // SUPER USER → from request
         if (authUser.getRoles().contains(RoleNames.SuperUser.name())
                 && params.containsKey("organization")) {
@@ -691,14 +693,22 @@ public class UserService {
         return response;
     }
 
-    public void maskPII(CandidateResponse response) {
-        if (response.getMatrimony_data() != null && response.getMatrimony_data().getPrivacy_settings() != null) {
-            if (response.getMatrimony_data().getPrivacy_settings().isHide_phone()) {
-                response.setPhone_number(UtilityHelper.maskPhoneNumber(response.getPhone_number()));
-            }
-            if (response.getMatrimony_data().getPrivacy_settings().isHide_email()) {
-                response.setEmail(UtilityHelper.maskEmail(response.getEmail()));
-            }
+    public void maskPII(CandidateResponse response, Users authUser) {
+        if (authUser.getId().toHexString().equals(response.getId())) {
+            return;
+        }
+        if (response.getMatrimony_data() == null || response.getMatrimony_data().getPrivacy_settings() == null) {
+            return;
+        }
+        CandidateResponse.MatrimonyCandidate.PrivacySettings settings = response.getMatrimony_data().getPrivacy_settings();
+        if (settings.isHide_phone()) {
+            response.setPhone_number(UtilityHelper.maskPhoneNumber(response.getPhone_number()));
+        }
+        if (settings.isHide_email()) {
+            response.setEmail(UtilityHelper.maskEmail(response.getEmail()));
+        }
+        if (settings.isHide_profile_image()) {
+            response.getMatrimony_data().setProfile_image(null);
         }
     }
 }

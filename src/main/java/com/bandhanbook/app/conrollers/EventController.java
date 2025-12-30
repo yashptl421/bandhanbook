@@ -3,14 +3,15 @@ package com.bandhanbook.app.conrollers;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.EventRequest;
+import com.bandhanbook.app.payload.response.EventDbResponse;
 import com.bandhanbook.app.payload.response.EventResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.EventService;
+import com.bandhanbook.app.wrappers.EventWrapper;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +30,6 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 @RestController
 @RequestMapping("/event")
 public class EventController {
-    @Autowired
     private final EventService eventService;
 
     @GetMapping("/{id}")
@@ -60,17 +60,29 @@ public class EventController {
         )));
     }
 
-    @GetMapping("")
-    public Mono<ResponseEntity<ApiResponse<List<EventResponse>>>> eventsList(@RequestParam Map<String, String> params, @CurrentUser Users authUser) {
+    @GetMapping
+    public Mono<ResponseEntity<ApiResponse<List<EventDbResponse>>>> eventsList(@RequestParam Map<String, String> params, @CurrentUser Users authUser) {
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
-        return eventService.eventsList(params, authUser).map(tuple -> ResponseEntity.ok(
-                ApiResponse.<List<EventResponse>>builder()
-                        .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
-                        .data(tuple.getT2())
-                        .meta(ApiResponse.Meta.builder().page(page).limit(limit).totalPages((int) Math.ceil((double) tuple.getT1() / limit)).totalRecords(tuple.getT1()).build())
-                        .build()
-        ));
+        return eventService.eventsList(authUser, params, page, limit)
+                .map(res -> {
+                    List<EventDbResponse> data = res.getData();
+                    List<EventWrapper.RecordCount> recordCount = res.getTotalRecords();
+                    long total = recordCount.isEmpty() ? 0 : recordCount.get(0).getTotal();
+                    int totalRecords = (int) Math.ceil((double) total / limit);
+                    return ResponseEntity.ok(
+                            ApiResponse.<List<EventDbResponse>>builder()
+                                    .status(HttpStatus.OK.value())
+                                    .message(DATA_FOUND)
+                                    .data(data)
+                                    .meta(ApiResponse.Meta.builder()
+                                            .page(page)
+                                            .limit(limit)
+                                            .totalRecords(totalRecords)
+                                            .totalPages(total)
+                                            .build())
+                                    .build()
+                    );
+                });
     }
 }
