@@ -276,7 +276,7 @@ public class AgentService {
                 return Mono.just(filterReq.get("organizationId"));
             }
             return Mono.just("");
-        } else if (authUser.isOrganization()) {
+        } else if (authUser.isAgent()) {
             return agentRepository.findByUserId(authUser.getId()).
                     map(agents -> agents.getOrganizationId().toHexString())
                     .switchIfEmpty(Mono.error(new RecordNotFoundException("Organization Not Found")));

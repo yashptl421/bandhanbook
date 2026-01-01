@@ -120,7 +120,7 @@ public class AuthService {
                         responseMono = getOrganizationDetails(request.getRole(), user);
                     }
                     return responseMono.map(res -> {
-                        String accessToken = jwtService.generateToken(userPrincipal,request.getRole() );
+                        String accessToken = jwtService.generateToken(userPrincipal, request.getRole());
                         String refreshToken = jwtService.generateRefreshToken(userPrincipal.getUsername());
                         RefreshToken refToken = RefreshToken.builder()
                                 .userId(user.getId())
@@ -192,10 +192,12 @@ public class AuthService {
                         return Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS));
                     }
                     // Check if user has the requested role
+                    String accessToken = null;
                     if (user.getUsers().getRoles().size() > 1) {
-                        user.getUsers().setRoles(List.of(loginRequest.getRole()));
-                    }
-                    String accessToken = jwtService.generateToken(user);
+                        accessToken = jwtService.generateToken(user, loginRequest.getRole());
+                    } else
+                        accessToken = jwtService.generateToken(user, user.getUsers().getRoles().get(0));
+
                     String refreshToken = jwtService.generateRefreshToken(user.getUsername());
                     RefreshToken refToken = RefreshToken.builder()
                             .userId(user.getUsers().getId())

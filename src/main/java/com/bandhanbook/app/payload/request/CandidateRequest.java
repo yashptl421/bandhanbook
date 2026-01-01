@@ -33,8 +33,6 @@ public class CandidateRequest {
 
         private PersonalDetails personalDetails;
 
-        private Image profileImage;
-
         private List<Image> images;
 
         private FamilyDetails familyDetails;

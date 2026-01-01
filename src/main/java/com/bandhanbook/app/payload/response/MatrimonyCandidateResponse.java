@@ -31,8 +31,6 @@ public class MatrimonyCandidateResponse {
 
     private PersonalDetails personalDetails;
 
-    private Image profileImage;
-
     private List<Image> images;
 
     private FamilyDetails familyDetails;

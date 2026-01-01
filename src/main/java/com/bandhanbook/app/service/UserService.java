@@ -695,7 +695,7 @@ public class UserService {
             response.setEmail(UtilityHelper.maskEmail(response.getEmail()));
         }
         if (settings.isHide_profile_image()) {
-            response.getMatrimony_data().setProfile_image(null);
+            response.setProfile_image(null);
         }
     }
 }
