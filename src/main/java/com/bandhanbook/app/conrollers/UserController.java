@@ -13,6 +13,7 @@ import com.bandhanbook.app.payload.response.MatrimonyCandidateResponse;
 import com.bandhanbook.app.payload.response.PhoneLoginResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.CommonService;
+import com.bandhanbook.app.service.ImageUploadService;
 import com.bandhanbook.app.service.ProfileService;
 import com.bandhanbook.app.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,6 +50,7 @@ public class UserController {
     private final CommonService commonService;
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final ProfileService profileService;
+    private final ImageUploadService ImageUploadService;
 
     @Operation(summary = "Register a new Candidate", description = "Registers a new user with the provided details.")
     @PostMapping({"/signup", "/register"})
@@ -212,7 +214,10 @@ public class UserController {
             @RequestPart("files") Flux<FilePart> files,
             @CurrentUser Users authUser
     ) {
-        return profileService.uploadMatrimonyImages(files, authUser)
+        return profileService.uploadMatrimonyImages(files, authUser).map(image -> {
+                    image.setUrl(ImageUploadService.getFullImageUrl(image));
+                    return image;
+                })
                 .collectList()
                 .map(list -> ApiResponse.<List<Image>>builder()
                         .status(200)

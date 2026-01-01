@@ -10,6 +10,5 @@ public interface ImageUploadService {
     Mono<Void> delete(String fileId);
 
     String getFullImageUrl(Image image);
-
     Mono<Image> upload(byte[] image, String folder, String filename);
 }

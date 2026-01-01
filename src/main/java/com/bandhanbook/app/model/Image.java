@@ -10,5 +10,5 @@ import lombok.*;
 @Builder
 public class Image {
     private String url;
-    private String id; // cloudinary unique ID for the image
+    private String id;
 }

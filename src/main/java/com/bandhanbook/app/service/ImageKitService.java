@@ -49,7 +49,7 @@ public class ImageKitService implements ImageUploadService {
             FileCreateRequest req = new FileCreateRequest(image, filename);
             req.setFolder(folder);
             Result result = imageKit.upload(req);
-            return new Image(result.getFileId(), result.getFilePath());
+            return Image.builder().id(result.getFileId()).url(result.getFilePath()).build();
         });
     }
 
@@ -99,6 +99,9 @@ public class ImageKitService implements ImageUploadService {
     @Override
     public String getFullImageUrl(Image image) {
         return urlEndpoint + image.getUrl();
+    }
+    public String getFullImageUrl(String url) {
+        return urlEndpoint + url;
     }
 
     private Mono<Image> uploadToImageKit(byte[] image, String folder, String filename) {

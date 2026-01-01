@@ -49,7 +49,7 @@ public class ProfileService {
 
 
     @Autowired
-    private ImageUploadService imageStorageService;
+    private ImageUploadService ImageUploadService;
 
     public Mono<String> uploadProfileImage(Users authUser, FilePart file) {
 
@@ -61,7 +61,7 @@ public class ProfileService {
                         resolveUploadContext(authUser)
                                 .flatMap(ctx ->
                                         deleteExistingImage(user.getProfileImage())
-                                                .then(imageStorageService.upload(
+                                                .then(ImageUploadService.upload(
                                                         file,
                                                         ctx.entityId(),
                                                         ctx.folder()
@@ -71,7 +71,7 @@ public class ProfileService {
                                                     return userRepository.save(user);
                                                 })
                                                 .map(saved ->
-                                                        imageStorageService.getFullImageUrl(saved.getProfileImage())
+                                                        ImageUploadService.getFullImageUrl(saved.getProfileImage())
                                                 )
                                 )
                 );
@@ -152,7 +152,7 @@ public class ProfileService {
                                 String folder = basePath + orgId + candidateImagePath + authUser.getId() + "/gallery";
 
                                 return files.flatMap(file ->
-                                                imageStorageService.upload(file, candidate.getId().toHexString(), folder)
+                                                ImageUploadService.upload(file, candidate.getId().toHexString(), folder)
                                         ).collectList()
                                         .flatMapMany(images -> {
                                             if (candidate.getImages() == null) {
@@ -194,7 +194,7 @@ public class ProfileService {
     private Mono<Void> deleteExistingImage(Image profile) {
         if (profile != null &&
                 profile.getId() != null) {
-            return imageStorageService.delete(profile.getId()).onErrorResume(e -> Mono.empty());
+            return ImageUploadService.delete(profile.getId()).onErrorResume(e -> Mono.empty());
         }
         return Mono.empty();
     }
