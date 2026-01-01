@@ -1,6 +1,7 @@
 package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.Address;
+import com.bandhanbook.app.model.Image;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
@@ -42,6 +43,8 @@ public class EventDbResponse {
         @JsonProperty("userId")
         private String user_id;
         private String organizationName;
+        @JsonProperty("profileImage")
+        private Image profile_image;
         @JsonProperty("address")
         private Address localAddress;
         @JsonIgnore

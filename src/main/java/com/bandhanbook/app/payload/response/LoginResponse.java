@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.Image;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,6 +18,7 @@ public class LoginResponse {
     private String refreshToken;
     private String id;
     private String phoneNumber;
+    private Image profileImage;
     @JsonProperty("name")
     private String fullName;
     private String email;

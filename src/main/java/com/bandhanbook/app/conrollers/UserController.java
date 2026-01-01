@@ -210,10 +210,7 @@ public class UserController {
 
     @Operation(summary = "Upload Candidate images", description = "Candidate can upload multiple images for matrimony profile.")
     @PostMapping(value = "/matrimony-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Mono<ApiResponse<List<Image>>> uploadMatrimonyImages(
-            @RequestPart("files") Flux<FilePart> files,
-            @CurrentUser Users authUser
-    ) {
+    public Mono<ApiResponse<List<Image>>> uploadMatrimonyImages(@RequestPart("files") Flux<FilePart> files, @CurrentUser Users authUser) {
         return profileService.uploadMatrimonyImages(files, authUser).map(image -> {
                     image.setUrl(ImageUploadService.getFullImageUrl(image));
                     return image;
@@ -227,8 +224,11 @@ public class UserController {
                 );
     }
 
-    @Operation(summary = "Upload Candidate images", description = "Candidate can upload multiple images for matrimony profile.")
-    @DeleteMapping("/matrimony-image")
+    @Operation(
+            summary = "Remove matrimony image",
+            description = "Candidate can remove an image from matrimony profile gallery"
+    )
+    @DeleteMapping("/matrimony-image/{id}")
     public Mono<ApiResponse<String>> removeMatrimonyImages(@PathVariable String id, @CurrentUser Users authUser) {
         return profileService.removeMatrimonyImages(id, authUser)
                 .thenReturn(

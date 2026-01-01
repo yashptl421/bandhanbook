@@ -113,7 +113,7 @@ public class ProfileService {
                     .map(org ->
                             new UploadContext(
                                     org.getId().toHexString(),
-                                    basePath + org.getId() + organizationImagePath + authUser.getId()
+                                    basePath + org.getId() + organizationImagePath
                             )
                     );
         }

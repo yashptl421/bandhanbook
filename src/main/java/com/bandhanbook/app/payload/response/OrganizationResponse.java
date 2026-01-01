@@ -42,5 +42,4 @@ public class OrganizationResponse {
     private UserResponse user_details;
     private OrgSubscriptionsResponse subscription;
 
-    private Image profileImage;
 }
