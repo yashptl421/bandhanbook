@@ -34,7 +34,9 @@ public class JwtSecurityContextRepository implements ServerSecurityContextReposi
             Authentication authToken =
                     new UsernamePasswordAuthenticationToken(token, token);
 
-            return authManager.authenticate(authToken).map(authentication -> new SecurityContextImpl());
+            return authManager.authenticate(authToken).map(
+                    authentication ->
+                            new SecurityContextImpl());
         }
         return Mono.empty();
     }

@@ -1,7 +1,7 @@
 package com.bandhanbook.app.security.userprinciple;
 
 import com.bandhanbook.app.model.Users;
-import lombok.AllArgsConstructor;
+import com.bandhanbook.app.model.constants.RoleNames;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
@@ -9,21 +9,24 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.List;
 
 
 @Getter
 @Setter
-@AllArgsConstructor
 public class UserPrinciple implements UserDetails {
 
     private Users users;
+    private RoleNames activeRole;
+
+    public UserPrinciple(Users users, RoleNames activeRole) {
+        this.users = users;
+        this.activeRole = activeRole;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return users.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                .toList();
-        // return List.of(new SimpleGrantedAuthority("ROLE_" + users.getRoles()));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + activeRole));
     }
 
     @Override

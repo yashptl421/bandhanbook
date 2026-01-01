@@ -59,7 +59,7 @@ public class AgentService {
         String role = RoleNames.Agent.name();
         Mono<Users> validUser = authService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), role);
         Mono<String> orgId = Mono.just("");
-        if (authUser.getRoles().contains(RoleNames.Organization.name())) {
+        if (authUser.isOrganization()) {
             orgId = organizationRepository.findByUserId(authUser.getId())
                     .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                     .map(org -> org.getId().toHexString());
@@ -271,12 +271,12 @@ public class AgentService {
 
     public Mono<String> getOrgIdMono(Users authUser, Map<String, String> filterReq) {
         // SUPERUSER rule
-        if (authUser.getRoles().contains(RoleNames.SuperUser.name())) {
+        if (authUser.isSuperUser()) {
             if (filterReq.get("organizationId") != null) {
                 return Mono.just(filterReq.get("organizationId"));
             }
             return Mono.just("");
-        } else if (authUser.getRoles().contains(RoleNames.Agent.name())) {
+        } else if (authUser.isOrganization()) {
             return agentRepository.findByUserId(authUser.getId()).
                     map(agents -> agents.getOrganizationId().toHexString())
                     .switchIfEmpty(Mono.error(new RecordNotFoundException("Organization Not Found")));

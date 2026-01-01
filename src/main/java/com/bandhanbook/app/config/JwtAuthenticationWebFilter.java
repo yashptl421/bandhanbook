@@ -1,10 +1,13 @@
 package com.bandhanbook.app.config;
 
+import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.security.jwt.JwtService;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
+import com.bandhanbook.app.security.userprinciple.UserPrinciple;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
@@ -41,14 +44,16 @@ public class JwtAuthenticationWebFilter implements WebFilter {
         return jwtService.extractUsername(token)
                 .flatMap(userService::findByUsername)
                 .flatMap(user -> {
-                    List<String> roles = jwtService.getRoles(token);
+                    RoleNames activeRole = jwtService.getActiveRole(token);
+                    UserPrinciple userPrinciple = (UserPrinciple) user;
+                    userPrinciple.getUsers().setActiveRole(activeRole);
+                    userPrinciple.setActiveRole(activeRole);
+                    GrantedAuthority authority =
+                            new SimpleGrantedAuthority("ROLE_" + activeRole);
 
-                    var authorities = roles.stream()
-                            .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
-                            .toList();
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(
-                                    user, null, authorities);
+                                    user, null, List.of(authority));
 
                     SecurityContext context = new SecurityContextImpl(auth);
 

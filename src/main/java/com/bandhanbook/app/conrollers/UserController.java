@@ -224,11 +224,8 @@ public class UserController {
 
     @Operation(summary = "Upload Candidate images", description = "Candidate can upload multiple images for matrimony profile.")
     @DeleteMapping("/matrimony-image")
-    public Mono<ApiResponse<String>> removeMatrimonyImages(
-            @RequestBody Flux<Image> images,
-            @CurrentUser Users authUser
-    ) {
-        return profileService.removeMatrimonyImages(images, authUser)
+    public Mono<ApiResponse<String>> removeMatrimonyImages(@PathVariable String id, @CurrentUser Users authUser) {
+        return profileService.removeMatrimonyImages(id, authUser)
                 .thenReturn(
                         ApiResponse.<String>builder()
                                 .status(200)

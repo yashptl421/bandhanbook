@@ -32,9 +32,6 @@ public class Agents {
     @Builder.Default
     private GenderOptions gender = GenderOptions.MALE;
 
-    @Field("profile_image")
-    private Image profileImage;
-
     private String caste;
 
     private String address;

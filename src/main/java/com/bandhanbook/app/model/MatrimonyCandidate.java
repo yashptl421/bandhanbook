@@ -37,9 +37,6 @@ public class MatrimonyCandidate {
     @Field("personal_details")
     private PersonalDetails personalDetails;
 
-    @Field("profile_image")
-    private Image profileImage;
-
     @Field("images")
     private List<Image> images;
 

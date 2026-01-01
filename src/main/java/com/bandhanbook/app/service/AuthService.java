@@ -86,34 +86,44 @@ public class AuthService {
         })).then();
     }
 
-    @Transactional
     public Mono<PhoneLoginResponse> verifyOtp(PhoneLoginRequest request) {
 
-        return otpService.verifyOtp(request.getPhoneNumber(), request.getRole(), request.getOtp())
-                .flatMap(s ->
-                        userDetailService.findByPhoneNumber(request.getPhoneNumber()))
-                .flatMap(user -> {
-                    if (!user.getUsers().getRoles().contains(request.getRole())) {
-                        return Mono.error(new RecordNotFoundException(request.getRole() + " is not registered with this number"));
+        return otpService.verifyOtp(
+                        request.getPhoneNumber(),
+                        request.getRole(),
+                        request.getOtp()
+                )
+                .then(userDetailService.findByPhoneNumber(request.getPhoneNumber()))
+                .flatMap(userPrincipal -> {
+
+                    Users user = userPrincipal.getUsers();
+
+                    // 1️⃣ Role validation
+                    if (!user.getRoles().contains(request.getRole())) {
+                        return Mono.error(
+                                new RecordNotFoundException(
+                                        request.getRole() + " is not registered with this number"
+                                )
+                        );
                     }
+
                     // Check if user has the requested role
-                    if (user.getUsers().getRoles().size() > 1) {
-                        user.getUsers().setRoles(List.of(request.getRole()));
+                    if (user.getRoles().size() > 1) {
+                        user.setRoles(List.of(request.getRole()));
                     }
                     Mono<PhoneLoginResponse> responseMono;
                     if (request.getRole().equals(RoleNames.Candidate.name())) {
-                        responseMono = getMatrimonyDetails(request.getRole(), user.getUsers());
+                        responseMono = getMatrimonyDetails(request.getRole(), user);
                     } else if (request.getRole().equals(RoleNames.Agent.name())) {
-                        responseMono = getAgentDetails(request.getRole(), user.getUsers());
+                        responseMono = getAgentDetails(request.getRole(), user);
                     } else {
-                        responseMono = getOrganizationDetails(request.getRole(), user.getUsers());
+                        responseMono = getOrganizationDetails(request.getRole(), user);
                     }
                     return responseMono.map(res -> {
-
-                        String accessToken = jwtService.generateToken(user);
-                        String refreshToken = jwtService.generateRefreshToken(user.getUsername());
+                        String accessToken = jwtService.generateToken(userPrincipal,request.getRole() );
+                        String refreshToken = jwtService.generateRefreshToken(userPrincipal.getUsername());
                         RefreshToken refToken = RefreshToken.builder()
-                                .userId(user.getUsers().getId())
+                                .userId(user.getId())
                                 .token(refreshToken)
                                 .revoked(false)
                                 .expiryDate(LocalDateTime.now().plusDays(30))

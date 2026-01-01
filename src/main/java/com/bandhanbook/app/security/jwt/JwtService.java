@@ -1,5 +1,6 @@
 package com.bandhanbook.app.security.jwt;
 
+import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.security.userprinciple.UserPrinciple;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -52,6 +53,18 @@ public class JwtService {
                 .signWith(getSigningKey(jwtSecret))
                 .compact();
 
+    }
+
+    public String generateToken(UserPrinciple user, String activeRole) {
+
+        return Jwts.builder()
+                .subject(user.getUsername())
+                .claim("activeRole", activeRole)
+                .claim("roles", user.getUsers().getRoles())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + jwtExpiration * 1000L))
+                .signWith(getSigningKey(jwtSecret))
+                .compact();
     }
 
     public boolean validateToken(String token) {
@@ -113,6 +126,10 @@ public class JwtService {
     }
 
     public List<String> getRoles(String token) {
-        return parseToken(token).get("role", List.class);
+        return parseToken(token).get("roles", List.class);
+    }
+
+    public RoleNames getActiveRole(String token) {
+        return RoleNames.valueOf(parseToken(token).get("activeRole", String.class));
     }
 }

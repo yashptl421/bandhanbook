@@ -16,8 +16,7 @@ public class ModelMapperConfig {
                 .setPropertyCondition(context -> {
                     Object value = context.getSource();
                     if (value == null) return false;
-                    if (value instanceof String && ((String) value).isBlank()) return false;
-                    return true;
+                    return !(value instanceof String) || !((String) value).isBlank();
                 });
         return modelMapper;
     }

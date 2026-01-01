@@ -63,7 +63,4 @@ public class Organization {
     @Builder.Default
     private LocalDateTime deletedAt = null;
 
-    @Field("profile_image")
-    private Image profileImage;
-
 }

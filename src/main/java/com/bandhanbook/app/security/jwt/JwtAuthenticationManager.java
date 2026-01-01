@@ -1,19 +1,21 @@
 package com.bandhanbook.app.security.jwt;
 
-import io.jsonwebtoken.Claims;
+import com.bandhanbook.app.model.constants.RoleNames;
+import com.bandhanbook.app.security.userprinciple.UserDetailService;
+import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 @Component
 public class JwtAuthenticationManager implements ReactiveAuthenticationManager {
 
     private final JwtService jwtService;
+    @Autowired
+    private UserDetailService userDetailService;
 
     public JwtAuthenticationManager(JwtService jwtService) {
         this.jwtService = jwtService;
@@ -24,22 +26,18 @@ public class JwtAuthenticationManager implements ReactiveAuthenticationManager {
 
         String token = authentication.getCredentials().toString();
 
-        try {
-            Claims claims = jwtService.parseToken(token);
+        String userId = jwtService.extractUserId(token);
+        RoleNames activeRole = jwtService.getActiveRole(token);
 
-            String userId = claims.getSubject();
-            List<String> roles = jwtService.getRoles(token);
-            ;
+        return userDetailService.findById(new ObjectId(userId))
+                .map(user -> {
+                    user.setActiveRole(activeRole);
 
-            return Mono.just(
-                    new UsernamePasswordAuthenticationToken(
-                            userId,
-                            null,
-                            roles.stream().map(SimpleGrantedAuthority::new).toList()
-                    )
-            );
-        } catch (Exception e) {
-            return Mono.empty(); // INVALID TOKEN
-        }
+                    return new UsernamePasswordAuthenticationToken(
+                            user,
+                            token,
+                            user.getAuthorities()
+                    );
+                });
     }
 }

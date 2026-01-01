@@ -11,6 +11,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -33,17 +34,17 @@ public class OtpService {
     @Value("${otp.expiration}")
     private int otpExpiration;
     @Value("${otp.duration}")
-    private int duration;
+    private Duration otpCooldown;
     @Value("${otp.windowDuration}")
-    private int windowDurations;
+    private Duration windowDuration;
 
     @Value("${otp.maxFailedAttempts}")
     private int maxFailedAttempts;
     @Value("${otp.maxRequestsPerWindow}")
     private int maxRequestsPerWindow;
 
-    private final Duration otpCooldown = Duration.ofSeconds(duration); // min seconds between sends
-    private final Duration windowDuration = Duration.ofHours(windowDurations); // window for maxRequests
+   /* private final Duration otpCooldown = Duration.ofSeconds(duration); // min seconds between sends
+    private final Duration windowDuration = Duration.ofHours(windowDurations); // window for maxRequests*/
 
     /**
      * Request (send) OTP.
@@ -75,9 +76,8 @@ public class OtpService {
                     //existing.setOtpHash(otpHash);
                     existing.setOtp(otp);
                     existing.setLastSentAt(now);
-                    existing.setCreatedAt(now);
                     existing.setRequestCountInWindow(existing.getRequestCountInWindow() + 1);
-                    existing.setFailedAttempts(0);
+                    existing.setExpiresAt(now.plusSeconds(otpExpiration));
 
                     // save then send
                     return tokensRepository.save(existing).thenReturn(OTP_SENT);
@@ -97,7 +97,7 @@ public class OtpService {
                             .windowStart(now)
                             .requestCountInWindow(1)
                             .failedAttempts(0)
-                            .createdAt(now)
+                            .expiresAt(Instant.now().plusSeconds(otpExpiration))
                             .build();
 
                     return tokensRepository.save(token).thenReturn(OTP_SENT);
@@ -141,6 +141,7 @@ public class OtpService {
                 );
     }*/
 
+    @Transactional
     public Mono<String> verifyOtp(String phoneNumber, String role, String otpInput) {
         Instant now = Instant.now();
         log.info("Verify otp for phone {}", phoneNumber);
@@ -148,9 +149,9 @@ public class OtpService {
                 .switchIfEmpty(Mono.error(new BadCredentialsException(INVALID_OTP)))
                 .flatMap(token -> {
                     // check expiry via createdAt + TTL window (optional)
-                    if (token.getCreatedAt() == null || token.getCreatedAt().plus(Duration.ofSeconds(otpExpiration)).isBefore(now)) {
-                        // remove token and error
-                        return tokensRepository.delete(token).then(Mono.error(new BadCredentialsException("OTP expired")));
+                    if (token.getExpiresAt() == null || token.getExpiresAt().isBefore(now)) {
+                        return tokensRepository.delete(token)
+                                .then(Mono.error(new BadCredentialsException("OTP expired")));
                     }
 
                     // check failed attempts
@@ -162,7 +163,9 @@ public class OtpService {
                     //   boolean matches = passwordEncoder.matches(otpInput, token.getOtpHash());
                     if (!otpInput.equals(token.getOtp())) {
                         token.setFailedAttempts(token.getFailedAttempts() + 1);
-                        return tokensRepository.save(token).then(Mono.error(new BadCredentialsException("Invalid OTP")));
+                        return tokensRepository.save(token)
+                                .doOnSuccess(t -> log.info("Saved failedAttempts = {}", t.getFailedAttempts()))
+                                .then(Mono.error(new BadCredentialsException("Invalid OTP")));
                     }
 
                     // OTP matches -> remove token or mark consumed

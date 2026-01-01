@@ -72,7 +72,7 @@ public class UserService {
         Document eventParticipantFilters = new Document();
         Document agentFilters = new Document();
 
-        if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
+        if (authUser.isCandidate()) {
             // candidate event filtering
             matrimonyRepository.findByUserId(authUser.getId())
                     .flatMap(profile ->
@@ -92,15 +92,13 @@ public class UserService {
 
                     );
 
-        }
-        if (authUser.getRoles().contains(RoleNames.Organization.name())) {
+        } else if (authUser.isOrganization()) {
             return organizationRepository.findByUserId(authUser.getId())
                     .flatMap(org -> {
                         agentFilters.put("organization_id", org.getId());
                         return runFullPipeline(targetUserId, matrimonyDataFilters, eventParticipantFilters, agentFilters).map(this::addAddressInResponse);
                     });
-        }
-        if (authUser.getRoles().contains(RoleNames.Agent.name())) {
+        } else if (authUser.isAgent()) {
             return agentRepository.findByUserId(authUser.getId())
                     .flatMap(agent -> {
                         agentFilters.put("organization_id", agent.getOrganizationId());
@@ -207,7 +205,7 @@ public class UserService {
     public Mono<MatrimonyCandidateResponse> updateCandidate(String userId, CandidateRequest req, Users authUser) {
 
         ObjectId userObjectId = new ObjectId(userId);
-        if (authUser.getRoles().contains(RoleNames.Candidate.name()) && !Objects.equals(authUser.getId(), userObjectId)) {
+        if (authUser.isCandidate() && !Objects.equals(authUser.getId(), userObjectId)) {
             return Mono.error(new UnAuthorizedException("You are not authorized to update this profile"));
         }
 
@@ -228,16 +226,15 @@ public class UserService {
                         if (null != req.getEmail() && !req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail()) && users.getRoles().contains(RoleNames.Candidate.name())) {
                             users.setEmail(req.getEmail());
                         } else {
-                            req.getMatrimonyData().setProfileImage(candidate.getProfileImage());
                             req.setEmail(users.getEmail());
                         }
                         if (null != req.getFullName() && !req.getFullName().isBlank() && !req.getFullName().equals(users.getFullName())) {
                             users.setFullName(req.getFullName());
                         }
-                        if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
+                        if (authUser.isCandidate()) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
-                        if ((authUser.getRoles().contains(RoleNames.Organization.name()) || authUser.getRoles().contains(RoleNames.Agent.name())) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)) {
+                        if ((authUser.isOrganization() || authUser.isAgent()) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
 
@@ -281,7 +278,7 @@ public class UserService {
         applyMatrimonyFilters(params, matrimonyFilters);
         applyEventFilters(params, eventFilters);
 
-        if (authUser.getRoles().contains(RoleNames.Candidate.name())) {
+        if (authUser.isCandidate()) {
             matrimonyFilters.put("status", "active");
             matrimonyFilters.put("profile_completed", true);
             matrimonyFilters.put("privacy_settings.hide_profile", false);
@@ -293,10 +290,10 @@ public class UserService {
                 .flatMap(id -> {
 
                     Document organizationFilters = new Document();
-                    if (!id.isBlank() && authUser.getRoles().contains(RoleNames.Organization.name())) {
+                    if (!id.isBlank() && authUser.isOrganization()) {
                         organizationFilters.put("organization_id", new ObjectId(id));
                     }
-                    if (!id.isBlank() && authUser.getRoles().contains(RoleNames.Agent.name())) {
+                    if (!id.isBlank() && authUser.isAgent()) {
                         eventFilters.put("added_by", new ObjectId(id));
                     }
 
@@ -415,19 +412,19 @@ public class UserService {
 
     public Mono<String> resolveOrgAndAgentId(Users authUser, Map<String, String> params) {
         // SUPER USER → from request
-        if (authUser.getRoles().contains(RoleNames.SuperUser.name())
+        if (authUser.isSuperUser()
                 && params.containsKey("organization")) {
             return Mono.just(params.get("organization"));
         }
 
         // ORGANIZATION → find by user_id
-        if (authUser.getRoles().contains(RoleNames.Organization.name())) {
+        if (authUser.isOrganization()) {
             return organizationRepository.findByUserId(authUser.getId())
                     .map(org -> String.valueOf(org.getId()));
         }
 
         // AGENT → find agent → org
-        if (authUser.getRoles().contains(RoleNames.Agent.name())) {
+        if (authUser.isAgent()) {
             return agentRepository.findByUserId(authUser.getId())
                     .map(agent -> String.valueOf(agent.getId()));
         }
@@ -498,25 +495,15 @@ public class UserService {
 
     @Transactional
     public Mono<PhoneLoginResponse> myProfile(Users users) {
-        return userDetailService.findById(users.getId())
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
-                .flatMap(user -> {
-                    Mono<PhoneLoginResponse> responseMono;
-                    if (user.getUsers().getRoles().contains(RoleNames.Candidate.name())) {
-                        responseMono = authService.getMatrimonyDetails(RoleNames.Candidate.name(), user.getUsers());
-                    } else if (user.getUsers().getRoles().contains(RoleNames.Agent.name())) {
-                        responseMono = authService.getAgentDetails(RoleNames.Agent.name(), user.getUsers());
-                    } else if (user.getUsers().getRoles().contains(RoleNames.Organization.name())) {
-                        responseMono = authService.getOrganizationDetails(RoleNames.Organization.name(), user.getUsers());
-                    } else {
-                        responseMono = Mono.just(modelMapper.map(user.getUsers(), PhoneLoginResponse.class));
-                    }
-                    return responseMono.map(res -> {
-
-                        // res.setRole(request.getRole());
-                        return res;
-                    });
-                }).switchIfEmpty(Mono.error(new UnAuthorizedException("Error occurred during login")));
+        if (users.isCandidate()) {
+            return authService.getMatrimonyDetails(RoleNames.Candidate.name(), users);
+        } else if (users.isAgent()) {
+            return authService.getAgentDetails(RoleNames.Agent.name(), users);
+        } else if (users.isOrganization()) {
+            return authService.getOrganizationDetails(RoleNames.Organization.name(), users);
+        } else {
+            return Mono.just(modelMapper.map(users, PhoneLoginResponse.class));
+        }
     }
 
     public Mono<List<PhoneLoginResponse>> getFavorites(Users authUser) {
@@ -562,7 +549,7 @@ public class UserService {
     }
 
     public Mono<String> updateProfile(OrganizationRequest request, Users authUser) {
-        if (authUser.getRoles().contains(RoleNames.Organization.name())) {
+        if (authUser.isOrganization()) {
             return organizationRepository.findByUserId(authUser.getId())
                     .flatMap(organization -> {
                         modelMapper.map(request, organization);

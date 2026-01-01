@@ -10,4 +10,5 @@ public enum RoleNames {
     Organization,
     Agent,
     SuperUser,
+    NA,
 }
