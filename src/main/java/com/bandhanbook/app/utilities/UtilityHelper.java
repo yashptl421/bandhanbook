@@ -1,6 +1,7 @@
 package com.bandhanbook.app.utilities;
 
 import com.bandhanbook.app.model.MatrimonyCandidate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
@@ -10,9 +11,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-
 @Component
 public class UtilityHelper {
+
     public static String generateOtp() {
         int otp = (int) (Math.random() * 900000) + 100000;
         return String.valueOf(123456);

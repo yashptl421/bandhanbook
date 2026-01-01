@@ -40,7 +40,7 @@ public class ImageKitService implements ImageUploadService {
     private int maxImageSizeMb;
 
     @Value("${imagekit.url-endpoint}")
-    private String urlEndpoint;
+    private  String urlEndpoint;
 
 
     @Override
@@ -100,7 +100,7 @@ public class ImageKitService implements ImageUploadService {
     public String getFullImageUrl(Image image) {
         return urlEndpoint + image.getUrl();
     }
-    public String getFullImageUrl(String url) {
+    public  String getFullImageUrl(String url) {
         return urlEndpoint + url;
     }
 
