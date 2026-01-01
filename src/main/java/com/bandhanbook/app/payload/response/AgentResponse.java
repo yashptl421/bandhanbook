@@ -22,8 +22,6 @@ public class AgentResponse {
     private String id;
     @JsonProperty("userId")
     private String user_id;
-    @JsonProperty("profileImage")
-    private Image profile_image;
     @JsonProperty("organizationId")
     private String organization_id;
     private GenderOptions gender;
@@ -56,6 +54,8 @@ public class AgentResponse {
         private String id;
         @JsonProperty("phoneNumber")
         private String phone_number;
+        @JsonProperty("profileImage")
+        private Image profile_image;
         @JsonProperty("fullName")
         private String full_name;
         private String email;
