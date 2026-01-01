@@ -27,7 +27,7 @@ public class CandidateResponse {
     private String email;
     private List<String> role;
     @JsonProperty("profileImage")
-    private List<Image> profile_image;
+    private Image profile_image;
     private MatrimonyCandidate matrimony_data;
     private AgentResponse.OrganizationDetails organization_details;
     private Boolean isFavorite;
