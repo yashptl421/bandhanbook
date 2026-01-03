@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.ValidationExceptions;
 import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.Banners;
@@ -168,6 +169,20 @@ public class BannerService {
                 });
     }
 
+    public Mono<BannerResponse> updateBanner(String bannerId, Boolean isActive) {
+        ObjectId id;
+        try {
+            id = new ObjectId(bannerId);
+        } catch (Exception e) {
+            return Mono.error(new IllegalArgumentException("Invalid banner id"));
+        }
+        return bannerRepository.findById(id)
+                .switchIfEmpty(Mono.error(new RecordNotFoundException("Banner not found")))
+                .flatMap(banner -> {
+                    banner.setActive(isActive);
+                    return bannerRepository.save(banner).thenReturn(modelMapper.map(banner, BannerResponse.class));
+                });
+    }
     private Mono<String> resolveAgentOrgId(Users authUser) {
         return Mono.justOrEmpty(authUser.getId())
                 .flatMap(id -> Mono.just(id.toHexString())); // replace if agent entity lookup needed

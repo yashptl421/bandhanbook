@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class BannerRequest {
 
-    @NotBlank
     private String title;
 
     private String description;

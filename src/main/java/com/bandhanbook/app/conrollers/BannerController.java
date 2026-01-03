@@ -17,16 +17,17 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.BANNER_CREATED;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.BANNER_UPDATED;
 
 @RestController
-@RequestMapping("/banners")
+@RequestMapping("/banner")
 @RequiredArgsConstructor
 public class BannerController {
 
     private final BannerService bannerService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Mono<ResponseEntity<ApiResponse<BannerResponse>>> createBanner(@RequestPart("data") BannerRequest request, @RequestPart("file") FilePart file,  @CurrentUser Users authUser ) {
+    public Mono<ResponseEntity<ApiResponse<BannerResponse>>> createBanner(@RequestPart("data") BannerRequest request, @RequestPart("file") FilePart file, @CurrentUser Users authUser) {
         return bannerService.createBanner(request, file, authUser)
                 .map(banner -> ResponseEntity.ok(
                         ApiResponse.<BannerResponse>builder()
@@ -55,5 +56,22 @@ public class BannerController {
                                         .activeCount(res.getActiveCount())
                                         .inactiveCount(res.getInactiveCount()).build()
                         ));
+    }
+
+    @PutMapping("/{id}")
+    public Mono<ResponseEntity<ApiResponse<BannerResponse>>> updateBannerStatus(
+            @PathVariable String id,
+            @RequestBody BannerRequest request
+    ) {
+        return bannerService.updateBanner(id, request.getIsActive())
+                .map(updated ->
+                        ResponseEntity.ok(
+                                ApiResponse.<BannerResponse>builder()
+                                        .status(200)
+                                        .message(BANNER_UPDATED)
+                                        .data(updated)
+                                        .build()
+                        )
+                );
     }
 }
