@@ -6,6 +6,7 @@ import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.Banners;
 import com.bandhanbook.app.model.Organization;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.BannerRequest;
 import com.bandhanbook.app.payload.response.BannerResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
@@ -28,6 +29,9 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Objects;
 
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.RECORD_NOT_FOUND;
+
 @Service
 @RequiredArgsConstructor
 public class BannerService {
@@ -37,6 +41,7 @@ public class BannerService {
     private final ModelMapper modelMapper;
     private final ReactiveMongoTemplate mongoTemplate;
     private final AgentRepository agentRepository;
+    private final AuthService authService;
 
     @Value("${images.base.path}")
     private String basePath;
@@ -57,12 +62,9 @@ public class BannerService {
         if (request.getOrganizationId() != null && authUser.isSuperUser()) {
             orgIdMono = Mono.just(new ObjectId(request.getOrganizationId()));
         } else if (authUser.isAgent()) {
-            orgIdMono = agentRepository.findByUserId(authUser.getId())
-                    .switchIfEmpty(Mono.error(new ValidationExceptions("Agent not found")))
-                    .map(Agents::getOrganizationId);
+            orgIdMono = resolveAgentOrgId(authUser);
         } else {
-            orgIdMono = organizationRepository.findByUserId(authUser.getId())
-                    .map(Organization::getId);
+            orgIdMono = resolveOrgId(authUser);
         }
         return orgIdMono.flatMap(orgId -> {
             String filename = orgId + "_" + System.currentTimeMillis();
@@ -95,26 +97,28 @@ public class BannerService {
             criteria.and("is_active").is(true);
 
             if (authUser.isAgent()) {
-                // agent → banners of agent's organization
                 return resolveAgentOrgId(authUser)
                         .flatMap(orgId ->
-                                executeBannerQuery(criteria.and("organization_id").is(new ObjectId(orgId)),
+                                executeBannerQuery(criteria.and("organization_id").is(orgId),
                                         page, limit, skip)
                         );
             }
 
             if (authUser.isCandidate()) {
-                // candidate → banners from organizations of participated events
-                return resolveCandidateOrgIds(authUser)
-                        .flatMap(orgIds ->
-                                executeBannerQuery(criteria.and("organization_id").in(orgIds),
-                                        page, limit, skip)
-                        );
+                return authService.getMatrimonyDetails(RoleNames.Candidate.name(), authUser)
+                        .flatMap(res -> res.getEventParticipants().stream().findFirst()
+                                .map(response -> {
+                                            return executeBannerQuery(criteria.and("organization_id").in(new ObjectId(response.getOrganizationId())),
+                                                    page, limit, skip);
+                                        }
+                                ).orElseThrow(() -> new RecordNotFoundException(RECORD_NOT_FOUND)));
             }
         }
 
         if (authUser.isOrganization()) {
-            criteria.and("organization_id").is(authUser.getId());
+            return resolveOrgId(authUser).flatMap(orgIds ->
+                    executeBannerQuery(criteria.and("organization_id").in(orgIds),
+                            page, limit, skip));
         }
 
         return executeBannerQuery(criteria, page, limit, skip);
@@ -132,25 +136,16 @@ public class BannerService {
                 .skip(skip)
                 .limit(limit);
 
-        Mono<List<BannerResponse>> dataMono = mongoTemplate.find(query, BannerResponse.class)
-                .map(banner -> {
-                    banner.getImage()
-                            .setUrl(imageUploadService.getFullImageUrl(banner.getImage()));
-                    return banner;
-                })
+        Mono<List<BannerResponse>> dataMono = mongoTemplate.find(query, Banners.class)
+                .map(banner -> modelMapper.map(banner, BannerResponse.class))
                 .collectList();
 
-        Mono<Long> totalMono = mongoTemplate.count(new Query(criteria), BannerWrapper.class);
+        Mono<Long> totalMono = mongoTemplate.count(new Query(criteria), Banners.class);
 
         Mono<Long> activeCountMono = mongoTemplate.count(
                 new Query(criteria.and("is_active").is(true)),
-                BannerWrapper.class
+                Banners.class
         );
-
-/*        Mono<Long> inactiveCountMono = mongoTemplate.count(
-                new Query(criteria.and("is_active").is(false)),
-                BannerWrapper.class
-        );*/
 
         return Mono.zip(dataMono, totalMono, activeCountMono)
                 .map(tuple -> {
@@ -158,7 +153,7 @@ public class BannerService {
                     return BannerWrapper.builder()
                             .data(tuple.getT1())
                             .activeCount(tuple.getT3())
-                            .inactiveCount(tuple.getT2()- tuple.getT3())
+                            .inactiveCount(tuple.getT2() - tuple.getT3())
                             .meta(ApiResponse.Meta.builder()
                                     .page(page)
                                     .limit(limit)
@@ -183,13 +178,28 @@ public class BannerService {
                     return bannerRepository.save(banner).thenReturn(modelMapper.map(banner, BannerResponse.class));
                 });
     }
-    private Mono<String> resolveAgentOrgId(Users authUser) {
-        return Mono.justOrEmpty(authUser.getId())
-                .flatMap(id -> Mono.just(id.toHexString())); // replace if agent entity lookup needed
+
+    public Mono<BannerResponse> showBanner(String id) {
+
+        ObjectId bannerId;
+        try {
+            bannerId = new ObjectId(id);
+        } catch (Exception e) {
+            return Mono.error(new RecordNotFoundException("Invalid banner id"));
+        }
+        return bannerRepository.findById(bannerId)
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .map(banner -> modelMapper.map(banner, BannerResponse.class));
     }
 
-    private Mono<List<ObjectId>> resolveCandidateOrgIds(Users authUser) {
-        // If you already have eventParticipants → orgIds in DB, fetch from there
-        return Mono.just(List.of()); // implement using eventParticipantsRepository
+    private Mono<ObjectId> resolveAgentOrgId(Users authUser) {
+        return agentRepository.findByUserId(authUser.getId())
+                .switchIfEmpty(Mono.error(new ValidationExceptions("Agent not found")))
+                .map(Agents::getOrganizationId);
+    }
+
+    private Mono<ObjectId> resolveOrgId(Users authUser) {
+        return organizationRepository.findByUserId(authUser.getId())
+                .map(Organization::getId);
     }
 }

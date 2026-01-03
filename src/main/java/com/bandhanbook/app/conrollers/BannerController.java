@@ -17,8 +17,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.BANNER_CREATED;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.BANNER_UPDATED;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 @RestController
 @RequestMapping("/banner")
@@ -52,7 +51,7 @@ public class BannerController {
                         ResponseEntity.ok(
                                 ApiResponse.<List<BannerResponse>>builder()
                                         .status(200)
-                                        .message("DATA_FOUND")
+                                        .message(DATA_FOUND)
                                         .data(res.getData())
                                         .meta(res.getMeta())
                                         .activeCount(res.getActiveCount())
@@ -76,4 +75,21 @@ public class BannerController {
                         )
                 );
     }
+
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<ApiResponse<BannerResponse>>> showBanner(
+            @PathVariable String id
+    ) {
+        return bannerService.showBanner(id)
+                .map(data ->
+                        ResponseEntity.ok(
+                                ApiResponse.<BannerResponse>builder()
+                                        .status(200)
+                                        .message(DATA_FOUND)
+                                        .data(data)
+                                        .build()
+                        )
+                );
+    }
+
 }
