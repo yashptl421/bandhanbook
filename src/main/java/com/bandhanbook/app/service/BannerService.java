@@ -31,6 +31,7 @@ import java.util.Objects;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.RECORD_NOT_FOUND;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.BANNER_DELETED;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +43,7 @@ public class BannerService {
     private final ReactiveMongoTemplate mongoTemplate;
     private final AgentRepository agentRepository;
     private final AuthService authService;
+    private final ProfileService profileService;
 
     @Value("${images.base.path}")
     private String basePath;
@@ -190,6 +192,31 @@ public class BannerService {
         return bannerRepository.findById(bannerId)
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .map(banner -> modelMapper.map(banner, BannerResponse.class));
+    }
+
+    public Mono<String> deleteBanner(String id) {
+
+        ObjectId bannerId;
+        try {
+            bannerId = new ObjectId(id);
+        } catch (Exception e) {
+            return Mono.error(new RecordNotFoundException("Invalid banner id"));
+        }
+
+        return bannerRepository.findById(bannerId)
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .flatMap(banner -> {
+
+                    Mono<Void> deleteImageMono = Mono.empty();
+
+                    if (banner.getImage() != null && banner.getImage().getId() != null) {
+                        deleteImageMono = profileService.deleteExistingImage(banner.getImage());
+                    }
+
+                    return deleteImageMono
+                            .then(bannerRepository.deleteById(bannerId))
+                            .thenReturn(BANNER_DELETED);
+                });
     }
 
     private Mono<ObjectId> resolveAgentOrgId(Users authUser) {

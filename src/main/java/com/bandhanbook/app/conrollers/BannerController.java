@@ -92,4 +92,18 @@ public class BannerController {
                 );
     }
 
+    @DeleteMapping("/{id}")
+    public Mono<ResponseEntity<ApiResponse<String>>> deleteBanner(
+            @PathVariable String id
+    ) {
+        return bannerService.deleteBanner(id)
+                .map(msg ->
+                        ResponseEntity.ok(
+                                ApiResponse.<String>builder()
+                                        .status(200)
+                                        .message(msg)
+                                        .build()
+                        )
+                );
+    }
 }

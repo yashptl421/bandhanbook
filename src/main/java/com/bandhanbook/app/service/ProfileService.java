@@ -199,7 +199,7 @@ public class ProfileService {
     }
 
 
-    private Mono<Void> deleteExistingImage(Image profile) {
+    public Mono<Void> deleteExistingImage(Image profile) {
         if (profile != null &&
                 profile.getId() != null) {
             return ImageUploadService.delete(profile.getId()).onErrorResume(e -> Mono.empty());
