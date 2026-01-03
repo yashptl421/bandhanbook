@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.BANNER_CREATED;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.BANNER_UPDATED;
@@ -41,10 +42,11 @@ public class BannerController {
     @Operation(summary = "List of Banner for the organization", description = "Fetch paginated list of banners")
     @GetMapping
     public Mono<ResponseEntity<ApiResponse<List<BannerResponse>>>> listBanners(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam Map<String, String> params,
             @CurrentUser Users authUser
     ) {
+        int page = Integer.parseInt(params.getOrDefault("page", "1"));
+        int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
         return bannerService.listBanners(authUser, page, limit)
                 .map(res ->
                         ResponseEntity.ok(
