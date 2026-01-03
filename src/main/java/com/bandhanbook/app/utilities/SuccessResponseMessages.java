@@ -23,4 +23,7 @@ public interface SuccessResponseMessages {
     String IMAGE_UPLOADED = "Images uploaded successfully";
     String PROFILE_IMAGE_REMOVED= "Profile image removed successfully";
     String IMAGES_REMOVED = "Images removed successfully";
+    String BANNER_CREATED = "Banner created successfully";
+    String BANNER_UPDATED = "Banner updated successfully";
+    String BANNER_DELETED = "Banner deleted successfully";
 }

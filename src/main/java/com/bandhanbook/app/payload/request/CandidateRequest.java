@@ -5,7 +5,9 @@ import com.bandhanbook.app.model.constants.*;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -18,6 +20,7 @@ import java.util.List;
 public class CandidateRequest {
     private String fullName;
     private String email;
+    private LocalDateTime deletedAt;
     private MatrimonyCandidate matrimonyData;
 
     @Getter

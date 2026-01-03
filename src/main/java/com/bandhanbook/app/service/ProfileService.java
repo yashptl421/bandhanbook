@@ -117,6 +117,14 @@ public class ProfileService {
                             )
                     );
         }
+        if (authUser.isSuperUser()) {
+            return Mono.just(
+                    new UploadContext(
+                            authUser.getId().toHexString(),
+                            basePath +  superUserImagePath + authUser.getId()
+                    )
+            );
+        }
 
         return Mono.error(new RecordNotFoundException("Unsupported user role for profile image upload"));
     }

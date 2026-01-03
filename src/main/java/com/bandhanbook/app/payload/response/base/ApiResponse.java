@@ -21,6 +21,8 @@ public class ApiResponse<T> {
     private Meta meta;
     private Boolean isOtp=null;
     private Boolean isFavorite=null;
+    private Long activeCount;
+    private Long inactiveCount;
 
     @Data
     @AllArgsConstructor

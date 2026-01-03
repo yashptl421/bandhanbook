@@ -234,6 +234,9 @@ public class UserService {
                         if (authUser.isCandidate()) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
+                        if ( users.getDeletedAt()!=null && (authUser.isCandidate() || authUser.isAgent())) {
+                            req.setDeletedAt(users.getDeletedAt());
+                        }
                         if ((authUser.isOrganization() || authUser.isAgent()) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
