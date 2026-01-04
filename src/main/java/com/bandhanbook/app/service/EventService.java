@@ -5,7 +5,9 @@ import com.bandhanbook.app.model.Events;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.EventRequest;
 import com.bandhanbook.app.payload.response.EventResponse;
+import com.bandhanbook.app.repository.EventParticipantsRepository;
 import com.bandhanbook.app.repository.EventsRepository;
+import com.bandhanbook.app.repository.MatrimonyRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
 import com.bandhanbook.app.wrappers.EventWrapper;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,8 @@ public class EventService {
     private final ModelMapper modelMapper;
     private final OrganizationRepository orgRepository;
     private final AgentService agentService;
+    private final MatrimonyRepository matrimonyRepository;
+    private final EventParticipantsRepository eventParticipantRepo;
 
     @Autowired
     private ReactiveMongoTemplate template;
@@ -130,7 +134,7 @@ public class EventService {
                     Aggregation aggregation = Aggregation.newAggregation(pipeline);
 
                     return template.aggregate(aggregation, "events", EventWrapper.class)
-                            .next() // ✅ only ONE document
+                            .next()
                             .defaultIfEmpty(new EventWrapper());
                 });
     }

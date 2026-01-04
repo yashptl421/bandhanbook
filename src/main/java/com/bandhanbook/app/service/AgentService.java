@@ -280,10 +280,12 @@ public class AgentService {
             return agentRepository.findByUserId(authUser.getId()).
                     map(agents -> agents.getOrganizationId().toHexString())
                     .switchIfEmpty(Mono.error(new RecordNotFoundException("Organization Not Found")));
-        } else {
+        } else if (authUser.isOrganization()) {
             return organizationRepository.findByUserId(authUser.getId())
                     .map(org -> org.getId().toHexString())
                     .switchIfEmpty(Mono.error(new RecordNotFoundException("Organization Not Found")));
+        } else {
+            return Mono.just("");
         }
     }
 }

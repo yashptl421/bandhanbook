@@ -234,7 +234,7 @@ public class UserService {
                         if (authUser.isCandidate()) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
-                        if ( users.getDeletedAt()!=null && (authUser.isCandidate() || authUser.isAgent())) {
+                        if (users.getDeletedAt() != null && (authUser.isCandidate() || authUser.isAgent())) {
                             req.setDeletedAt(users.getDeletedAt());
                         }
                         if ((authUser.isOrganization() || authUser.isAgent()) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)) {
@@ -700,5 +700,15 @@ public class UserService {
         if (settings.isHide_profile_image()) {
             response.setProfile_image(null);
         }
+    }
+
+    public Mono<String> getCandidateOrgId(Users authUser) {
+        return matrimonyRepository.findByUserId(authUser.getId())
+                .flatMap(profile ->
+                        eventParticipantRepo.findByCandidateId(profile.getId())
+                                .map(EventParticipants::getOrganizationId)
+                                .collectList()
+                                .map(list -> list.stream().findFirst().get().toHexString()));
+
     }
 }

@@ -18,18 +18,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 
-import java.io.InputStream;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +51,8 @@ public class OrganizationService {
     private ReactiveMongoTemplate template;
     @Autowired
     CommonService commonService;
+    @Autowired
+    private PricingPlanService pricingPlanService;
 
     private List<PricingPlans> cachedPlans = null;
 
@@ -219,23 +217,6 @@ public class OrganizationService {
         })).then();
     }
 
-    public Mono<List<PricingPlans>> getPricingPlans() {
-        if (cachedPlans != null) {
-            return Mono.just(cachedPlans);
-        }
-
-        return Mono.fromCallable(() -> {
-                    Resource resource =
-                            resourceLoader.getResource("classpath:Json/pricingPlans.json");
-
-                    try (InputStream inputStream = resource.getInputStream()) {
-                        return Arrays.asList(objectMapper.readValue(inputStream, PricingPlans[].class));
-                    }
-                })
-                .doOnNext(list -> cachedPlans = list)        // store in cache
-                .subscribeOn(Schedulers.boundedElastic()); // File I/O → must run on elastic thread
-    }
-
     private Users getOrgRequestUser(OrganizationRequest request, String role) {
         return Users.builder()
                 .phoneNumber(request.getPhoneNumber())
@@ -246,7 +227,7 @@ public class OrganizationService {
     }
 
     private Mono<PricingPlans> getPlanById(String id) {
-        return getPricingPlans()
+        return pricingPlanService.getPricingPlans()
                 .flatMapMany(Flux::fromIterable)
                 .filter(plan -> plan.getId().equals(id))
                 .next()                               // returns Mono<PricingPlan>

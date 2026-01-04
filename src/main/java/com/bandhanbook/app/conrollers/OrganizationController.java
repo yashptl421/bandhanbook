@@ -6,6 +6,7 @@ import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.payload.response.base.CommonApiResponse;
 import com.bandhanbook.app.service.OrganizationService;
+import com.bandhanbook.app.service.PricingPlanService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,8 @@ public class OrganizationController {
 
     @Autowired
     private final OrganizationService organizationService;
+    @Autowired
+    private final PricingPlanService pricingPlanService;
 
     @GetMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<OrganizationResponse>>> show(@PathVariable String id) {
@@ -79,7 +82,7 @@ public class OrganizationController {
 
     @GetMapping("/pricing-plan")
     public Mono<ResponseEntity<CommonApiResponse<List<PricingPlans>>>> getPricingPlans() {
-        return organizationService.getPricingPlans()
+        return pricingPlanService.getPricingPlans()
                 .map(json -> ResponseEntity.ok(
                         CommonApiResponse.<List<PricingPlans>>builder()
                                 .status(HttpStatus.OK.value())
