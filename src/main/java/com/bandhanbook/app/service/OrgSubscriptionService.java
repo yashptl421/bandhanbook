@@ -13,18 +13,20 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.time.LocalDate;
 import java.util.List;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.SUBSCRIPTION_PURCHASED;
+import static com.bandhanbook.app.utilities.SuccessResponseMessages.SUBSCRIPTION_UPDATED;
 
 @Service
 @RequiredArgsConstructor
 public class OrgSubscriptionService {
 
-    private final OrgSubscriptionsRepository  repository;
+    private final OrgSubscriptionsRepository repository;
     private final OrganizationRepository organizationRepository;
     private final PricingPlanService pricingPlanService;
 
@@ -47,26 +49,53 @@ public class OrgSubscriptionService {
         return repository.save(subscription)
                 .thenReturn(SUBSCRIPTION_PURCHASED);
     }
+
     public Mono<OrgSubscriptions> show(String id) {
         return repository.findById(new ObjectId(id))
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
-   /* public Mono<Tuple2<Long, List<OrgSubscriptions>>> list(
-            Users authUser,
-            String organizationId
-    ) {
+
+    public Mono<Tuple2<Long, List<OrgSubscriptions>>> list(Users authUser, String organizationId) {
         Flux<OrgSubscriptions> flux;
 
         if (authUser.isOrganization()) {
-
-            return organizationRepository.findByUserId(authUser.getId()).flatMap(org-> org.getId())
-        } else if (authUser.isSuperUser() && organizationId != null) {
-            flux = repository.findByOrgId(new ObjectId(organizationId));
+            flux = organizationRepository.findByUserId(authUser.getId()).flatMap(org ->
+                    repository.findByOrgId(org.getId())).flux();
+        } else if (authUser.isSuperUser() && organizationId != null && !organizationId.isEmpty()) {
+            flux = repository.findByOrgId(new ObjectId(organizationId)).flux();
         } else {
             flux = repository.findAll();
         }
 
         return flux.collectList()
                 .map(list -> Tuples.of((long) list.size(), list));
+    }
+
+    public Mono<String> updateStatus(String id, boolean status) {
+        return repository.findById(new ObjectId(id))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .flatMap(sub -> {
+                    sub.setActive(status);
+                    return repository.save(sub);
+                })
+                .thenReturn(SUBSCRIPTION_UPDATED);
+    }
+/*    public Mono<OrgSubscriptions> getActiveSubscription(Users authUser) {
+
+        Mono<ObjectId> orgIdMono;
+
+        if (authUser.isOrganization()) {
+            orgIdMono = Mono.just(authUser.getOrganizationId());
+        } else if (authUser.isAgent()) {
+            orgIdMono = Mono.just(authUser.getAgentOrganizationId());
+        } else if (authUser.isCandidate()) {
+            orgIdMono = Mono.just(authUser.getCandidateOrganizationId());
+        } else {
+            return Mono.empty();
+        }
+
+        return orgIdMono.flatMap(id ->
+                repository.findByOrgIdAndActive(id, true)
+        );
     }*/
 }
