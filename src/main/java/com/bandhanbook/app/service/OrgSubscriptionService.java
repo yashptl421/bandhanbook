@@ -5,10 +5,12 @@ import com.bandhanbook.app.model.OrgSubscriptions;
 import com.bandhanbook.app.model.PricingPlans;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.BuySubscriptionRequest;
+import com.bandhanbook.app.payload.response.SubscriptionResponse;
 import com.bandhanbook.app.repository.OrgSubscriptionsRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -29,6 +31,7 @@ public class OrgSubscriptionService {
     private final OrgSubscriptionsRepository repository;
     private final OrganizationRepository organizationRepository;
     private final PricingPlanService pricingPlanService;
+    private final ModelMapper modelMapper;
 
     public Mono<String> buySubscription(BuySubscriptionRequest req) {
 
@@ -55,7 +58,7 @@ public class OrgSubscriptionService {
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 
-    public Mono<Tuple2<Long, List<OrgSubscriptions>>> list(Users authUser, String organizationId) {
+    public Mono<Tuple2<Long, List<SubscriptionResponse>>> list(Users authUser, String organizationId) {
         Flux<OrgSubscriptions> flux;
 
         if (authUser.isOrganization()) {
@@ -68,7 +71,7 @@ public class OrgSubscriptionService {
         }
 
         return flux.collectList()
-                .map(list -> Tuples.of((long) list.size(), list));
+                .map(list -> Tuples.of((long) list.size(), list.stream().map(res -> modelMapper.map(res, SubscriptionResponse.class)).toList()));
     }
 
     public Mono<String> updateStatus(String id, boolean status) {

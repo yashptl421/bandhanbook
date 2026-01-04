@@ -4,6 +4,7 @@ import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.OrgSubscriptions;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.BuySubscriptionRequest;
+import com.bandhanbook.app.payload.response.SubscriptionResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.OrgSubscriptionService;
 import lombok.RequiredArgsConstructor;
@@ -22,13 +23,13 @@ public class OrgSubscriptionController {
     private final OrgSubscriptionService service;
 
     @GetMapping
-    public Mono<ApiResponse<List<OrgSubscriptions>>> list(
+    public Mono<ApiResponse<List<SubscriptionResponse>>> list(
             @CurrentUser Users authUser,
             @RequestParam(required = false) String organization
     ) {
         return service.list(authUser, organization)
                 .map(tuple ->
-                        ApiResponse.<List<OrgSubscriptions>>builder()
+                        ApiResponse.<List<SubscriptionResponse>>builder()
                                 .status(200)
                                 .message(DATA_FOUND)
                                 .data(tuple.getT2())
