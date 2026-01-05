@@ -291,7 +291,7 @@ public class AuthService {
     public Mono<Users> getValidatedUser(String phoneNumber, String email, String role) {
         return userRepository
                 .findByPhoneNumberOrEmail(phoneNumber, email).flatMap(existingUser -> {
-                    if (existingUser.getRoles().contains(role)) {
+                    if (!role.equalsIgnoreCase(RoleNames.Candidate.name()) && existingUser.getRoles().contains(role)) {
                         return Mono.error(new PhoneOrEmailNotFoundException(PHONE_EMAIL_EXISTS));
                     }
                     return Mono.just(existingUser);
