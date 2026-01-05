@@ -83,7 +83,7 @@ public class OrgSubscriptionService {
                 })
                 .thenReturn(SUBSCRIPTION_UPDATED);
     }
-/*    public Mono<OrgSubscriptions> getActiveSubscription(Users authUser) {
+    /*public Mono<OrgSubscriptions> getActiveSubscription(Users authUser) {
 
         Mono<ObjectId> orgIdMono;
 
@@ -101,4 +101,8 @@ public class OrgSubscriptionService {
                 repository.findByOrgIdAndActive(id, true)
         );
     }*/
+    public Mono<OrgSubscriptions> getActiveSubscription(ObjectId orgId) {
+
+        return repository.findByOrgIdAndActive(orgId, true);
+    }
 }

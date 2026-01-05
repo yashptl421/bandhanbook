@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -21,7 +20,7 @@ import static com.bandhanbook.app.utilities.ErrorResponseMessages.PLAN_NOT_FOUND
 @Service
 @AllArgsConstructor
 public class PricingPlanService {
-    private List<PricingPlans> cachedPlans = null;
+    private List<PricingPlans> cachedPlans;
     @Autowired
     private ObjectMapper objectMapper;
     @Autowired
@@ -43,7 +42,7 @@ public class PricingPlanService {
     }*/
 
     public Mono<List<PricingPlans>> getPricingPlans() {
-        if (cachedPlans != null) {
+        if (cachedPlans != null && !cachedPlans.isEmpty()) {
             return Mono.just(cachedPlans);
         }
         return Mono.fromCallable(() -> {

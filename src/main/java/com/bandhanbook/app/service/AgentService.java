@@ -12,11 +12,9 @@ import com.bandhanbook.app.repository.AgentRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
 import com.bandhanbook.app.repository.UserRepository;
 import com.bandhanbook.app.wrappers.AgentWrapper;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
@@ -32,27 +30,21 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.SUBSCRIPTION_INACTIVE;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_CREATED;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_UPDATED;
 
 @Service
-@AllArgsConstructor
-@NoArgsConstructor
+@RequiredArgsConstructor
 public class AgentService {
-    @Autowired
-    UserRepository userRepository;
-    @Autowired
-    AuthService authService;
-    @Autowired
-    AgentRepository agentRepository;
-    @Autowired
-    private ModelMapper modelMapper;
-    @Autowired
-    private OrganizationRepository organizationRepository;
-    @Autowired
-    private ReactiveMongoTemplate mongoTemplate;
-    @Autowired
-    private CommonService commonService;
+    private final UserRepository userRepository;
+    private final AuthService authService;
+    private final AgentRepository agentRepository;
+    private final ModelMapper modelMapper;
+    private final OrganizationRepository organizationRepository;
+    private final ReactiveMongoTemplate mongoTemplate;
+    private final CommonService commonService;
+    private final OrgSubscriptionService subscriptionService;
 
     public Mono<String> createAgent(AgentRequest request, Users authUser) {
 
@@ -67,6 +59,16 @@ public class AgentService {
         return orgId
                 .flatMap(org -> {
                     if (!org.isEmpty()) {
+                       /* return subscriptionService.getActiveSubscription(new ObjectId(org))
+                                .switchIfEmpty(Mono.error(new UnAuthorizedException(SUBSCRIPTION_INACTIVE)))
+                                .flatMap(sub -> agentRepository.countByOrganizationId(new ObjectId(org))
+                                        .flatMap(count -> {
+                                            if (count >= sub.getMaxAgents()) {
+                                                return Mono.error(new UnAuthorizedException(AGENT_LIMIT_EXCEED));
+                                            }
+                                            return Mono.just(count);
+                                        }))
+                        ;*/
                         request.setOrganizationId(org);
                     }
                     return validUser.flatMap(existingUser -> {

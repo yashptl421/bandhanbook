@@ -18,5 +18,7 @@ public interface ErrorResponseMessages {
     String INVALID_FILE_TYPE = "Invalid file type";
     String PLAN_NOT_FOUND = "Selected plan is not available currently";
     String IMAGE_SIZE_EXCEEDED = "Image size exceeds the maximum allowed limit of 5 MB";
-    String INVALID_RESOURCE= "Please login to access this resource.";
+    String INVALID_RESOURCE = "Please login to access this resource.";
+    String SUBSCRIPTION_INACTIVE = "Organization subscription is inactive. Please contact administrator.";
+    String AGENT_LIMIT_EXCEED = "Agent Limit Exceeded. Please Upgrade your Plan.";
 }

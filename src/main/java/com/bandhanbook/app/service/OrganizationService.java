@@ -54,8 +54,6 @@ public class OrganizationService {
     @Autowired
     private PricingPlanService pricingPlanService;
 
-    private List<PricingPlans> cachedPlans = null;
-
     public Mono<Tuple2<Long, List<OrganizationResponse>>> listOrganizations(Map<String, String> params) {
 
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
