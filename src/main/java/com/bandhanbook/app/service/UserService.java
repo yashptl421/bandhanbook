@@ -265,7 +265,7 @@ public class UserService {
         Document organizationFilters = new Document();
 
         if (authUser.isSuperUser()
-                && params.containsKey("organization") && null != params.get("organization") && !params.get("organization").isBlank()) {
+                && params.containsKey("organization") && null != params.get("organization") && ObjectId.isValid(params.get("organization"))) {
             organizationFilters.put("organization_id", new ObjectId(params.get("organization")));
         } else if (authUser.isOrganization()) {
             return organizationRepository.findByUserId(authUser.getId())
@@ -279,7 +279,7 @@ public class UserService {
                         eventFilters.put("added_by", agent.getId());
                         return runListPipeline(page, limit, userFilters, matrimonyFilters, eventFilters, organizationFilters, authUser);
                     });
-        } else {
+        } else if (authUser.isCandidate()) {
             return matrimonyRepository.findByUserId(authUser.getId())
                     .flatMap(profile -> eventParticipantRepo.findByCandidateId(profile.getId())
                             .map(EventParticipants::getEventId)

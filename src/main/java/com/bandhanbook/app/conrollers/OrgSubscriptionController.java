@@ -8,6 +8,7 @@ import com.bandhanbook.app.payload.response.SubscriptionResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.OrgSubscriptionService;
 import lombok.RequiredArgsConstructor;
+import org.bson.types.ObjectId;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -29,7 +30,7 @@ public class OrgSubscriptionController {
             @RequestParam Map<String, String> params
     ) {
         String orgid=null;
-        if (params.containsKey("organization") && null != params.get("organization") && !params.get("organization").isEmpty())
+        if (params.containsKey("organization") && null != params.get("organization") && ObjectId.isValid(params.get("organization")))
             orgid = params.get("organization");
         return service.list(authUser, orgid)
                 .map(res ->
