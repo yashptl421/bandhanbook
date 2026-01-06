@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.PricingPlans;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,4 +33,5 @@ public class SubscriptionResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
+    private OrganizationResponse organizationDetails;
 }

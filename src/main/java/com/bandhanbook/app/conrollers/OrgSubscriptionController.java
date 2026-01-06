@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
 
@@ -25,16 +26,19 @@ public class OrgSubscriptionController {
     @GetMapping
     public Mono<ApiResponse<List<SubscriptionResponse>>> list(
             @CurrentUser Users authUser,
-            @RequestParam(required = false) String organization
+            @RequestParam Map<String, String> params
     ) {
-        return service.list(authUser, organization)
-                .map(tuple ->
+        String orgid=null;
+        if (params.containsKey("organization") && null != params.get("organization") && !params.get("organization").isEmpty())
+            orgid = params.get("organization");
+        return service.list(authUser, orgid)
+                .map(res ->
                         ApiResponse.<List<SubscriptionResponse>>builder()
                                 .status(200)
                                 .message(DATA_FOUND)
-                                .data(tuple.getT2())
+                                .data(res)
                                 .meta(ApiResponse.Meta.builder()
-                                        .totalRecords(tuple.getT1())
+                                        .totalRecords(res.size())
                                         .build())
                                 .build()
                 );
