@@ -87,7 +87,7 @@ public class BannerService {
         Criteria baseCriteria = new Criteria();
         return orgIdMono.flatMap(orgId -> {
             int skip = (page - 1) * limit;
-            if (authUser.isOrganization()) {
+            if (!orgId.isEmpty()) {
                 baseCriteria.and("organization_id")
                         .is(new ObjectId(orgId));
             }
