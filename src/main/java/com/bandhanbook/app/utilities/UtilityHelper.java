@@ -133,4 +133,25 @@ public class UtilityHelper {
         if (value instanceof Collection<?> c) return !c.isEmpty();
         return true;
     }
+    /**
+     * Converts age to LocalDateTime (DOB boundary)
+     *
+     * @param age age in years
+     * @param isMaxAge true if age is maxAge, false if minAge
+     */
+    public static LocalDateTime getDateFromAge(int age, boolean isMaxAge) {
+
+        LocalDate today = LocalDate.now();
+
+        if (isMaxAge) {
+            // oldest person → born before or on this date
+            return today.minusYears(age + 1)
+                    .plusDays(1)
+                    .atStartOfDay();
+        } else {
+            // youngest person → born after or on this date
+            return today.minusYears(age)
+                    .atTime(23, 59, 59);
+        }
+    }
 }

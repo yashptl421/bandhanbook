@@ -291,6 +291,10 @@ public class UserService {
                                                         .toList()
                                         )
                                 );
+                                if (params.containsKey("myPreference") && null != params.get("myPreference") && !params.get("myPreference").isBlank() && Boolean.parseBoolean(params.get("myPreference"))) {
+                                    if (profile.getPartnerPreferences() != null)
+                                        applyCandidatePreference(profile.getPartnerPreferences(), matrimonyFilters);
+                                }
                                 userFilters.put("_id", new Document("$ne", authUser.getId()));
                                 matrimonyFilters.put("status", ProfileStatus.active.name());
                                 matrimonyFilters.put("profile_completed", true);
@@ -642,15 +646,6 @@ public class UserService {
 
         if (params.containsKey("bloodDonated") && null != params.get("bloodDonated") && !params.get("bloodDonated").isBlank())
             filter.put("is_blood_donated", Boolean.parseBoolean(params.get("bloodDonated")));
-        /*if(params.containsKey("myPreference") && null != params.get("myPreference") && !params.get("myPreference").isBlank() && Boolean.parseBoolean(params.get("myPreference"))){
-            filter.put("partner_preferences.user_id",new ObjectId(params.get("userId")));
-        }*/
-
-        /*if(params.containsKey("height")){
-           MatrimonyCandidate.PartnerPreferences.HeightRange range=(MatrimonyCandidate.PartnerPreferences.HeightRange)  params.get("height");
-            filter.put("personal_details.height",params.get("height"));
-        }*/
-
     }
 
     private void applyEventFilters(Map<String, String> params, Document filter) {
@@ -660,6 +655,55 @@ public class UserService {
 
         if (params.containsKey("eventId") && null != params.get("eventId") && !params.get("eventId").isBlank())
             filter.put("event_id", new ObjectId(params.get("eventId")));
+    }
+
+    private void applyCandidatePreference(MatrimonyCandidate.PartnerPreferences preferences, Document filter) {
+        if (preferences.getManglik() != null && !preferences.getManglik().isBlank())
+            filter.put("partner_preferences.manglik", preferences.getManglik());
+
+        if (preferences.getComplexion() != null)
+            filter.put("partner_preferences.complexion", preferences.getComplexion().name());
+
+        if (preferences.getDrinkingHabits() != null && !preferences.getDrinkingHabits().isBlank())
+            filter.put("partner_preferences.drinking_habits", preferences.getDrinkingHabits());
+
+        if (preferences.getSmokingHabits() != null && !preferences.getSmokingHabits().isBlank())
+            filter.put("partner_preferences.smoking_habits", preferences.getSmokingHabits());
+
+        if (preferences.getDietaryHabits() != null && !preferences.getDietaryHabits().isBlank())
+            filter.put("partner_preferences.dietary_habits", preferences.getDietaryHabits());
+
+        if (preferences.getMaritalStatus() != null && !preferences.getMaritalStatus().isBlank())
+            filter.put("partner_preferences.marital_status", preferences.getMaritalStatus());
+
+        if (preferences.getAgeRange() != null) {
+
+            int minAge = preferences.getAgeRange().getMin();
+            int maxAge = preferences.getAgeRange().getMax();
+
+            filter.put(
+                    "personal_details.date_of_birth",
+                    new Document("$gte", UtilityHelper.getDateFromAge(maxAge, true))
+                            .append("$lte", UtilityHelper.getDateFromAge(minAge, false))
+            );
+        }
+        if (preferences.getHeightRange() != null) {
+            String minHeight = preferences.getHeightRange().getMin();
+            String maxHeight = preferences.getHeightRange().getMax();
+            filter.put("personal_details.height",
+                    new Document("$gte", minHeight)
+                            .append("$lte", maxHeight)
+            );
+        }
+        if (preferences.getSalaryRange() != null) {
+            String minSalary = preferences.getSalaryRange().getMin();
+            String maxSalary = preferences.getSalaryRange().getMax();
+            filter.put("occupation_details.annual_salary",
+                    new Document("$gte", minSalary)
+                            .append("$lte", maxSalary)
+            );
+        }
+
     }
 
     private Mono<Set<String>> getFavouriteIdsMono(Users authUser) {
