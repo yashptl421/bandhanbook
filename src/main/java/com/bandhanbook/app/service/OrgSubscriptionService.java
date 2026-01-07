@@ -6,6 +6,7 @@ import com.bandhanbook.app.model.Organization;
 import com.bandhanbook.app.model.PricingPlans;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.BuySubscriptionRequest;
+import com.bandhanbook.app.payload.response.OrgSubscriptionsResponse;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.SubscriptionResponse;
 import com.bandhanbook.app.repository.OrgSubscriptionsRepository;
@@ -52,8 +53,8 @@ public class OrgSubscriptionService {
                 .thenReturn(SUBSCRIPTION_PURCHASED);
     }
 
-    public Mono<OrgSubscriptions> show(String id) {
-        return repository.findById(new ObjectId(id))
+    public Mono<OrgSubscriptionsResponse> show(String id) {
+        return repository.findById(new ObjectId(id)).map(orgSubscriptions -> modelMapper.map(orgSubscriptions, OrgSubscriptionsResponse.class))
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 

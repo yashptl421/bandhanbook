@@ -645,7 +645,7 @@ public class UserService {
             filter.put("personal_details.complexion", params.get("complexion"));
 
         if (params.containsKey("bloodDonated") && null != params.get("bloodDonated") && !params.get("bloodDonated").isBlank())
-            filter.put("is_blood_donated", Boolean.parseBoolean(params.get("bloodDonated")));
+            filter.put("blood_donated", Boolean.parseBoolean(params.get("bloodDonated")));
     }
 
     private void applyEventFilters(Map<String, String> params, Document filter) {

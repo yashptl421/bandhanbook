@@ -4,6 +4,7 @@ import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.OrgSubscriptions;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.BuySubscriptionRequest;
+import com.bandhanbook.app.payload.response.OrgSubscriptionsResponse;
 import com.bandhanbook.app.payload.response.SubscriptionResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.OrgSubscriptionService;
@@ -46,10 +47,10 @@ public class OrgSubscriptionController {
     }
 
     @GetMapping("/{id}")
-    public Mono<ApiResponse<OrgSubscriptions>> show(@PathVariable String id) {
+    public Mono<ApiResponse<OrgSubscriptionsResponse>> show(@PathVariable String id) {
         return service.show(id)
                 .map(sub ->
-                        ApiResponse.<OrgSubscriptions>builder()
+                        ApiResponse.<OrgSubscriptionsResponse>builder()
                                 .status(200)
                                 .message(DATA_FOUND)
                                 .data(sub)
