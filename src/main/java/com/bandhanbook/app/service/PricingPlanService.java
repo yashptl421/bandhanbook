@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -26,11 +27,12 @@ public class PricingPlanService {
     @Autowired
     private ResourceLoader resourceLoader;
 
-    public PricingPlans getPlanById(String planId) {
-        return cachedPlans.stream()
-                .filter(p -> p.getId().equals(planId))
-                .findFirst()
-                .orElseThrow(() -> new RecordNotFoundException(PLAN_NOT_FOUND));
+    public Mono<PricingPlans> getPlanById(String id) {
+        return getPricingPlans()
+                .flatMapMany(Flux::fromIterable)
+                .filter(plan -> plan.getId().equals(id))
+                .next()                               // returns Mono<PricingPlan>
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(PLAN_NOT_FOUND)));
     }
 
    /* private Mono<PricingPlans> getPlanById(String id) {

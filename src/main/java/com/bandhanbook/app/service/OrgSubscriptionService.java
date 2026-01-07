@@ -35,22 +35,23 @@ public class OrgSubscriptionService {
 
     public Mono<String> buySubscription(BuySubscriptionRequest req) {
 
-        PricingPlans plan = pricingPlanService.getPlanById(req.getPlanId());
+        Mono<PricingPlans> planMono = pricingPlanService.getPlanById(req.getPlanId());
 
-        LocalDate start = LocalDate.parse(req.getPlanStartDate());
-        OrgSubscriptions subscription = OrgSubscriptions.builder()
-                .orgId(new ObjectId(req.getOrgId()))
-                .planId(req.getPlanId())
-                .maxAgents(plan.getMaxAgents())
-                .maxUsers(plan.getMaxUsers())
-                .active(false)
-                .registrationPeriod(start.minusDays(plan.getRegistrationPeriod()).toString())
-                .startDate(start.toString())
-                .endDate(start.plusYears(1).toString())
-                .build();
+        LocalDate start = req.getPlanStartDate().toLocalDate();
+        return planMono.flatMap(plan -> {
+            OrgSubscriptions subscription = OrgSubscriptions.builder()
+                    .orgId(new ObjectId(req.getOrgId()))
+                    .planId(req.getPlanId())
+                    .maxAgents(plan.getMaxAgents())
+                    .maxUsers(plan.getMaxUsers())
+                    .active(false)
+                    .registrationPeriod(start.minusDays(plan.getRegistrationPeriod()).toString())
+                    .startDate(start.toString())
+                    .endDate(start.plusYears(1).toString())
+                    .build();
+            return repository.save(subscription);
 
-        return repository.save(subscription)
-                .thenReturn(SUBSCRIPTION_PURCHASED);
+        }).thenReturn(SUBSCRIPTION_PURCHASED);
     }
 
     public Mono<OrgSubscriptionsResponse> show(String id) {
