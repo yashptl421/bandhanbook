@@ -17,7 +17,11 @@ public class SubscriptionResponse {
 
     private String orgId;
 
+    private String planName;
+
     private String planId;
+
+    private int planPrice;
 
     private String registrationPeriod;
 

@@ -6,7 +6,6 @@ import com.bandhanbook.app.model.Organization;
 import com.bandhanbook.app.model.PricingPlans;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.BuySubscriptionRequest;
-import com.bandhanbook.app.payload.response.OrgSubscriptionsResponse;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.SubscriptionResponse;
 import com.bandhanbook.app.repository.OrgSubscriptionsRepository;
@@ -54,9 +53,20 @@ public class OrgSubscriptionService {
         }).thenReturn(SUBSCRIPTION_PURCHASED);
     }
 
-    public Mono<OrgSubscriptionsResponse> show(String id) {
-        return repository.findById(new ObjectId(id)).map(orgSubscriptions -> modelMapper.map(orgSubscriptions, OrgSubscriptionsResponse.class))
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+    public Mono<SubscriptionResponse> show(String id) {
+        return repository.findById(new ObjectId(id)).flatMap(sub -> {
+            SubscriptionResponse res =
+                    modelMapper.map(sub, SubscriptionResponse.class);
+            return organizationRepository.findById(sub.getOrgId())
+                    .flatMap(org -> {
+                        res.setOrganizationDetails(modelMapper.map(org, OrganizationResponse.class));
+                        return pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
+                            res.setPlanName(plan.getName());
+                            res.setPlanPrice(plan.getPrice());
+                            return res;
+                        });
+                    });
+        }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 
     public Mono<List<SubscriptionResponse>> list(Users authUser, String orgId) {
@@ -68,13 +78,18 @@ public class OrgSubscriptionService {
                     repository.findByOrgId(org.getId()).flatMap(sub -> {
                         SubscriptionResponse res =
                                 modelMapper.map(sub, SubscriptionResponse.class);
+                        pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
+                            res.setPlanName(plan.getName());
+                            res.setPlanPrice(plan.getPrice());
+                            return res;
+                        });
+                        res.setOrganizationDetails(modelMapper.map(org, OrganizationResponse.class));
 
-                        // attach org
-                        res.setOrganizationDetails(
-                                modelMapper.map(org, OrganizationResponse.class)
-                        );
-
-                        return Mono.just(res);
+                        return pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
+                            res.setPlanName(plan.getName());
+                            res.setPlanPrice(plan.getPrice());
+                            return res;
+                        });
                     })).collectList();
         } else {
             return repository.findAll().flatMap(sub -> {
@@ -83,11 +98,12 @@ public class OrgSubscriptionService {
 
                 return organizationRepository.findById(sub.getOrgId())
                         .flatMap(org -> {
-                            // attach org
-                            res.setOrganizationDetails(
-                                    modelMapper.map(org, OrganizationResponse.class)
-                            );
-                            return Mono.just(res);
+                            res.setOrganizationDetails(modelMapper.map(org, OrganizationResponse.class));
+                            return pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
+                                res.setPlanName(plan.getName());
+                                res.setPlanPrice(plan.getPrice());
+                                return res;
+                            });
                         });
             }).collectList();
         }
@@ -103,26 +119,16 @@ public class OrgSubscriptionService {
                 .thenReturn(SUBSCRIPTION_UPDATED);
     }
 
-    /*public Mono<OrgSubscriptions> getActiveSubscription(Users authUser) {
-
-        Mono<ObjectId> orgIdMono;
-
-        if (authUser.isOrganization()) {
-            orgIdMono = Mono.just(authUser.getOrganizationId());
-        } else if (authUser.isAgent()) {
-            orgIdMono = Mono.just(authUser.getAgentOrganizationId());
-        } else if (authUser.isCandidate()) {
-            orgIdMono = Mono.just(authUser.getCandidateOrganizationId());
-        } else {
-            return Mono.empty();
-        }
-
-        return orgIdMono.flatMap(id ->
-                repository.findByOrgIdAndActive(id, true)
-        );
-    }*/
     public Mono<OrgSubscriptions> getActiveSubscription(ObjectId orgId) {
+        return repository
+                .findByOrgIdAndActive(orgId, true)
+                .switchIfEmpty(Mono.error(
+                        new IllegalStateException("No active subscription found")
+                ));
+    }
+
+   /* public Mono<OrgSubscriptions> getActiveSubscription(ObjectId orgId) {
 
         return repository.findByOrgIdAndActive(orgId, true);
-    }
+    }*/
 }
