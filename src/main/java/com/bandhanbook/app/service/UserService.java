@@ -238,7 +238,9 @@ public class UserService {
                         if ((authUser.isOrganization() || authUser.isAgent()) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
-
+                        if (candidate.getImages() != null && req.getMatrimonyData().getImages() == null) {
+                            req.getMatrimonyData().setImages(candidate.getImages());
+                        }
                         modelMapper.map(req.getMatrimonyData(), candidate);
                         return userRepository.save(users).flatMap(user -> matrimonyRepository.save(candidate)
                                 .map(updatedCandidate -> {
@@ -738,6 +740,7 @@ public class UserService {
         }
         if (settings.isHide_profile_image()) {
             response.setProfile_image(null);
+            response.getMatrimony_data().setImages(null);
         }
     }
 

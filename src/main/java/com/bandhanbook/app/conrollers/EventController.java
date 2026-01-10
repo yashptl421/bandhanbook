@@ -69,7 +69,7 @@ public class EventController {
                     List<EventDbResponse> data = res.getData();
                     List<EventWrapper.RecordCount> recordCount = res.getTotalRecords();
                     long total = recordCount.isEmpty() ? 0 : recordCount.get(0).getTotal();
-                    int totalRecords = (int) Math.ceil((double) total / limit);
+                    int totalPage = (int) Math.ceil((double) total / limit);
                     return ResponseEntity.ok(
                             ApiResponse.<List<EventDbResponse>>builder()
                                     .status(HttpStatus.OK.value())
@@ -78,8 +78,8 @@ public class EventController {
                                     .meta(ApiResponse.Meta.builder()
                                             .page(page)
                                             .limit(limit)
-                                            .totalRecords(totalRecords)
-                                            .totalPages(total)
+                                            .totalRecords(total)
+                                            .totalPages(totalPage)
                                             .build())
                                     .build()
                     );
