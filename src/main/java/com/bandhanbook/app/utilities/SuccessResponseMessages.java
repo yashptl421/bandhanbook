@@ -26,4 +26,9 @@ public interface SuccessResponseMessages {
     String BANNER_CREATED = "Banner created successfully";
     String BANNER_UPDATED = "Banner updated successfully";
     String BANNER_DELETED = "Banner deleted successfully";
+    String ADVERTISEMENT_CREATED = "Advertisement created successfully";
+    String ADVERTISEMENT_UPDATED = "Advertisement updated successfully";
+    String ADVERTISEMENT_DELETED = "Advertisement deleted successfully";
+
+
 }

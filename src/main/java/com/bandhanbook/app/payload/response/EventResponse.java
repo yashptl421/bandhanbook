@@ -2,6 +2,7 @@ package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.Organization;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.constants.Status;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ public class EventResponse {
     private String createdBy;
     private String organizationId;
     private String location;
+    private Status status;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private LocalDateTime createdAt;

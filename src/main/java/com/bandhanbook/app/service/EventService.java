@@ -60,7 +60,7 @@ public class EventService {
     @Transactional
     public Mono<Void> updateEvent(EventRequest eventRequest, String id) {
         logger.info("Updated Event of {}", eventRequest.getName());
-        return eventsRepository.findById(id)
+        return eventsRepository.findById(new ObjectId(id))
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).
                 flatMap(events -> {
                     modelMapper.map(eventRequest, events);
@@ -70,7 +70,7 @@ public class EventService {
 
     public Mono<EventResponse> getEventById(String id) {
         logger.info("get Event By event id {}", id);
-        return eventsRepository.findById(id).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+        return eventsRepository.findById(new ObjectId(id)).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .map(events -> modelMapper.map(events, EventResponse.class));
     }
 

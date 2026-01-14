@@ -60,3 +60,5 @@ images:
   organization.path : /organizations/
   superUser.path : /superusers/
   banner.path : /banner/
+  advertisement.path : /ads/
+  blog.path : /blogs/

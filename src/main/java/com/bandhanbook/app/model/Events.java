@@ -1,5 +1,7 @@
 package com.bandhanbook.app.model;
 
+import com.bandhanbook.app.model.constants.ProfileStatus;
+import com.bandhanbook.app.model.constants.Status;
 import lombok.*;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
@@ -36,6 +38,9 @@ public class Events {
 
     @Field("end_date")
     private LocalDateTime endDate;
+
+    @Field("status")
+    private Status status = Status.inactive;
 
     @Field("created_at")
     @CreatedDate
