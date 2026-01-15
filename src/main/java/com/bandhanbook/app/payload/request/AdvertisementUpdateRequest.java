@@ -14,6 +14,5 @@ import java.util.List;
 @NoArgsConstructor
 public class AdvertisementUpdateRequest {
     private String id;
-    private Frequency frequency;
     private boolean active;
 }

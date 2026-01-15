@@ -165,7 +165,6 @@ public class AdvertisementService {
                             }
 
                             ad.setActive(req.isActive());
-                            ad.setFrequency(req.getFrequency());
                             return ad;
                         })
                 )
@@ -183,7 +182,6 @@ public class AdvertisementService {
                                 Filters.eq("_id", new ObjectId(req.getId())),
                                 Updates.combine(
                                         Updates.set("active", req.isActive()),
-                                        Updates.set("frequency", req.getFrequency()),
                                         Updates.set("updated_at", LocalDateTime.now())
                                 )
                         )
