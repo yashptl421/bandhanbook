@@ -14,11 +14,12 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
-@Document(collection = "advertisements")
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Document(collection = "advertisements")
 public class Advertisement {
 
     @Id
@@ -34,6 +35,9 @@ public class Advertisement {
 
     @Field("duration_in_days")
     private int durationInDays;
+
+    @Field("created_by")
+    private ObjectId createdBy;
 
     @Field("is_active")
     private boolean active;

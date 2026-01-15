@@ -40,7 +40,7 @@ public class Events {
     private LocalDateTime endDate;
 
     @Field("status")
-    private Status status = Status.inactive;
+    private Status status = Status.active;
 
     @Field("created_at")
     @CreatedDate

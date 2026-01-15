@@ -12,10 +12,8 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class AdvertisementRequest {
+public class AdvertisementUpdateRequest {
     private String id;
-    private String eventId;
-    private int durationInDays;
-    private List<Frequency> frequency;
-    private List<Boolean> active;
+    private Frequency frequency;
+    private boolean active;
 }
