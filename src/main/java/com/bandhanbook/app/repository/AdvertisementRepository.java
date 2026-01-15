@@ -12,6 +12,11 @@ import java.util.List;
 @Repository
 public interface AdvertisementRepository extends ReactiveMongoRepository<Advertisement, ObjectId> {
     Flux<Advertisement> findByEventIdIn(List<ObjectId> eventIds);
+
     Mono<Long> countByEventIdIn(List<ObjectId> eventId);
+
     Mono<Long> countByEventIdInAndActiveIsTrue(List<ObjectId> eventId, Boolean active);
+
+    Mono<Void> deleteByIdIn(List<ObjectId> id);
+
 }

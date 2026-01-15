@@ -2,6 +2,7 @@ package com.bandhanbook.app.conrollers;
 
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.payload.request.AdvertisementFilterRequest;
 import com.bandhanbook.app.payload.request.AdvertisementUpdateRequest;
 import com.bandhanbook.app.payload.response.AdvertisementResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
@@ -19,7 +20,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Map;
 
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
@@ -53,16 +53,14 @@ public class AdvertisementController {
 
     @Operation(summary = "List of Advertisement for the organization", description = "Fetch paginated list of Advertisement")
     @GetMapping
-    public Mono<ResponseEntity<ApiResponse<List<AdvertisementResponse>>>> advertisementList(@RequestParam Map<String, String> params, @CurrentUser Users authUser) {
-        int page = Integer.parseInt(params.getOrDefault("page", "1"));
-        int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
-        return advertisementService.advertisementList(authUser, page, limit)
+    public Mono<ResponseEntity<ApiResponse<List<AdvertisementResponse>>>> advertisementList(AdvertisementFilterRequest filter, @CurrentUser Users authUser) {
+        return advertisementService.advertisementList(filter, authUser)
                 .map(tuple -> ResponseEntity.ok(
                         ApiResponse.<List<AdvertisementResponse>>builder()
                                 .status(200)
                                 .message(DATA_FOUND)
                                 .data(tuple.getT3())
-                                .meta(ApiResponse.Meta.builder().page(page).limit(limit).totalRecords(tuple.getT1()).totalPages((int) Math.ceil((double) tuple.getT1() / limit)).build())
+                                .meta(ApiResponse.Meta.builder().page(filter.getPage()).limit(filter.getLimit()).totalRecords(tuple.getT1()).totalPages((int) Math.ceil((double) tuple.getT1() / filter.getLimit())).build())
                                 .activeCount(tuple.getT2())
                                 .build()));
     }
@@ -80,7 +78,7 @@ public class AdvertisementController {
                         )
                 );
     }
-   /* @DeleteMapping
+    @DeleteMapping
     public Mono<ResponseEntity<ApiResponse<String>>> deleteAdvertisement(
             @RequestBody List<AdvertisementUpdateRequest> requests
     ) {
@@ -92,5 +90,5 @@ public class AdvertisementController {
                                         .build()
                         )
                 );
-    }*/
+    }
 }

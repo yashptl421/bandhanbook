@@ -7,6 +7,7 @@ import com.bandhanbook.app.model.Events;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.Frequency;
 import com.bandhanbook.app.model.constants.Status;
+import com.bandhanbook.app.payload.request.AdvertisementFilterRequest;
 import com.bandhanbook.app.payload.request.AdvertisementRequest;
 import com.bandhanbook.app.payload.request.AdvertisementUpdateRequest;
 import com.bandhanbook.app.payload.response.AdvertisementResponse;
@@ -112,12 +113,11 @@ public class AdvertisementService {
                 });
     }
 
-    public Mono<Tuple3<Long, Long, List<AdvertisementResponse>>> advertisementList(Users authUser, int page, int limit) {
-        int skip = (page - 1) * limit;
-        boolean activeFlag = authUser.isCandidate();
+    public Mono<Tuple3<Long, Long, List<AdvertisementResponse>>> advertisementList(AdvertisementFilterRequest filter, Users authUser) {
+
         return getEvetnIdMono(authUser)
                 .flatMap(eventIds ->
-                        findWithCounts(eventIds, skip, limit, activeFlag)
+                        findWithCounts(filter, eventIds, authUser)
                 )
                 .map(result -> {
 
@@ -181,7 +181,7 @@ public class AdvertisementService {
                         new UpdateOneModel<>(
                                 Filters.eq("_id", new ObjectId(req.getId())),
                                 Updates.combine(
-                                        Updates.set("active", req.isActive()),
+                                        Updates.set("is_active", req.isActive()),
                                         Updates.set("updated_at", LocalDateTime.now())
                                 )
                         )
@@ -194,10 +194,39 @@ public class AdvertisementService {
                 .then();
     }
 
-    public Mono<AdvertisementWrapper> findWithCounts(List<ObjectId> eventIds, int skip, int limit, boolean activeFlag) {
+    public Mono<Void> deleteAdvertisement(List<AdvertisementUpdateRequest> requests) {
+        List<ObjectId> ids = requests.stream().map(req -> new ObjectId(req.getId())).toList();
+        return repository.deleteByIdIn(ids).then(deleteAdvertisementImages(ids));
+    }
+
+    private Mono<Void> deleteAdvertisementImages(List<ObjectId> ids) {
+        Mono<List<Advertisement>> MonoList = repository.findAllById(ids)
+                .collectList();
+
+        return MonoList.flatMap(ads -> {
+            List<String> imageIds = ads.stream()
+                    .filter(ad -> ad.getImages() != null && ad.getImages().getId() != null)
+                    .map(ad -> ad.getImages().getId())
+                    .toList();
+            if (imageIds.isEmpty()) {
+                return Mono.empty();
+            }
+            return fileUploadService.bulkDelete(imageIds);
+        });
+    }
+
+    public Mono<AdvertisementWrapper> findWithCounts(AdvertisementFilterRequest filter, List<ObjectId> eventIds, Users authUser) {
+        int skip = (filter.getPage() - 1) * filter.getLimit();
         Criteria criteria = new Criteria();
         criteria.and("event_id").in(eventIds);
-        if (activeFlag) {
+
+        if (filter.getFrequencies() != null) {
+            criteria.and("frequency").in(filter.getFrequencies());
+        }
+        if (filter.getIsActive() != null && !authUser.isCandidate()) {
+            criteria.and("is_active").is(filter.getIsActive());
+        }
+        if (authUser.isCandidate()) {
             criteria.and("is_active").in(true);
         }
         Aggregation aggregation = Aggregation.newAggregation(
@@ -206,7 +235,7 @@ public class AdvertisementService {
                 Aggregation.facet(
                                 Aggregation.sort(Sort.Direction.DESC, "createdAt"),
                                 Aggregation.skip(skip),
-                                Aggregation.limit(limit)
+                                Aggregation.limit(filter.getLimit())
                         ).as("data")
 
                         .and(Aggregation.count().as("count"))

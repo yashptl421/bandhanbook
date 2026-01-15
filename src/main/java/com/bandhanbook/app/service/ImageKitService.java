@@ -25,6 +25,7 @@ import reactor.core.scheduler.Schedulers;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
 
@@ -61,6 +62,20 @@ public class ImageKitService implements ImageUploadService {
             } catch (ForbiddenException | UnauthorizedException e) {
                 Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS, e));
             } catch (TooManyRequestsException | InternalServerException | BadRequestException | UnknownException e) {
+                Mono.error(new ValidationExceptions(FILE_UPLOAD_ERROR, e));
+            }
+        });
+    }
+
+    @Override
+    public Mono<Void> bulkDelete(List<String> fileIds) {
+        return Mono.fromRunnable(() -> {
+            try {
+                imageKit.bulkDeleteFiles(fileIds);
+            } catch (ForbiddenException | UnauthorizedException e) {
+                Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS, e));
+            } catch (TooManyRequestsException | InternalServerException | BadRequestException | UnknownException |
+                     PartialSuccessException | NotFoundException e) {
                 Mono.error(new ValidationExceptions(FILE_UPLOAD_ERROR, e));
             }
         });
