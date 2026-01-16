@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 public class AdvertisementFilterRequest {
     private Boolean isActive;
-    private List<Frequency> frequencies;
+    private List<String> frequencies;
     private int page = 1;
     private int limit = 10;
 

@@ -36,6 +36,7 @@ import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
@@ -194,9 +195,9 @@ public class AdvertisementService {
                 .then();
     }
 
-    public Mono<Void> deleteAdvertisement(List<AdvertisementUpdateRequest> requests) {
-        List<ObjectId> ids = requests.stream().map(req -> new ObjectId(req.getId())).toList();
-        return repository.deleteByIdIn(ids).then(deleteAdvertisementImages(ids));
+    public Mono<Void> deleteAdvertisement(List<String> requests) {
+        List<ObjectId> ids = requests.stream().map(ObjectId::new).toList();
+        return deleteAdvertisementImages(ids).then(repository.deleteByIdIn(ids));
     }
 
     private Mono<Void> deleteAdvertisementImages(List<ObjectId> ids) {
@@ -208,9 +209,6 @@ public class AdvertisementService {
                     .filter(ad -> ad.getImages() != null && ad.getImages().getId() != null)
                     .map(ad -> ad.getImages().getId())
                     .toList();
-            if (imageIds.isEmpty()) {
-                return Mono.empty();
-            }
             return fileUploadService.bulkDelete(imageIds);
         });
     }
@@ -221,7 +219,11 @@ public class AdvertisementService {
         criteria.and("event_id").in(eventIds);
 
         if (filter.getFrequencies() != null) {
-            criteria.and("frequency").in(filter.getFrequencies());
+            List<Frequency> fre = filter.getFrequencies().stream().map(f-> {
+                System.out.println(f);
+                return  Frequency.valueOf(f);
+            }).toList();
+            criteria.and("frequency").in(fre);
         }
         if (filter.getIsActive() != null && !authUser.isCandidate()) {
             criteria.and("is_active").is(filter.getIsActive());

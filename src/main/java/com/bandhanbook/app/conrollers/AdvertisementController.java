@@ -80,7 +80,7 @@ public class AdvertisementController {
     }
     @DeleteMapping
     public Mono<ResponseEntity<ApiResponse<String>>> deleteAdvertisement(
-            @RequestBody List<AdvertisementUpdateRequest> requests
+            @RequestBody List<String> requests
     ) {
         return advertisementService.deleteAdvertisement(requests)
                 .thenReturn(ResponseEntity.ok(
