@@ -3,7 +3,7 @@ package com.bandhanbook.app.model.constants;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 public enum MaritalStatus {
-    SINGLE("Single"), MARRIED("Married"), UNMARRIED("Unmarried"), ENGAGED("Engaged"), DIVORCED("Divorced"), WIDOWED("Widowed");
+    SINGLE("Single"), MARRIED("Married"), ENGAGED("Engaged"), DIVORCED("Divorced"), WIDOWED("Widowed");
 
     MaritalStatus(String name) {
     }

@@ -5,7 +5,9 @@ import com.bandhanbook.app.model.Address;
 import com.bandhanbook.app.model.City;
 import com.bandhanbook.app.model.Country;
 import com.bandhanbook.app.model.States;
+import com.bandhanbook.app.payload.request.ContactUsRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -31,6 +33,8 @@ public class CommonService {
     private static List<States> states = null;
     private static List<City> cities = null;
     private static List<Country> countries = null;
+    @Autowired
+    private  EmailService emailService;
 
     private CommonService(ObjectMapper objectMapper, ResourceLoader resourceLoader) throws IOException {
         Resource CountryResource =
@@ -93,5 +97,11 @@ public class CommonService {
         address.setZip(zip);
 
         return address;
+    }
+    public Mono<String> contactUs(ContactUsRequest request) {
+
+        return emailService.sendThankYouMail(request.getEmail(), request.getName())
+               // .then(emailService.notifyAdmin(request)) // optional
+                .thenReturn("Thank you for contacting us. We will reach you shortly.");
     }
 }

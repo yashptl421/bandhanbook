@@ -11,7 +11,9 @@ import lombok.Data;
 public class SupportResponse {
     private String agentName;
     private String agentPhone;
+    private String agentEmail;
     private String organizationName;
     private String organizationUserName;
     private String organizationPhone;
+    private String organizationEmail;
 }

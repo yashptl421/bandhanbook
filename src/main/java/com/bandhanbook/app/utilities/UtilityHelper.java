@@ -7,6 +7,9 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -152,6 +155,24 @@ public class UtilityHelper {
             // youngest person → born after or on this date
             return today.minusYears(age)
                     .atTime(23, 59, 59);
+        }
+    }
+
+    public static void validateAdult(Date dob) {
+        if (dob == null) {
+            throw new IllegalArgumentException("Date of birth is required");
+        }
+
+        LocalDate birthDate = dob.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+
+        if (birthDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("Date of birth cannot be in the future");
+        }
+
+        if (Period.between(birthDate, LocalDate.now()).getYears() < 18) {
+            throw new IllegalArgumentException("User must be at least 18 years old");
         }
     }
 }

@@ -24,6 +24,7 @@ public class UserRegisterRequest {
     @NotNull(message = "Gender must not be null")
     private GenderOptions gender;
 
+
     private Date dob;
 
     @Size(max = 50)

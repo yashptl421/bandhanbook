@@ -11,6 +11,4 @@ public interface AgentRepository extends ReactiveMongoRepository<Agents, String>
     Mono<Agents> findByUserId(ObjectId user_id);
 
     Mono<Long> countByOrganizationId(ObjectId organizationId);
-
-    Mono<Agents> findByIdIn(List<ObjectId> id);
 }

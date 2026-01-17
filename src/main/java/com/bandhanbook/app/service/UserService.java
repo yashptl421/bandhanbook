@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
+import static com.bandhanbook.app.utilities.UtilityHelper.validateAdult;
 
 @Slf4j
 @Service
@@ -243,6 +244,7 @@ public class UserService {
                         if (candidate.getImages() != null && req.getMatrimonyData().getImages() == null) {
                             req.getMatrimonyData().setImages(candidate.getImages());
                         }
+                        validateAdult(req.getMatrimonyData().getPersonalDetails().getDob());
                         modelMapper.map(req.getMatrimonyData(), candidate);
                         return userRepository.save(users).flatMap(user -> matrimonyRepository.save(candidate)
                                 .map(updatedCandidate -> {
@@ -423,6 +425,24 @@ public class UserService {
     }
 
     public Mono<List<SupportResponse>> candidateSupport(Users authUser) {
+        if (authUser.isAgent()) {
+            return agentRepository.findByUserId(authUser.getId()).flatMap(agents ->
+                    organizationRepository.findById(agents.getOrganizationId())
+                            .flatMap(org ->
+                                    userRepository.findById(org.getUserId())
+                                            .map(user -> {
+                                                SupportResponse res = SupportResponse.builder()
+                                                        .organizationEmail(user.getEmail())
+                                                        .organizationName(org.getOrganizationName())
+                                                        .organizationUserName(user.getFullName())
+                                                        .organizationPhone(user.getPhoneNumber())
+                                                        .build();
+                                                List<SupportResponse> responseList = new ArrayList<>();
+                                                responseList.add(res);
+                                                return responseList;
+                                            })
+                            ));
+        }
         ObjectId userId = authUser.getId();
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("user_id").is(userId)),
@@ -463,21 +483,27 @@ public class UserService {
                 Aggregation.project()
                         .and("agent_user.full_name").as("agentName")
                         .and("agent_user.phone_number").as("agentPhone")
+                        .and("agent_user.email").as("agentEmail")
                         .and("organization.organizationName").as("organizationName")
                         .and("organization_user.full_name").as("organizationUserName")
-                        .and("organization_user.phone_number").as("organizationPhone"),
+                        .and("organization_user.phone_number").as("organizationPhone")
+                        .and("organization_user.email").as("organizationEmail"),
 
                 Aggregation.group(
                                 "agentName",
                                 "agentPhone",
+                                "agentEmail",
                                 "organizationName",
                                 "organizationUserName",
-                                "organizationPhone"
+                                "organizationPhone",
+                                "organizationEmail"
                         ).first("agentName").as("agentName")
                         .first("agentPhone").as("agentPhone")
-                        .first("organizationUserName").as("organizationUserName")
+                        .first("agentEmail").as("agentEmail")
                         .first("organizationName").as("organizationName")
+                        .first("organizationUserName").as("organizationUserName")
                         .first("organizationPhone").as("organizationPhone")
+                        .first("organizationEmail").as("organizationEmail")
         );
 
         return reactiveMongoTemplate
@@ -487,6 +513,7 @@ public class UserService {
 
     @Transactional
     public Mono<String> register(UserRegisterRequest request, Users authUser) {
+        validateAdult(request.getDob());
         String role = RoleNames.Candidate.name();
         // If no OTP → Send OTP
         if (request.getOtp() == null || request.getOtp().isBlank()) {

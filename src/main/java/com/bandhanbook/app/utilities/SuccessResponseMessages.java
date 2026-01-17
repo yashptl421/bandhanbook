@@ -21,7 +21,7 @@ public interface SuccessResponseMessages {
     String FAVORITES_UPDATED = "Favorites updated successfully";
     String PROFILE_UPDATED = "Profile updated successfully";
     String IMAGE_UPLOADED = "Images uploaded successfully";
-    String PROFILE_IMAGE_REMOVED= "Profile image removed successfully";
+    String PROFILE_IMAGE_REMOVED = "Profile image removed successfully";
     String IMAGES_REMOVED = "Images removed successfully";
     String BANNER_CREATED = "Banner created successfully";
     String BANNER_UPDATED = "Banner updated successfully";
@@ -29,6 +29,6 @@ public interface SuccessResponseMessages {
     String ADVERTISEMENT_CREATED = "Advertisement created successfully";
     String ADVERTISEMENT_UPDATED = "Advertisement updated successfully";
     String ADVERTISEMENT_DELETED = "Advertisement deleted successfully";
-
+    String CONTACT_US_SUCCESS = "Thank you for contacting us. We will reach you shortly.";
 
 }

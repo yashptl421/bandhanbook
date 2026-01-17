@@ -129,7 +129,10 @@
             <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
             <version>${springdoc-openapi-starter-webflux-ui.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
