@@ -7,10 +7,7 @@ import com.bandhanbook.app.payload.request.CandidateRequest;
 import com.bandhanbook.app.payload.request.FavoritesRequest;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
-import com.bandhanbook.app.payload.response.AgentResponse;
-import com.bandhanbook.app.payload.response.CandidateResponse;
-import com.bandhanbook.app.payload.response.MatrimonyCandidateResponse;
-import com.bandhanbook.app.payload.response.PhoneLoginResponse;
+import com.bandhanbook.app.payload.response.*;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.CommonService;
 import com.bandhanbook.app.service.ImageUploadService;
@@ -241,9 +238,9 @@ public class UserController {
 
     @Operation(summary = "Login from web application")
     @GetMapping("/support")
-    public Mono<ResponseEntity<ApiResponse<PhoneLoginResponse>>> support(@CurrentUser Users user) {
-        return userService.myProfile(user)
-                .map(res -> ResponseEntity.ok(ApiResponse.<PhoneLoginResponse>builder()
+    public Mono<ResponseEntity<ApiResponse<List<SupportResponse>>>> support(@CurrentUser Users user) {
+        return userService.candidateSupport(user)
+                .map(res -> ResponseEntity.ok(ApiResponse.<List<SupportResponse>>builder()
                         .status(HttpStatus.OK.value())
                         .message(DATA_FOUND)
                         .data(res)

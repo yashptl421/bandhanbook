@@ -28,6 +28,10 @@ public class EventDbResponse {
     private LocalDateTime start_date;
     @JsonProperty("endDate")
     private LocalDateTime end_date;
+
+    @JsonProperty("registrationFee")
+    private int registration_fee;
+
     @JsonProperty("createdAt")
     private LocalDateTime created_at;
     private OrganizationResponse organization_details;

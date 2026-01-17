@@ -62,6 +62,7 @@ public class AdvertisementController {
                                 .data(tuple.getT3())
                                 .meta(ApiResponse.Meta.builder().page(filter.getPage()).limit(filter.getLimit()).totalRecords(tuple.getT1()).totalPages((int) Math.ceil((double) tuple.getT1() / filter.getLimit())).build())
                                 .activeCount(tuple.getT2())
+                                .inactiveCount(tuple.getT1()-tuple.getT2())
                                 .build()));
     }
 

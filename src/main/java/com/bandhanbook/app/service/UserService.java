@@ -16,6 +16,7 @@ import com.bandhanbook.app.payload.request.UserRegisterRequest;
 import com.bandhanbook.app.payload.response.CandidateResponse;
 import com.bandhanbook.app.payload.response.MatrimonyCandidateResponse;
 import com.bandhanbook.app.payload.response.PhoneLoginResponse;
+import com.bandhanbook.app.payload.response.SupportResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.repository.*;
 import com.bandhanbook.app.utilities.UtilityHelper;
@@ -28,6 +29,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -420,6 +422,69 @@ public class UserService {
                         }));
     }
 
+    public Mono<List<SupportResponse>> candidateSupport(Users authUser) {
+        ObjectId userId = authUser.getId();
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("user_id").is(userId)),
+                Aggregation.lookup(
+                        "eventparticipants",
+                        "_id",
+                        "candidate_id",
+                        "event_participants"
+                ),
+                Aggregation.unwind("event_participants"),
+                Aggregation.lookup(
+                        "agents",
+                        "event_participants.added_by",
+                        "_id",
+                        "agent"
+                ),
+                Aggregation.unwind("agent"),
+                Aggregation.lookup(
+                        "users",
+                        "agent.user_id",
+                        "_id",
+                        "agent_user"
+                ),
+                Aggregation.unwind("agent_user"),
+                Aggregation.lookup(
+                        "organizations",
+                        "agent.organization_id",
+                        "_id",
+                        "organization"
+                ),
+                Aggregation.unwind("organization"),
+                Aggregation.lookup(
+                        "users",
+                        "organization.user_id",
+                        "_id",
+                        "organization_user"
+                ),
+                Aggregation.project()
+                        .and("agent_user.full_name").as("agentName")
+                        .and("agent_user.phone_number").as("agentPhone")
+                        .and("organization.organizationName").as("organizationName")
+                        .and("organization_user.full_name").as("organizationUserName")
+                        .and("organization_user.phone_number").as("organizationPhone"),
+
+                Aggregation.group(
+                                "agentName",
+                                "agentPhone",
+                                "organizationName",
+                                "organizationUserName",
+                                "organizationPhone"
+                        ).first("agentName").as("agentName")
+                        .first("agentPhone").as("agentPhone")
+                        .first("organizationUserName").as("organizationUserName")
+                        .first("organizationName").as("organizationName")
+                        .first("organizationPhone").as("organizationPhone")
+        );
+
+        return reactiveMongoTemplate
+                .aggregate(aggregation, "matrimonyprofiles", SupportResponse.class)
+                .collectList();
+    }
+
     @Transactional
     public Mono<String> register(UserRegisterRequest request, Users authUser) {
         String role = RoleNames.Candidate.name();
@@ -442,7 +507,6 @@ public class UserService {
                                                     if (exists) {
                                                         return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
                                                     }
-                                                    // Add candidate to new event
                                                     return agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
                                                                     saveEventParticipant(candidate, request, agent))
                                                             .thenReturn(USER_REGISTERED);

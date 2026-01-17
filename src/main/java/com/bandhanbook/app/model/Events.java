@@ -1,6 +1,5 @@
 package com.bandhanbook.app.model;
 
-import com.bandhanbook.app.model.constants.ProfileStatus;
 import com.bandhanbook.app.model.constants.Status;
 import lombok.*;
 import org.bson.types.ObjectId;
@@ -41,6 +40,9 @@ public class Events {
 
     @Field("status")
     private Status status = Status.active;
+
+    @Field("registration_fee")
+    private int registrationFee;
 
     @Field("created_at")
     @CreatedDate
