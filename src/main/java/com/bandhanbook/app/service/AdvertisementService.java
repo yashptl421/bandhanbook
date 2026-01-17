@@ -219,10 +219,7 @@ public class AdvertisementService {
         criteria.and("event_id").in(eventIds);
 
         if (filter.getFrequencies() != null) {
-            List<Frequency> fre = filter.getFrequencies().stream().map(f-> {
-                System.out.println(f);
-                return  Frequency.valueOf(f);
-            }).toList();
+            List<Frequency> fre = filter.getFrequencies().stream().map(Frequency::valueOf).toList();
             criteria.and("frequency").in(fre);
         }
         if (filter.getIsActive() != null && !authUser.isCandidate()) {

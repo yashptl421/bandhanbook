@@ -238,4 +238,17 @@ public class UserController {
                                 .build()
                 );
     }
+
+    @Operation(summary = "Login from web application")
+    @GetMapping("/support")
+    public Mono<ResponseEntity<ApiResponse<PhoneLoginResponse>>> support(@CurrentUser Users user) {
+        return userService.myProfile(user)
+                .map(res -> ResponseEntity.ok(ApiResponse.<PhoneLoginResponse>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(DATA_FOUND)
+                        .data(res)
+                        .build()
+                ));
+    }
+
 }

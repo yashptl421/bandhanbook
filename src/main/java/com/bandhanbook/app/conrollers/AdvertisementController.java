@@ -78,7 +78,7 @@ public class AdvertisementController {
                         )
                 );
     }
-    @DeleteMapping
+    @PutMapping("/remove")
     public Mono<ResponseEntity<ApiResponse<String>>> deleteAdvertisement(
             @RequestBody List<String> requests
     ) {
