@@ -30,7 +30,7 @@ public class EventDbResponse {
     private LocalDateTime end_date;
 
     @JsonProperty("registrationFee")
-    private int registration_fee;
+    private double registration_fee;
 
     @JsonProperty("createdAt")
     private LocalDateTime created_at;

@@ -42,7 +42,7 @@ public class Events {
     private Status status = Status.active;
 
     @Field("registration_fee")
-    private int registrationFee;
+    private double registrationFee;
 
     @Field("created_at")
     @CreatedDate

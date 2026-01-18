@@ -48,7 +48,8 @@ public class WebSecurityConfig {
                                 "/v3/api-docs/**",
                                 "/webjars/**",
                                 "/swagger-resources/**",
-                                "/auth/**"
+                                "/auth/**",
+                                "/common/contact-us"
                         ,"http://localhost:8081/**").permitAll()
                         .pathMatchers("/swagger-ui/index.html/*", " /swagger-ui/**").permitAll()
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()

@@ -15,7 +15,7 @@ public class EventRequest {
     private String organizationId;
     private String location;
     private Status status;
-    private int registrationFee;
+    private double registrationFee;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 }

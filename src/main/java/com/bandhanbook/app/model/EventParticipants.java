@@ -39,7 +39,9 @@ public class EventParticipants {
     @Field("created_at")
     @CreatedDate
     private LocalDateTime createdAt;
-    private int registrationFee;
+
+    private double registrationFee;
+
     @Field("updated_at")
     @LastModifiedDate
     private LocalDateTime updatedAt;
