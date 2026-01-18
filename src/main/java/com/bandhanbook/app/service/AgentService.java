@@ -102,6 +102,7 @@ public class AgentService {
                                                 userDetails.setFull_name(users.getFullName());
                                                 userDetails.setPhone_number(users.getPhoneNumber());
                                                 userDetails.setRole(users.getRoles().get(0));
+                                                userDetails.setProfile_image(users.getProfileImage());
                                                 res.setUser_details(userDetails);
                                                 return res;
                                             });
