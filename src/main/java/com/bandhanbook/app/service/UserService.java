@@ -657,6 +657,7 @@ public class UserService {
                 .candidateId(candidate.getId())
                 .eventId(new ObjectId(request.getEventId()))
                 .addedBy(agent.getId())
+                .registrationFee(request.getRegistrationFee())
                 .organizationId(agent.getOrganizationId())
                 .build());
     }
