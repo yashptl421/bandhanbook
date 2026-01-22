@@ -2,6 +2,7 @@ package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.Organization;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.constants.EventType;
 import com.bandhanbook.app.model.constants.Status;
 import lombok.*;
 
@@ -22,6 +23,7 @@ public class EventResponse {
     private String location;
     private Status status;
     private double registrationFee;
+    private EventType eventType;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private LocalDateTime createdAt;

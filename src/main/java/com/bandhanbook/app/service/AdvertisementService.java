@@ -2,11 +2,8 @@ package com.bandhanbook.app.service;
 
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.Advertisement;
-import com.bandhanbook.app.model.EventParticipants;
-import com.bandhanbook.app.model.Events;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.Frequency;
-import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.AdvertisementFilterRequest;
 import com.bandhanbook.app.payload.request.AdvertisementRequest;
 import com.bandhanbook.app.payload.request.AdvertisementUpdateRequest;
@@ -36,7 +33,6 @@ import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
@@ -46,6 +42,7 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.ADVERTISEMEN
 @RequiredArgsConstructor
 public class AdvertisementService {
 
+    private final EventService eventService;
     private final EventsRepository eventRepository;
     private final OrganizationRepository organizationRepository;
     private final MatrimonyRepository matrimonyRepository;
@@ -116,7 +113,7 @@ public class AdvertisementService {
 
     public Mono<Tuple3<Long, Long, List<AdvertisementResponse>>> advertisementList(AdvertisementFilterRequest filter, Users authUser) {
 
-        return getEvetnIdMono(authUser)
+        return eventService.getEvetnIdMono(authUser)
                 .flatMap(eventIds ->
                         findWithCounts(filter, eventIds, authUser)
                 )
@@ -249,41 +246,5 @@ public class AdvertisementService {
         return template.aggregate(aggregation, "advertisements", AdvertisementWrapper.class)
                 .next()
                 .defaultIfEmpty(new AdvertisementWrapper());
-    }
-
-
-    private Mono<List<ObjectId>> getEvetnIdMono(Users authUser) {
-        if (authUser.isOrganization()) {
-            return organizationRepository.findByUserId(authUser.getId())
-                    .flatMap(org -> eventRepository.findByOrganizationIdAndStatus(org.getId(), Status.active)
-                            .map(Events::getId)
-                            .collectList()
-                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
-        } else if (authUser.isAgent()) {
-            return agentRepository.findByUserId(authUser.getId())
-                    .flatMap(agents -> eventRepository.findByOrganizationIdAndStatus(agents.getOrganizationId(), Status.active)
-                            .map(Events::getId)
-                            .collectList()
-                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
-        }
-        if (authUser.isCandidate()) {
-            return matrimonyRepository.findByUserId(authUser.getId())
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
-                    .flatMapMany(candidate ->
-                            eventParticipantsRepository.findByCandidateId(candidate.getId())
-                    )
-                    .map(EventParticipants::getEventId)
-                    .distinct()
-                    .collectList()
-                    .filter(list -> !list.isEmpty())
-                    .switchIfEmpty(Mono.error(
-                            new RecordNotFoundException(DATA_NOT_FOUND)));
-        } else if (authUser.isSuperUser()) {
-            return eventRepository.findByStatus(Status.active)
-                    .map(Events::getId)
-                    .collectList()
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
-        }
-        return Mono.error(new RecordNotFoundException(DATA_NOT_FOUND));
     }
 }

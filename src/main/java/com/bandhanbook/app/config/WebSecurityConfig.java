@@ -56,6 +56,7 @@ public class WebSecurityConfig {
                         .pathMatchers("/event/**").hasAnyRole(RoleNames.SuperUser.name(),RoleNames.Organization.name(), RoleNames.Agent.name())
                         .pathMatchers("/organization/**").hasAnyRole(RoleNames.SuperUser.name(),RoleNames.Organization.name())
                         .pathMatchers("/agent/**").hasAnyRole(RoleNames.SuperUser.name(),RoleNames.Organization.name(), RoleNames.Agent.name())
+                        .pathMatchers("/event-management/**").hasAnyRole(RoleNames.SuperUser.name(),RoleNames.Organization.name(), RoleNames.Agent.name())
                         .pathMatchers("/user/**").hasAnyRole(RoleNames.Organization.name(), RoleNames.Candidate.name(), RoleNames.SuperUser.name(),RoleNames.Agent.name())
                         .anyExchange().authenticated()
                 ).addFilterAt(jwtFilter, SecurityWebFiltersOrder.AUTHENTICATION)

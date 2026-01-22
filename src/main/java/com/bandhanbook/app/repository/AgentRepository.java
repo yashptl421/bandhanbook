@@ -7,7 +7,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-public interface AgentRepository extends ReactiveMongoRepository<Agents, String> {
+public interface AgentRepository extends ReactiveMongoRepository<Agents, ObjectId> {
     Mono<Agents> findByUserId(ObjectId user_id);
 
     Mono<Long> countByOrganizationId(ObjectId organizationId);

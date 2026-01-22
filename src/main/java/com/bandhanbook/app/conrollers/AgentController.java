@@ -8,6 +8,7 @@ import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.AgentService;
 import com.bandhanbook.app.wrappers.AgentWrapper;
 import jakarta.validation.Valid;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +36,7 @@ public class AgentController {
 
     @GetMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<AgentResponse>>> showAgent(@PathVariable String id, @CurrentUser Users authUser) {
-        return agentService.showAgent(id, authUser).map(response -> ResponseEntity.ok(
+        return agentService.showAgent(new ObjectId(id), authUser).map(response -> ResponseEntity.ok(
                 ApiResponse.<AgentResponse>builder()
                         .status(HttpStatus.OK.value())
                         .message(DATA_FOUND)
@@ -46,7 +47,7 @@ public class AgentController {
 
     @PutMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<String>>> updateAgent(@Valid @RequestBody AgentRequest req, @PathVariable String id) {
-        return agentService.updateAgent(req, id).thenReturn(ResponseEntity.ok(new ApiResponse<>(
+        return agentService.updateAgent(req, new ObjectId(id)).thenReturn(ResponseEntity.ok(new ApiResponse<>(
                 AGENT_UPDATED,
                 HttpStatus.OK.value()
         )));

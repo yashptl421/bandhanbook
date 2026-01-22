@@ -59,6 +59,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UtilityHelper utilityHelper;
     private final CommonService commonService;
+    private final EventManagementService eventManagementService;
 
 
     public Users getUsers() {
@@ -364,7 +365,7 @@ public class UserService {
                                 new Document("$count", "total")
                         ))
                         .append("data", List.of(
-                                new Document("$sort", new Document("createdAt", -1)),
+                                new Document("$sort", new Document("created_at", -1)),
                                 new Document("$skip", skip),
                                 new Document("$limit", limit),
                                 new Document("$project", new Document()
@@ -654,12 +655,20 @@ public class UserService {
 
     private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, Agents agent) {
         return eventParticipantRepo.save(EventParticipants.builder()
-                .candidateId(candidate.getId())
-                .eventId(new ObjectId(request.getEventId()))
-                .addedBy(agent.getId())
-                .registrationFee(request.getRegistrationFee())
-                .organizationId(agent.getOrganizationId())
-                .build());
+                        .candidateId(candidate.getId())
+                        .eventId(new ObjectId(request.getEventId()))
+                        .addedBy(agent.getId())
+                        .registrationFee(request.getRegistrationFee())
+                        .organizationId(agent.getOrganizationId())
+                        .build())
+                .doOnSuccess(ep ->
+                        eventManagementService.onCandidateRegistration(
+                                agent.getId(),
+                                new ObjectId(request.getEventId()),
+                                agent.getOrganizationId(),
+                                request.getRegistrationFee()
+                        ).subscribe() // ASYNC fire-and-forget
+                );
     }
 
     private MatrimonyCandidate registerReqToCandidate(UserRegisterRequest req, Users user) {

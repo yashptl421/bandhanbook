@@ -1,7 +1,6 @@
 package com.bandhanbook.app.model;
 
-import com.bandhanbook.app.model.constants.EventType;
-import com.bandhanbook.app.model.constants.Status;
+import com.bandhanbook.app.model.constants.SettlementStatus;
 import lombok.*;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
@@ -11,42 +10,42 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Document(collection = "events")
-public class Events {
+@Document(collection = "registration_settlement")
+public class RegistrationSettlement {
 
     @Id
     private ObjectId id;
 
-    private String name;
+    @Field("agent_id")
+    private ObjectId agentId;
 
-    @Field("created_by")
-    private ObjectId createdBy;
+    @Field("event_id")
+    private ObjectId eventId;
 
     @Field("organization_id")
     private ObjectId organizationId;
 
-    private String location;
-
-    @Field("start_date")
-    private LocalDateTime startDate;
-
-    @Field("end_date")
-    private LocalDateTime endDate;
-
-    @Field("status")
-    private Status status = Status.active;
-
     @Field("registration_fee")
     private double registrationFee;
 
-    @Field("event_type")
-    private EventType eventType;
+    @Field("registrations")
+    private int registrations;
+
+    @Field("total_amount")
+    private double totalAmount;
+
+    @Field("total_remaining_amount")
+    private double totalRemainingAmount;
+
+    @Field("total_settled_amount")
+    private double totalSettledAmount;
 
     @Field("created_at")
     @CreatedDate
@@ -59,4 +58,6 @@ public class Events {
     @Field("deleted_at")
     @Builder.Default
     private LocalDateTime deletedAt = null;
+
+    private List<History> settlementHistory;
 }

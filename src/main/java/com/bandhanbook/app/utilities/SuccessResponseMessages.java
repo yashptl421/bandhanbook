@@ -30,5 +30,7 @@ public interface SuccessResponseMessages {
     String ADVERTISEMENT_UPDATED = "Advertisement updated successfully";
     String ADVERTISEMENT_DELETED = "Advertisement deleted successfully";
     String CONTACT_US_SUCCESS = "Thank you for contacting us. We will reach you shortly.";
+    String SETTLEMENT_HISTORY_CREATED = "Settlement request created successfully.";
+    String SETTLEMENT_HISTORY_UPDATED = "Settlement request updated successfully.";
 
 }

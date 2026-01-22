@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.request;
 
+import com.bandhanbook.app.model.constants.EventType;
 import com.bandhanbook.app.model.constants.Status;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ public class EventRequest {
     private String organizationId;
     private String location;
     private Status status;
+    private EventType eventType;
     private double registrationFee;
     private LocalDateTime startDate;
     private LocalDateTime endDate;

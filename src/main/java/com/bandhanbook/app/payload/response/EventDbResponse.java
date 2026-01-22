@@ -2,6 +2,8 @@ package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.Address;
 import com.bandhanbook.app.model.Image;
+import com.bandhanbook.app.model.constants.EventType;
+import com.bandhanbook.app.model.constants.Status;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
@@ -28,9 +30,12 @@ public class EventDbResponse {
     private LocalDateTime start_date;
     @JsonProperty("endDate")
     private LocalDateTime end_date;
-
+    private Status status;
     @JsonProperty("registrationFee")
     private double registration_fee;
+
+    @JsonProperty("event_type")
+    private EventType eventType;
 
     @JsonProperty("createdAt")
     private LocalDateTime created_at;

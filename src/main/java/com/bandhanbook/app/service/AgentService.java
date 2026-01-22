@@ -82,7 +82,7 @@ public class AgentService {
                 });
     }
 
-    public Mono<AgentResponse> showAgent(String agentId, Users authUser) {
+    public Mono<AgentResponse> showAgent(ObjectId agentId, Users authUser) {
         return agentRepository.findById(agentId)
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .flatMap(agents ->
@@ -139,7 +139,7 @@ public class AgentService {
     }
 
     @Transactional
-    public Mono<String> updateAgent(AgentRequest request, String agentId) {
+    public Mono<String> updateAgent(AgentRequest request, ObjectId agentId) {
 
         return agentRepository.findById(agentId)
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))

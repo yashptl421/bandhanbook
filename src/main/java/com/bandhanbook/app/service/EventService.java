@@ -1,14 +1,14 @@
 package com.bandhanbook.app.service;
 
 import com.bandhanbook.app.exception.RecordNotFoundException;
+import com.bandhanbook.app.model.EventParticipants;
 import com.bandhanbook.app.model.Events;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.constants.EventType;
+import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.EventRequest;
 import com.bandhanbook.app.payload.response.EventResponse;
-import com.bandhanbook.app.repository.EventParticipantsRepository;
-import com.bandhanbook.app.repository.EventsRepository;
-import com.bandhanbook.app.repository.MatrimonyRepository;
-import com.bandhanbook.app.repository.OrganizationRepository;
+import com.bandhanbook.app.repository.*;
 import com.bandhanbook.app.wrappers.EventWrapper;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
@@ -38,6 +38,7 @@ public class EventService {
     private final EventsRepository eventsRepository;
     private final ModelMapper modelMapper;
     private final OrganizationRepository orgRepository;
+    private final AgentRepository agentRepository;
     private final AgentService agentService;
     private final MatrimonyRepository matrimonyRepository;
     private final EventParticipantsRepository eventParticipantRepo;
@@ -74,12 +75,7 @@ public class EventService {
                 .map(events -> modelMapper.map(events, EventResponse.class));
     }
 
-    public Mono<EventWrapper> eventsList(
-            Users authUser,
-            Map<String, String> params,
-            int page,
-            int limit
-    ) {
+    public Mono<EventWrapper> eventsList(Users authUser, Map<String, String> params, int page, int limit) {
         int skip = (page - 1) * limit;
 
         String search = params.get("search");
@@ -137,5 +133,39 @@ public class EventService {
                             .next()
                             .defaultIfEmpty(new EventWrapper());
                 });
+    }
+    public Mono<List<ObjectId>> getEvetnIdMono(Users authUser) {
+        if (authUser.isOrganization()) {
+            return orgRepository.findByUserId(authUser.getId())
+                    .flatMap(org -> eventsRepository.findByOrganizationIdAndStatusAndEventType(org.getId(), Status.active, EventType.CANDIDATE_REGISTRATION)
+                            .map(Events::getId)
+                            .collectList()
+                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
+        } else if (authUser.isAgent()) {
+            return agentRepository.findByUserId(authUser.getId())
+                    .flatMap(agents -> eventsRepository.findByOrganizationIdAndStatusAndEventType(agents.getOrganizationId(), Status.active, EventType.CANDIDATE_REGISTRATION)
+                            .map(Events::getId)
+                            .collectList()
+                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
+        }
+        if (authUser.isCandidate()) {
+            return matrimonyRepository.findByUserId(authUser.getId())
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                    .flatMapMany(candidate ->
+                            eventParticipantRepo.findByCandidateId(candidate.getId())
+                    )
+                    .map(EventParticipants::getEventId)
+                    .distinct()
+                    .collectList()
+                    .filter(list -> !list.isEmpty())
+                    .switchIfEmpty(Mono.error(
+                            new RecordNotFoundException(DATA_NOT_FOUND)));
+        } else if (authUser.isSuperUser()) {
+            return eventsRepository.findByStatus(Status.active)
+                    .map(Events::getId)
+                    .collectList()
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+        }
+        return Mono.error(new RecordNotFoundException(DATA_NOT_FOUND));
     }
 }
