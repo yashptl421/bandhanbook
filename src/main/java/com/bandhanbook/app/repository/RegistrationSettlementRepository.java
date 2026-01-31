@@ -8,5 +8,5 @@ import reactor.core.publisher.Mono;
 
 @Repository
 public interface RegistrationSettlementRepository extends ReactiveMongoRepository<RegistrationSettlement, ObjectId> {
-    Mono<RegistrationSettlement> findByAgentId(ObjectId agentId);
+    Mono<RegistrationSettlement> findByAgentIdAndEventId(ObjectId agentId, ObjectId eventId);
 }

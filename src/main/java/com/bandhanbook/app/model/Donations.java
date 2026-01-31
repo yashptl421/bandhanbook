@@ -1,6 +1,9 @@
 package com.bandhanbook.app.model;
 
-import com.bandhanbook.app.model.constants.SettlementStatus;
+import com.bandhanbook.app.model.constants.DonationStatus;
+import com.bandhanbook.app.model.constants.DonorType;
+import com.bandhanbook.app.model.constants.EventType;
+import com.bandhanbook.app.model.constants.PaymentMode;
 import lombok.*;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
@@ -10,20 +13,17 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Data
+
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Document(collection = "registration_settlement")
-public class RegistrationSettlement {
-
+@Document(collection = "donations")
+public class Donations {
     @Id
     private ObjectId id;
-
-    @Field("agent_id")
-    private ObjectId agentId;
 
     @Field("event_id")
     private ObjectId eventId;
@@ -31,26 +31,28 @@ public class RegistrationSettlement {
     @Field("organization_id")
     private ObjectId organizationId;
 
-    @Field("registration_fee")
-    private double registrationFee;
+    @Field("agent_id")
+    private ObjectId agentId;
 
-    @Field("recent_amount")
-    private double recentAmount;
+    @Field("event_type")
+    private EventType eventType;
 
-    @Field("registrations")
-    private int registrations;
-
-    @Field("donation_count")
-    private int donationCount;
-
-    @Field("total_amount")
-    private double totalAmount;
-
-    @Field("total_remaining_amount")
-    private double totalRemainingAmount;
-
-    @Field("total_settled_amount")
-    private double totalSettledAmount;
+    @Field("amount")
+    private double amount;
+    @Field("remark")
+    private String remark;
+    @Field("donor_type")
+    private DonorType donorType;
+    @Field("status")
+    private DonationStatus status;
+    @Field("payment_mode")
+    private PaymentMode paymentMode;
+    @Field("donor_name")
+    private String donorName;
+    @Field("phone_number")
+    private String phoneNumber;
+    private String address;
+    private String email;
 
     @Field("created_at")
     @CreatedDate
@@ -64,5 +66,4 @@ public class RegistrationSettlement {
     @Builder.Default
     private LocalDateTime deletedAt = null;
 
-    private List<History> settlementHistory;
 }

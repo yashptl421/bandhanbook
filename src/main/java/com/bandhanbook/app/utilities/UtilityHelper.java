@@ -1,7 +1,6 @@
 package com.bandhanbook.app.utilities;
 
 import com.bandhanbook.app.model.MatrimonyCandidate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
@@ -9,11 +8,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
 @Component
 public class UtilityHelper {
 
@@ -136,10 +136,11 @@ public class UtilityHelper {
         if (value instanceof Collection<?> c) return !c.isEmpty();
         return true;
     }
+
     /**
      * Converts age to LocalDateTime (DOB boundary)
      *
-     * @param age age in years
+     * @param age      age in years
      * @param isMaxAge true if age is maxAge, false if minAge
      */
     public static LocalDateTime getDateFromAge(int age, boolean isMaxAge) {
@@ -174,5 +175,22 @@ public class UtilityHelper {
         if (Period.between(birthDate, LocalDate.now()).getYears() < 18) {
             throw new IllegalArgumentException("User must be at least 18 years old");
         }
+    }
+
+    public static String getRegistrationBatchId() {
+
+        return "RS-" + counter.incrementAndGet();
+    }
+
+    private static final AtomicLong counter = new AtomicLong(System.currentTimeMillis());
+
+
+    public static String getDonationBatchId() {
+        return "DS-" + counter.incrementAndGet();
+    }
+
+    public static void main(String[] args) {
+        System.out.println(getRegistrationBatchId());
+        System.out.println(getDonationBatchId());
     }
 }

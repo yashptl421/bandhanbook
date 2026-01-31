@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class SettlementHistoryResponse {
     private String batchId;
+    private String agentName;
     private String settlementId;
     private String settlementHistoryId;
     private String agentId;

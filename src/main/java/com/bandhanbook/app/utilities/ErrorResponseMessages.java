@@ -26,4 +26,5 @@ public interface ErrorResponseMessages {
     String SETTLEMENT_REVERT_ERROR = "Can not revert to pending status";
     String SETTLEMENT_INVALID = "Invalid settlement request settlement request";
     String SETTLEMENT_INSUFFICIENT = "Insufficient remaining amount";
+    String SETTLEMENT_NOT_FOUND = "Settlement record not found";
 }
