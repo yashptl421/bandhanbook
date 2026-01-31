@@ -10,5 +10,6 @@ import reactor.core.publisher.Mono;
 
 public interface EventsRepository extends ReactiveMongoRepository<Events, ObjectId> {
     Flux<Events> findByOrganizationIdAndStatusAndEventType(ObjectId organizationId, Status status, EventType eventType);
+    Flux<Events> findByOrganizationIdAndStatus(ObjectId organizationId, Status status);
     Flux<Events> findByStatus(Status status);
 }

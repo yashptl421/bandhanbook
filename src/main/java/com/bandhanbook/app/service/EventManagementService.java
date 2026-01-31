@@ -3,28 +3,34 @@ package com.bandhanbook.app.service;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.exception.ValidationExceptions;
-import com.bandhanbook.app.model.Agents;
-import com.bandhanbook.app.model.History;
-import com.bandhanbook.app.model.RegistrationSettlement;
-import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.*;
 import com.bandhanbook.app.model.constants.SettlementStatus;
+import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.RegistrationSettlementRequest;
 import com.bandhanbook.app.payload.request.SettlementUpdateRequest;
+import com.bandhanbook.app.payload.response.EventResponse;
 import com.bandhanbook.app.payload.response.RegistrationSettlementResponse;
+import com.bandhanbook.app.payload.response.SettlementHistoryResponse;
 import com.bandhanbook.app.repository.AgentRepository;
+import com.bandhanbook.app.repository.EventsRepository;
+import com.bandhanbook.app.repository.OrganizationRepository;
 import com.bandhanbook.app.repository.RegistrationSettlementRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
@@ -34,8 +40,11 @@ import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
 public class EventManagementService {
     private final AgentRepository agentRepository;
     private final RegistrationSettlementRepository repository;
+    private final EventsRepository eventsRepository;
+    private final OrganizationRepository orgRepository;
     private final ModelMapper modelMapper;
     private final ReactiveMongoTemplate template;
+
 
     public Mono<RegistrationSettlementResponse> createRegistrationSettlement(RegistrationSettlementRequest request, Users authUser) {
         if (authUser.isAgent()) {
@@ -50,6 +59,21 @@ public class EventManagementService {
         }
         return Mono.empty();
     }
+
+    public Mono<RegistrationSettlementResponse> createDonationSettlement(RegistrationSettlementRequest request, Users authUser) {
+        if (authUser.isAgent()) {
+            request.setStatus(SettlementStatus.PENDING);
+            return settlementByAgent(request).map(res ->
+                    modelMapper.map(res, RegistrationSettlementResponse.class));
+
+        } else if (authUser.isOrganization()) {
+            request.setStatus(SettlementStatus.ACCEPTED);
+            return settlementByOrganization(request).map(res ->
+                    modelMapper.map(res, RegistrationSettlementResponse.class));
+        }
+        return Mono.empty();
+    }
+
 
     public Mono<RegistrationSettlementResponse> updateRegistrationSettlement(SettlementUpdateRequest request, Users authUser) {
         if (!authUser.isOrganization() && request.getSettlementHistory() != null) {
@@ -202,60 +226,100 @@ public class EventManagementService {
                 });
     }
 
-    public Mono<RegistrationSettlement> approveSettlement(
-            ObjectId settlementId,
-            ObjectId historyId
-    ) {
-        Query q = Query.query(
-                Criteria.where("_id").is(settlementId)
-                        .and("settlementHistory.id").is(historyId)
-                        .and("settlementHistory.status").is(SettlementStatus.PENDING)
+    public Mono<List<RegistrationSettlementResponse>> getAgentSettlementList(Users authUser, String reqAgentId) {
+        Mono<Agents> agentMono;
+        if (authUser.isAgent()) {
+            agentMono = agentRepository.findByUserId(authUser.getId());
+        } else if ((authUser.isSuperUser() || authUser.isOrganization()) && reqAgentId != null) {
+            agentMono = agentRepository.findById(new ObjectId(reqAgentId));
+        } else {
+            return Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND));
+        }
+        return agentMono.switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND))
+        ).flatMap(agent ->
+                eventsRepository.findByOrganizationIdAndStatus(agent.getOrganizationId(), Status.active)
+                        .map(Events::getId)
+                        .collectList()
+                        .flatMap(eventIds -> {
+
+                            if (eventIds.isEmpty()) {
+                                return Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND));
+                            }
+                            Query query = Query.query(
+                                    Criteria.where("agent_id").is(agent.getId())
+                                            .and("event_id").in(eventIds)
+                                            .and("deleted_at").is(null)
+                            );
+
+                            return template.find(query, RegistrationSettlement.class)
+                                    .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
+                                    .flatMap(settlement ->
+                                            eventsRepository.findById(settlement.getEventId())
+                                                    .map(event -> {
+                                                        RegistrationSettlementResponse response =
+                                                                modelMapper.map(settlement, RegistrationSettlementResponse.class);
+                                                        response.setEventDetails(
+                                                                modelMapper.map(event, EventResponse.class)
+                                                        );
+                                                        return response;
+                                                    })
+                                    )
+                                    .collectList();
+                        })
         );
-
-        return template.findOne(q, RegistrationSettlement.class)
-                .switchIfEmpty(Mono.error(new IllegalStateException("Invalid settlement request")))
-                .flatMap(s -> {
-
-                    History h = s.getSettlementHistory().stream()
-                            .filter(x -> x.getId().equals(historyId))
-                            .findFirst()
-                            .orElseThrow();
-
-                    double amount = h.getSettledAmount();
-                    double newRemaining = s.getTotalRemainingAmount() - amount;
-
-                    if (newRemaining < 0) {
-                        return Mono.error(new IllegalStateException("Insufficient remaining amount"));
-                    }
-
-                    Update u = new Update()
-                            // ✅ update specific history entry
-                            .set("settlementHistory.$.status", SettlementStatus.ACCEPTED)
-                            .set("settlementHistory.$.remaining_amount", newRemaining)
-                            .set("settlementHistory.$.settlementAt", LocalDateTime.now())
-
-                            // ✅ update totals atomically
-                            .inc("total_settled_amount", amount)
-                            .inc("total_remaining_amount", -amount);
-
-                    return template.findAndModify(
-                            q, u,
-                            FindAndModifyOptions.options().returnNew(true),
-                            RegistrationSettlement.class
-                    );
-                });
     }
 
-    public Mono<RegistrationSettlementResponse> getAgentCollectionList(Users authUser, String agentId) {
-        Mono<ObjectId> agentIdMono = null;
-        if (agentId != null && (authUser.isSuperUser() || authUser.isOrganization())) {
-            agentIdMono = Mono.just(new ObjectId(agentId));
-        } else if (authUser.isAgent()) {
-            agentIdMono = agentRepository.findByUserId(authUser.getId()).map(Agents::getId);
+    public Flux<SettlementHistoryResponse> getCloserList(Users authUser, String reqAgentId) {
+        return orgRepository.findByUserId(authUser.getId())
+                .flatMapMany(org -> getPendingSettlementsByOrganization(org.getId()));
+    }
 
-        }
-        assert agentIdMono != null;
-        return agentIdMono.flatMap(id -> repository.findByAgentId(id).map(res ->
-                modelMapper.map(res, RegistrationSettlementResponse.class)));
+
+    public Flux<SettlementHistoryResponse> getPendingSettlementsByOrganization(
+            ObjectId organizationId
+    ) {
+
+        Aggregation aggregation = Aggregation.newAggregation(
+
+                // 1️⃣ Match organization + not deleted
+                Aggregation.match(
+                        Criteria.where("organization_id").is(organizationId)
+                                .and("deleted_at").is(null)
+                ),
+
+                // 2️⃣ Unwind history
+                Aggregation.unwind("settlementHistory"),
+
+                // 3️⃣ Only PENDING settlements
+                Aggregation.match(
+                        Criteria.where("settlementHistory.status")
+                                .is(SettlementStatus.PENDING)
+                ),
+
+                // 4️⃣ Sort newest first
+                Aggregation.sort(
+                        Sort.Direction.DESC,
+                        "settlementHistory.created_at"
+                ),
+
+                // 5️⃣ Project clean response
+                Aggregation.project()
+                        .and("_id").as("settlementId")
+                        .and("agent_id").as("agentId")
+                        .and("event_id").as("eventId")
+                        .and("settlementHistory._id").as("settlementHistoryId")
+                        .and("settlementHistory.total_amount").as("totalAmount")
+                        .and("settlementHistory.remaining_amount").as("remainingAmount")
+                        .and("settlementHistory.settled_amount").as("settledAmount")
+                        .and("settlementHistory.remark").as("remark")
+                        .and("settlementHistory.status").as("status")
+                        .and("settlementHistory.created_at").as("createdAt")
+        );
+
+        return template.aggregate(
+                aggregation,
+                "registration_settlement",
+                SettlementHistoryResponse.class
+        );
     }
 }

@@ -44,10 +44,6 @@ public class AdvertisementService {
 
     private final EventService eventService;
     private final EventsRepository eventRepository;
-    private final OrganizationRepository organizationRepository;
-    private final MatrimonyRepository matrimonyRepository;
-    private final AgentRepository agentRepository;
-    private final EventParticipantsRepository eventParticipantsRepository;
     private final AdvertisementRepository repository;
     private final ImageUploadService fileUploadService;
     private final ReactiveMongoTemplate template;
@@ -113,7 +109,7 @@ public class AdvertisementService {
 
     public Mono<Tuple3<Long, Long, List<AdvertisementResponse>>> advertisementList(AdvertisementFilterRequest filter, Users authUser) {
 
-        return eventService.getEvetnIdMono(authUser)
+        return eventService.getEventIdMono(authUser)
                 .flatMap(eventIds ->
                         findWithCounts(filter, eventIds, authUser)
                 )

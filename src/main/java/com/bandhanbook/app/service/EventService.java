@@ -134,7 +134,7 @@ public class EventService {
                             .defaultIfEmpty(new EventWrapper());
                 });
     }
-    public Mono<List<ObjectId>> getEvetnIdMono(Users authUser) {
+    public Mono<List<ObjectId>> getEventIdMono(Users authUser) {
         if (authUser.isOrganization()) {
             return orgRepository.findByUserId(authUser.getId())
                     .flatMap(org -> eventsRepository.findByOrganizationIdAndStatusAndEventType(org.getId(), Status.active, EventType.CANDIDATE_REGISTRATION)

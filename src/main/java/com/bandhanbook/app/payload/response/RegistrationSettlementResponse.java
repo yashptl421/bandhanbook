@@ -1,7 +1,10 @@
 package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.constants.SettlementStatus;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,12 +37,17 @@ public class RegistrationSettlementResponse {
 
     private List<History> settlementHistory;
 
+    private EventResponse eventDetails;
+
     @AllArgsConstructor
     @NoArgsConstructor
     @Data
     @Builder
     public static class History {
         private String id;
+
+        private double totalAmount;
+
         private double remainingAmount;
 
         private double settledAmount;
@@ -48,7 +56,7 @@ public class RegistrationSettlementResponse {
 
         private SettlementStatus status;
 
-        private LocalDateTime settlementAt = null;
+        private LocalDateTime settlementAt;
 
         private LocalDateTime createdAt;
     }
