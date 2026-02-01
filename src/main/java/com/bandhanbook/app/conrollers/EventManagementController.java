@@ -1,12 +1,12 @@
 package com.bandhanbook.app.conrollers;
 
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
-import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.RegistrationSettlementRequest;
 import com.bandhanbook.app.payload.request.SettlementUpdateRequest;
 import com.bandhanbook.app.payload.response.RegistrationSettlementResponse;
 import com.bandhanbook.app.payload.response.SettlementHistoryResponse;
+import com.bandhanbook.app.payload.response.SettlementSummaryResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.EventManagementService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,7 +21,6 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.SETTLEMENT_ACCESS_ERROR;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 @Slf4j
@@ -66,6 +65,26 @@ public class EventManagementController {
         );
     }
 
+    @GetMapping("/settlement/{id}")
+    public Mono<ResponseEntity<ApiResponse<RegistrationSettlementResponse>>> getSettlementById(@PathVariable String id, @CurrentUser Users authUser) {
+        return eventManagementService.getSettlementById(id, authUser)
+                .map(res -> ResponseEntity.ok(ApiResponse.<RegistrationSettlementResponse>builder()
+                        .message(DATA_FOUND)
+                        .data(res)
+                        .status(HttpStatus.OK.value())
+                        .build()));
+    }
+
+    @GetMapping("/settlement/history/{id}")
+    public Mono<ResponseEntity<ApiResponse<SettlementHistoryResponse>>> getSettlementHistoryById(@PathVariable String id, @CurrentUser Users authUser) {
+        return eventManagementService.getSettlementHistoryById(id, authUser)
+                .map(res -> ResponseEntity.ok(ApiResponse.<SettlementHistoryResponse>builder()
+                        .message(DATA_FOUND)
+                        .data(res)
+                        .status(HttpStatus.OK.value())
+                        .build()));
+    }
+
     @GetMapping
     public Mono<ResponseEntity<ApiResponse<List<SettlementHistoryResponse>>>> getCloserList(@CurrentUser Users authUser, @RequestParam Map<String, String> params) {
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
@@ -73,5 +92,15 @@ public class EventManagementController {
         String agentId = params.getOrDefault("agentId", "");
         return eventManagementService.getCloserList(authUser, agentId, page, limit)
                 .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/settlement/summary")
+    public Mono<ResponseEntity<ApiResponse<SettlementSummaryResponse>>> getSettlementSummary(@CurrentUser Users authUser, @RequestParam(required = false) String eventId) {
+        return eventManagementService.getSettlementSummary(authUser, eventId)
+                .map(res -> ResponseEntity.ok(ApiResponse.<SettlementSummaryResponse>builder()
+                        .message(DATA_FOUND)
+                        .data(res)
+                        .status(HttpStatus.OK.value())
+                        .build()));
     }
 }

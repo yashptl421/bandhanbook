@@ -11,6 +11,7 @@ import com.bandhanbook.app.payload.request.SettlementUpdateRequest;
 import com.bandhanbook.app.payload.response.EventResponse;
 import com.bandhanbook.app.payload.response.RegistrationSettlementResponse;
 import com.bandhanbook.app.payload.response.SettlementHistoryResponse;
+import com.bandhanbook.app.payload.response.SettlementSummaryResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.repository.AgentRepository;
 import com.bandhanbook.app.repository.EventsRepository;
@@ -64,21 +65,6 @@ public class EventManagementService {
         }*/
         return Mono.empty();
     }
-
-    public Mono<RegistrationSettlementResponse> createDonationSettlement(RegistrationSettlementRequest request, Users authUser) {
-        if (authUser.isAgent()) {
-            request.setStatus(SettlementStatus.PENDING);
-            return settlementByAgent(request, authUser).map(res ->
-                    modelMapper.map(res, RegistrationSettlementResponse.class));
-
-        } /*else if (authUser.isOrganization()) {
-            request.setStatus(SettlementStatus.ACCEPTED);
-            return settlementByOrganization(request).map(res ->
-                    modelMapper.map(res, RegistrationSettlementResponse.class));
-        }*/
-        return Mono.empty();
-    }
-
 
     public Mono<RegistrationSettlementResponse> updateRegistrationSettlement(SettlementUpdateRequest request, Users authUser) {
         if (!authUser.isOrganization() || request.getSettlementHistory() == null) {
@@ -311,6 +297,92 @@ public class EventManagementService {
             return getPendingSettlements(null, reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), page, limit);
     }
 
+    public Mono<SettlementSummaryResponse> getSettlementSummary(Users authUser, String eventId) {
+        Criteria criteria = Criteria.where("deleted_at").is(null);
+        if (eventId != null && !eventId.isBlank())
+            criteria.and("event_id").is(new ObjectId(eventId));
+
+        if (authUser.isOrganization()) {
+            return orgRepository.findByUserId(authUser.getId())
+                    .flatMap(org -> {
+                        criteria.and("organization_id").is(org.getId());
+                        return settlementSummaryAggregation(template, criteria);
+                    });
+        } else if (authUser.isAgent()) {
+            return agentRepository.findByUserId(authUser.getId())
+                    .flatMap(agent -> {
+                        criteria.and("agent_id").is(agent.getId());
+                        return settlementSummaryAggregation(template, criteria);
+                    });
+        } else {
+            return settlementSummaryAggregation(template, criteria);
+        }
+    }
+
+    private Mono<SettlementSummaryResponse> settlementSummaryAggregation(ReactiveMongoTemplate template, Criteria criteria) {
+        Aggregation aggregation = Aggregation.newAggregation(Aggregation.match(criteria),
+                Aggregation.group()
+                        .sum("total_settled_amount").as("totalSettledAmount")
+                        .sum("total_remaining_amount").as("totalRemainingAmount")
+                        .sum("total_amount").as("totalAmount")
+                        .count().as("totalSettlements")
+        );
+
+        return template.aggregate(aggregation, "registration_settlement", SettlementSummaryResponse.class)
+                .next()
+                .defaultIfEmpty(new SettlementSummaryResponse());
+    }
+
+    public Mono<RegistrationSettlementResponse> getSettlementById(String id, Users authUser) {
+        Mono<RegistrationSettlement> settlementMono = repository.findById(new ObjectId(id))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(SETTLEMENT_NOT_FOUND)));
+
+        if (authUser.isOrganization()) {
+            return orgRepository.findByUserId(authUser.getId())
+                    .flatMap(org -> settlementMono.filter(s -> s.getOrganizationId().equals(org.getId()))
+                            .switchIfEmpty(Mono.error(new UnAuthorizedException(SETTLEMENT_ACCESS_ERROR))))
+                    .map(s -> modelMapper.map(s, RegistrationSettlementResponse.class));
+        } else if (authUser.isAgent()) {
+            return agentRepository.findByUserId(authUser.getId())
+                    .flatMap(agent -> settlementMono.filter(s -> s.getAgentId().equals(agent.getId()))
+                            .switchIfEmpty(Mono.error(new UnAuthorizedException(SETTLEMENT_ACCESS_ERROR))))
+                    .map(s -> modelMapper.map(s, RegistrationSettlementResponse.class));
+        } else {
+            return settlementMono.map(s -> modelMapper.map(s, RegistrationSettlementResponse.class));
+        }
+    }
+
+    public Mono<SettlementHistoryResponse> getSettlementHistoryById(String id, Users authUser) {
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(
+                        Criteria.where("settlementHistory._id").is(new ObjectId(id))
+                                .and("deleted_at").is(null)
+                ),
+                Aggregation.unwind("settlementHistory"),
+                Aggregation.match(
+                        Criteria.where("settlementHistory._id").is(new ObjectId(id))
+                ),
+                Aggregation.project()
+                        .and("_id").as("settlementId")
+                        .and("agent_id").as("agentId")
+                        .and("event_id").as("eventId")
+                        .and("organization_id").as("organizationId")
+                        .and("settlementHistory._id").as("settlementHistoryId")
+                        .and("settlementHistory.total_amount").as("totalAmount")
+                        .and("settlementHistory.batch_id").as("batchId")
+                        .and("settlementHistory.remaining_amount").as("remainingAmount")
+                        .and("settlementHistory.settled_amount").as("settledAmount")
+                        .and("settlementHistory.remark").as("remark")
+                        .and("settlementHistory.status").as("status")
+                        .and("settlementHistory.created_at").as("createdAt")
+        );
+
+        return template.aggregate(
+                aggregation,
+                "registration_settlement",
+                SettlementHistoryResponse.class
+        ).next().switchIfEmpty(Mono.error(new RecordNotFoundException(SETTLEMENT_NOT_FOUND)));
+    }
 
     public Mono<ApiResponse<List<SettlementHistoryResponse>>> getPendingSettlements(ObjectId organizationId, ObjectId agentId, int page, int limit) {
         int skip = (page - 1) * limit;
@@ -404,49 +476,6 @@ public class EventManagementService {
                                     .build())
                             .build();
                 });
-    }
-
-    public Flux<SettlementHistoryResponse> getPendingSettlementsByOrganization(ObjectId organizationId) {
-
-        Aggregation aggregation = Aggregation.newAggregation(
-
-                Aggregation.match(
-                        Criteria.where("organization_id").is(organizationId)
-                                .and("deleted_at").is(null)
-                ),
-
-                Aggregation.unwind("settlementHistory"),
-
-                Aggregation.match(
-                        Criteria.where("settlementHistory.status")
-                                .is(SettlementStatus.PENDING)
-                ),
-
-                Aggregation.sort(
-                        Sort.Direction.DESC,
-                        "settlementHistory.created_at"
-                ),
-
-                // 5️⃣ Project clean response
-                Aggregation.project()
-                        .and("_id").as("settlementId")
-                        .and("agent_id").as("agentId")
-                        .and("event_id").as("eventId")
-                        .and("settlementHistory._id").as("settlementHistoryId")
-                        .and("settlementHistory.total_amount").as("totalAmount")
-                        .and("settlementHistory.batch_id").as("batchId")
-                        .and("settlementHistory.remaining_amount").as("remainingAmount")
-                        .and("settlementHistory.settled_amount").as("settledAmount")
-                        .and("settlementHistory.remark").as("remark")
-                        .and("settlementHistory.status").as("status")
-                        .and("settlementHistory.created_at").as("createdAt")
-        );
-
-        return template.aggregate(
-                aggregation,
-                "registration_settlement",
-                SettlementHistoryResponse.class
-        );
     }
 
     private Mono<Agents> resolveAgent(Users authUser, String reqAgentId) {
