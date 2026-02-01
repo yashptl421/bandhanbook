@@ -4,6 +4,7 @@ import com.bandhanbook.app.model.constants.DonationStatus;
 import com.bandhanbook.app.model.constants.DonorType;
 import com.bandhanbook.app.model.constants.EventType;
 import com.bandhanbook.app.model.constants.PaymentMode;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class DonationResponse {
 
     private String id;

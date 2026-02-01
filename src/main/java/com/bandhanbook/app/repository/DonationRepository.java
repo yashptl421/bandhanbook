@@ -13,6 +13,7 @@ public interface DonationRepository extends ReactiveMongoRepository<Donations, O
     Flux<Donations> findByAgentIdAndDeletedAtIsNull(ObjectId agentId);
 
     Flux<Donations> findByOrganizationIdAndDeletedAtIsNull(ObjectId organizationId);
+    Mono<Long>  countByAgentIdAndDeletedAtIsNull(ObjectId agentId);
 
     Mono<Long> countByOrganizationIdAndDeletedAtIsNull(ObjectId organizationId);
 }

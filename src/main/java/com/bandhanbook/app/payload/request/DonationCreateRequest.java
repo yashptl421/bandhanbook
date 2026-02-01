@@ -15,7 +15,7 @@ public class DonationCreateRequest {
     private String address;
     private String email;
     private String phoneNumber;
-    private DonorType donorType;
+    private DonorType donorType= DonorType.INDIVIDUAL;
     private String remark;
     @NotNull
     private PaymentMode paymentMode;

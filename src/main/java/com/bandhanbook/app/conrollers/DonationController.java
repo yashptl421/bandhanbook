@@ -41,12 +41,12 @@ public class DonationController {
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
         return donationService.listDonations(authUser, page, limit)
-                .collectList()
                 .map(response -> ResponseEntity.ok(
                         ApiResponse.<List<DonationResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message(DATA_FOUND)
-                                .data(response)
+                                .data(response.getT2())
+                                .meta(ApiResponse.Meta.builder().limit(limit).page(page).totalRecords(response.getT1()).totalPages((int) Math.ceil((double) response.getT1() / limit)).build())
                                 .build()
                 ));
     }

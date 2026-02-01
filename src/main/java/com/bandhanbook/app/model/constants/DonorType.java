@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 public enum DonorType {
     INDIVIDUAL("Individual"),
     ORGANIZATION("Organization"),
-    DONATION("Annonymous");
+    ANONYMOUS("Anonymous");
 
     DonorType(String name) {
     }

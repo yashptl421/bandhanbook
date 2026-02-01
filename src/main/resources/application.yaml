@@ -23,7 +23,8 @@ logging:
         data:
           mongodb:
             core:
-              MongoTemplate: DEBUG
+              ReactiveMongoTemplate: DEBUG
+
 jwt:
   secret: L8KwmXTT/ByT7e9ZiO0s5cGedE7cSfS5YKpC0Qn/qO8=
   refresh_secret: 9a4f2c8d3b7a1e6f45c8a0b3f267d8b1d4e6f3c8a9d2b5f8e3a9c8b5f6v8a3d9
@@ -69,7 +70,6 @@ images:
   banner.path : /banner/
   advertisement.path : /ads/
   blog.path : /blogs/
-
 app:
   mail:
     from: no-reply@bandhanbook.com

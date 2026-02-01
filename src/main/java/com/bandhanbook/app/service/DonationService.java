@@ -18,8 +18,10 @@ import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.RECORD_NOT_FOUND;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.DONATION_CREATED;
@@ -47,6 +49,10 @@ public class DonationService {
                             .agentId(agent.getId())
                             .organizationId(event.getOrganizationId())
                             .eventId(eventId)
+                            .address(request.getAddress())
+                            .email(request.getEmail())
+                            .phoneNumber(request.getPhoneNumber())
+                            .donorType(request.getDonorType())
                             .amount(request.getAmount())
                             .donorName(request.getDonorName())
                             .remark(request.getRemark())
@@ -60,22 +66,55 @@ public class DonationService {
                 }));
     }
 
-    public Flux<DonationResponse> listDonations(Users authUser, int page, int limit) {
-        int skip = (page - 1) * limit;
+    public Mono<Tuple2<Long, List<DonationResponse>>> listDonations(Users authUser, int page, int limit) {
+        int skip = Math.max(page - 1, 0) * limit;
+
+        Mono<Long> countMono;
+        Flux<DonationResponse> dataFlux;
+
         if (authUser.isAgent()) {
-            return donationRepository
-                    .findByAgentIdAndDeletedAtIsNull(authUser.getId())
+            Mono<ObjectId> agentIdMono = agentRepository
+                    .findByUserId(authUser.getId())
+                    .map(Agents::getId);
+            countMono = agentIdMono.flatMap(donationRepository::countByAgentIdAndDeletedAtIsNull);
+            dataFlux = agentIdMono.flatMapMany(agentId -> donationRepository
+                    .findByAgentIdAndDeletedAtIsNull(agentId)
+                    .sort(java.util.Comparator.comparing(Donations::getCreatedAt,
+                            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
+                    .skip(skip)
+                    .take(limit)
+                    .map(this::toResponse));
+
+        } else if (authUser.isOrganization()) {
+            Mono<ObjectId> orgIdMono = organizationRepository
+                    .findByUserId(authUser.getId())
+                    .map(Organization::getId);
+
+            countMono = orgIdMono.flatMap(
+                    donationRepository::countByOrganizationIdAndDeletedAtIsNull
+            );
+
+            dataFlux = orgIdMono.flatMapMany(orgId ->
+                    donationRepository
+                            .findByOrganizationIdAndDeletedAtIsNull(orgId)
+                            .sort(java.util.Comparator.comparing(Donations::getCreatedAt,
+                                    java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
+                            .skip(skip)
+                            .take(limit)
+                            .map(this::toResponse)
+            );
+
+        } else {
+            countMono = donationRepository.count();
+            dataFlux = donationRepository.findAll()
+                    .sort(java.util.Comparator.comparing(Donations::getCreatedAt,
+                            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
+                    .skip(skip)
+                    .take(limit)
                     .map(this::toResponse);
         }
 
-        if (authUser.isOrganization()) {
-            Mono<Organization> orgMono = organizationRepository.findByUserId(authUser.getId());
-            return orgMono.flatMapMany(org ->
-                    donationRepository.findByOrganizationIdAndDeletedAtIsNull(org.getId())
-                            .map(this::toResponse));
-        }
-
-        return donationRepository.findAll().map(this::toResponse);
+        return countMono.zipWith(dataFlux.collectList());
     }
 
     /* UPDATE */
