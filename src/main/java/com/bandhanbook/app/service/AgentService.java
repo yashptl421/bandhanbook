@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.SUBSCRIPTION_INACTIVE;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_CREATED;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_UPDATED;
 
@@ -44,7 +43,6 @@ public class AgentService {
     private final OrganizationRepository organizationRepository;
     private final ReactiveMongoTemplate mongoTemplate;
     private final CommonService commonService;
-    private final OrgSubscriptionService subscriptionService;
 
     public Mono<String> createAgent(AgentRequest request, Users authUser) {
 
@@ -106,22 +104,20 @@ public class AgentService {
                                                 res.setUser_details(userDetails);
                                                 return res;
                                             });
-                                }).switchIfEmpty(Mono.defer(() -> {
-                                    return userRepository.findById(agents.getUserId())
-                                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
-                                            .map(users -> {
-                                                AgentResponse res = modelMapper.map(agents, AgentResponse.class);
-                                                res.setUser_id(agents.getUserId().toHexString());
-                                                res.setOrganization_id(agents.getOrganizationId().toHexString());
-                                                res.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
-                                                AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
-                                                userDetails.setFull_name(users.getFullName());
-                                                userDetails.setPhone_number(users.getPhoneNumber());
-                                                userDetails.setRole(users.getRoles().get(0));
-                                                res.setUser_details(userDetails);
-                                                return res;
-                                            });
-                                })));
+                                }).switchIfEmpty(Mono.defer(() -> userRepository.findById(agents.getUserId())
+                                        .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                                        .map(users -> {
+                                            AgentResponse res = modelMapper.map(agents, AgentResponse.class);
+                                            res.setUser_id(agents.getUserId().toHexString());
+                                            res.setOrganization_id(agents.getOrganizationId().toHexString());
+                                            res.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
+                                            AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
+                                            userDetails.setFull_name(users.getFullName());
+                                            userDetails.setPhone_number(users.getPhoneNumber());
+                                            userDetails.setRole(users.getRoles().get(0));
+                                            res.setUser_details(userDetails);
+                                            return res;
+                                        }))));
     }
 
     private Mono<String> saveAgent(AgentRequest request, Users newUser) {

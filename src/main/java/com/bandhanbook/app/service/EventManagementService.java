@@ -67,13 +67,11 @@ public class EventManagementService {
     }
 
     public Mono<RegistrationSettlementResponse> updateRegistrationSettlement(SettlementUpdateRequest request, Users authUser) {
-        if (!authUser.isOrganization() || request.getSettlementHistory() == null) {
+        if (!authUser.isOrganization() && request.getSettlementId() == null) {
             return Mono.error(new UnAuthorizedException(SETTLEMENT_ACCESS_ERROR));
         }
 
-        SettlementUpdateRequest.History history = request.getSettlementHistory();
-
-        if (history.getStatus().equals(SettlementStatus.PENDING)) {
+        if (request.getStatus().equals(SettlementStatus.PENDING)) {
             Mono.error(new UnAuthorizedException(SETTLEMENT_REVERT_ERROR));
         }
         return updateSettlementByOrganization(request)
@@ -199,10 +197,10 @@ public class EventManagementService {
     }*/
 
     public Mono<RegistrationSettlement> updateSettlementByOrganization(SettlementUpdateRequest request) {
-        SettlementUpdateRequest.History reqHistory = request.getSettlementHistory();
+
         Query query = Query.query(
                 Criteria.where("_id").is(request.getSettlementId())
-                        .and("settlementHistory.id").is(reqHistory.getId())
+                        .and("settlementHistory.id").is(request.getSettlementHistoryId())
                         .and("settlementHistory.status").is(SettlementStatus.PENDING)
         );
         return template.findOne(query, RegistrationSettlement.class)
@@ -210,11 +208,11 @@ public class EventManagementService {
                 .flatMap(settlement -> {
 
                     History history = settlement.getSettlementHistory().stream()
-                            .filter(x -> x.getId().equals(new ObjectId(reqHistory.getId())))
+                            .filter(x -> x.getId().equals(new ObjectId(request.getSettlementHistoryId())))
                             .findFirst()
                             .orElseThrow();
                     double amount = history.getSettledAmount();
-                    if (reqHistory.getStatus().equals(SettlementStatus.REJECTED)) {
+                    if (request.getStatus().equals(SettlementStatus.REJECTED)) {
                         amount = 0;
                     }
 
@@ -226,7 +224,7 @@ public class EventManagementService {
 
                     Update u = new Update()
                             // ✅ update specific history entry
-                            .set("settlementHistory.$.status", reqHistory.getStatus())
+                            .set("settlementHistory.$.status", request.getStatus())
                             .set("settlementHistory.$.settlementAt", LocalDateTime.now())
 
                             // ✅ update totals atomically
