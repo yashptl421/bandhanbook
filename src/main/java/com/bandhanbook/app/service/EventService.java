@@ -80,6 +80,7 @@ public class EventService {
 
         String search = params.get("search");
         String createdBy = params.get("createdBy");
+        EventType eventType = params.containsKey("eventType") ? EventType.valueOf(params.get("eventType")) : null;
 
         List<AggregationOperation> pipeline = new ArrayList<>();
         // -------------------------
@@ -91,6 +92,9 @@ public class EventService {
                 .flatMap(id -> {
                     if (!id.isBlank()) {
                         criteria.and("organization_id").is(new ObjectId(id));
+                    }
+                    if(eventType!=null){
+                        criteria.and("event_type").is(eventType);
                     }
                     if (createdBy != null && !createdBy.isBlank()) {
                         criteria.and("created_by").is(new ObjectId(createdBy));

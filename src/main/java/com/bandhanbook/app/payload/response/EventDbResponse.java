@@ -34,8 +34,8 @@ public class EventDbResponse {
     @JsonProperty("registrationFee")
     private double registration_fee;
 
-    @JsonProperty("event_type")
-    private EventType eventType;
+    @JsonProperty("eventType")
+    private EventType event_type;
 
     @JsonProperty("createdAt")
     private LocalDateTime created_at;
