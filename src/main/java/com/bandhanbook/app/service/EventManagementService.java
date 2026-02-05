@@ -285,14 +285,16 @@ public class EventManagementService {
         });
     }
 
-    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getCloserList(Users authUser, String reqAgentId, int page, int limit) {
+    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getCloserList(Users authUser, Map<String, String> params, int page, int limit) {
+        String reqAgentId = params.getOrDefault("agentId", "");
+        SettlementStatus reqStatus = SettlementStatus.valueOf(params.getOrDefault("status", SettlementStatus.PENDING.name()));
         if (authUser.isOrganization()) {
             return orgRepository.findByUserId(authUser.getId())
-                    .flatMap(org -> getPendingSettlements(org.getId(), reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), page, limit));
+                    .flatMap(org -> getPendingSettlements(org.getId(), reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), reqStatus, page, limit));
         } else if (authUser.isAgent()) {
-            return agentRepository.findByUserId(authUser.getId()).flatMap(agents -> getPendingSettlements(null, agents.getId(), page, limit));
+            return agentRepository.findByUserId(authUser.getId()).flatMap(agents -> getPendingSettlements(null, agents.getId(),reqStatus, page, limit));
         } else
-            return getPendingSettlements(null, reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), page, limit);
+            return getPendingSettlements(null, reqAgentId.isBlank() ? null : new ObjectId(reqAgentId),reqStatus, page, limit);
     }
 
     public Mono<SettlementSummaryResponse> getSettlementSummary(Users authUser, String eventId) {
@@ -382,7 +384,7 @@ public class EventManagementService {
         ).next().switchIfEmpty(Mono.error(new RecordNotFoundException(SETTLEMENT_NOT_FOUND)));
     }
 
-    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getPendingSettlements(ObjectId organizationId, ObjectId agentId, int page, int limit) {
+    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getPendingSettlements(ObjectId organizationId, ObjectId agentId, SettlementStatus status,  int page, int limit) {
         int skip = (page - 1) * limit;
         Criteria baseCriteria = Criteria.where("deleted_at").is(null);
         if (organizationId != null) {
@@ -392,15 +394,9 @@ public class EventManagementService {
             baseCriteria = baseCriteria.and("agent_id").is(agentId);
         }
         Aggregation aggregation = Aggregation.newAggregation(
-
                 Aggregation.match(baseCriteria),
-
                 Aggregation.unwind("settlementHistory"),
-
-                Aggregation.match(
-                        Criteria.where("settlementHistory.status")
-                                .is(SettlementStatus.PENDING)
-                ),
+                Aggregation.match(Criteria.where("settlementHistory.status").is(status)),
                 Aggregation.lookup(
                         "agents",
                         "agent_id",
@@ -408,7 +404,6 @@ public class EventManagementService {
                         "agent"
                 ),
                 Aggregation.unwind("agent"),
-
                 Aggregation.lookup(
                         "users",
                         "agent.user_id",
@@ -416,7 +411,6 @@ public class EventManagementService {
                         "agent_user"
                 ),
                 Aggregation.unwind("agent_user"),
-
                 Aggregation.sort(
                         Sort.Direction.DESC,
                         "settlementHistory.created_at"
@@ -438,30 +432,19 @@ public class EventManagementService {
                                         .and("settlementHistory.remark").as("remark")
                                         .and("settlementHistory.status").as("status")
                                         .and("settlementHistory.created_at").as("createdAt")
-
                         ).as("data")
                         .and(Aggregation.count().as("total"))
                         .as("metadata")
         );
 
-        return template.aggregate(
-                        aggregation,
-                        "registration_settlement",
-                        SettlementHistoryWrapper.class
-                )
+        return template.aggregate(aggregation,"registration_settlement",SettlementHistoryWrapper.class)
                 .next()
                 .defaultIfEmpty(new SettlementHistoryWrapper())
                 .map(wrapper -> {
-
-                    List<SettlementHistoryResponse> data =
-                            wrapper.getData() == null ? List.of() : wrapper.getData();
-                    long total =
-                            (wrapper.getMetadata() != null && !wrapper.getMetadata().isEmpty())
-                                    ? wrapper.getMetadata().get(0).getTotal()
-                                    : 0;
-
+                    List<SettlementHistoryResponse> data =wrapper.getData() == null ? List.of() : wrapper.getData();
+                    long total =(wrapper.getMetadata() != null && !wrapper.getMetadata().isEmpty())
+                                    ? wrapper.getMetadata().get(0).getTotal() : 0;
                     int totalPages = (int) Math.ceil((double) total / limit);
-
                     return ApiResponse.<List<SettlementHistoryResponse>>builder()
                             .status(200)
                             .message(data.isEmpty() ? DATA_NOT_FOUND : DATA_FOUND)

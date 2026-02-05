@@ -26,6 +26,7 @@ public class DonationResponse {
     private String submittedTo;
     private String eventId;
     private EventType eventType;
+    private String  eventName;
     private double amount;
     private String donorName;
     private String address;

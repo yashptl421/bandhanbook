@@ -90,7 +90,7 @@ public class EventManagementController {
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
         String agentId = params.getOrDefault("agentId", "");
-        return eventManagementService.getCloserList(authUser, agentId, page, limit)
+        return eventManagementService.getCloserList(authUser, params, page, limit)
                 .map(ResponseEntity::ok);
     }
 

@@ -3,7 +3,6 @@ package com.bandhanbook.app.service;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.Donations;
-import com.bandhanbook.app.model.Organization;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.DonationStatus;
 import com.bandhanbook.app.payload.request.DonationCreateRequest;
@@ -13,16 +12,17 @@ import com.bandhanbook.app.repository.AgentRepository;
 import com.bandhanbook.app.repository.DonationRepository;
 import com.bandhanbook.app.repository.EventsRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
+import com.bandhanbook.app.wrappers.DonationWrapper;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -72,67 +72,82 @@ public class DonationService {
                 }));
     }
 
-    public Mono<Tuple2<Long, List<DonationResponse>>> listDonations(
-            Users authUser,
-            int page,
-            int limit,
-            Map<String, String> params
-    ) {
+    public Mono<Tuple2<Long, List<DonationResponse>>> listDonations(Users authUser, int page, int limit, Map<String, String> params) {
         int skip = Math.max(page - 1, 0) * limit;
+        Criteria criteria = Criteria.where("deleted_at").is(null);
 
-        Criteria criteria = new Criteria()
-                .and("deleted_at").is(null);
         Mono<Criteria> criteriaMono;
-
         if (authUser.isAgent()) {
             criteriaMono = agentRepository.findByUserId(authUser.getId())
                     .map(agent -> criteria.and("agent_id").is(agent.getId()));
-
         } else if (authUser.isOrganization()) {
             criteriaMono = organizationRepository.findByUserId(authUser.getId())
                     .map(org -> criteria.and("organization_id").is(org.getId()));
-
         } else {
             criteriaMono = Mono.just(criteria);
         }
-
-        criteriaMono = criteriaMono.map(c -> {
-
-            if (params.containsKey("eventId") && !params.get("eventId").isBlank()) {
-                c.and("event_id").is(new ObjectId(params.get("eventId")));
-            }
-
-            if (params.containsKey("agentId") && !params.get("agentId").isBlank()
-                    && (authUser.isSuperUser() || authUser.isOrganization())) {
-                c.and("agent_id").is(new ObjectId(params.get("agentId")));
-            }
-
-            return c;
-        });
         return criteriaMono.flatMap(c -> {
 
-            Query countQuery = Query.query(c);
-            Query dataQuery = Query.query(c)
-                    .with(Sort.by(Sort.Direction.DESC, "created_at"))
-                    .skip(skip)
-                    .limit(limit);
+            if (params.containsKey("eventId")) {
+                c.and("event_id").is(new ObjectId(params.get("eventId")));
+            }
+            if (params.containsKey("agentId")) {
+                c.and("agent_id").is(new ObjectId(params.get("agentId")));
+            }
+            Aggregation aggregation = Aggregation.newAggregation(
 
-            Mono<Long> totalMono = template.count(countQuery, Donations.class);
+                    Aggregation.match(c),
 
-            Mono<List<DonationResponse>> dataMono =
-                    template.find(dataQuery, Donations.class)
-                            .map(this::toResponse)
-                            .collectList();
+                    Aggregation.lookup("events", "event_id", "_id", "event"),
+                    Aggregation.unwind("event", true),
 
-            return totalMono.zipWith(dataMono);
+                    Aggregation.lookup("agents", "agent_id", "_id", "agent"),
+                    Aggregation.unwind("agent", true),
+
+                    Aggregation.lookup("users", "agent.user_id", "_id", "agentUser"),
+                    Aggregation.unwind("agentUser", true),
+
+                    Aggregation.sort(Sort.Direction.DESC, "created_at"),
+
+                    Aggregation.facet(
+                                    Aggregation.skip(skip),
+                                    Aggregation.limit(limit),
+                                    Aggregation.project()
+                                            .and("_id").as("id")
+                                            .and("agent_id").as("agentId")
+                                            .and("organization_id").as("organizationId")
+                                            .and("event_id").as("eventId")
+                                            .and("event.event_type").as("eventType")
+                                            .and("event.name").as("eventName")
+                                            .and("agentUser.full_name").as("submittedTo")
+                                            .and("amount").as("amount")
+                                            .and("donor_name").as("donorName")
+                                            .and("address").as("address")
+                                            .and("email").as("email")
+                                            .and("phone_number").as("phoneNumber")
+                                            .and("donor_type").as("donorType")
+                                            .and("status").as("status")
+                                            .and("remark").as("remark")
+                                            .and("payment_mode").as("paymentMode")
+                                            .and("created_at").as("createdAt")
+                            ).as("data")
+                            .and(Aggregation.count().as("total")).as("metadata")
+            );
+
+            return template.aggregate(aggregation, "donations", DonationWrapper.class)
+                    .next()
+                    .defaultIfEmpty(new DonationWrapper())
+                    .map(wrapper ->
+                            Tuples.of(
+                                    wrapper.getTotal(),
+                                    wrapper.getData()
+                            )
+                    );
         });
     }
 
     /* UPDATE */
-    public Mono<DonationResponse> updateDonation(
-            String id,
-            DonationUpdateRequest request
-    ) {
+    public Mono<DonationResponse> updateDonation(String id, DonationUpdateRequest request) {
         return donationRepository.findById(new ObjectId(id))
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
                 .flatMap(d -> {
