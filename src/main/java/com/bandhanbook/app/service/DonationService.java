@@ -15,6 +15,10 @@ import com.bandhanbook.app.repository.EventsRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -22,6 +26,7 @@ import reactor.util.function.Tuple2;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.RECORD_NOT_FOUND;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.DONATION_CREATED;
@@ -34,6 +39,7 @@ public class DonationService {
     private final AgentRepository agentRepository;
     private final OrganizationRepository organizationRepository;
     private final EventManagementService eventManagementService;
+    private final ReactiveMongoTemplate template;
 
     public Mono<String> createDonation(DonationCreateRequest request, Users authUser) {
         ObjectId eventId = new ObjectId(request.getEventId());
@@ -66,55 +72,60 @@ public class DonationService {
                 }));
     }
 
-    public Mono<Tuple2<Long, List<DonationResponse>>> listDonations(Users authUser, int page, int limit) {
+    public Mono<Tuple2<Long, List<DonationResponse>>> listDonations(
+            Users authUser,
+            int page,
+            int limit,
+            Map<String, String> params
+    ) {
         int skip = Math.max(page - 1, 0) * limit;
 
-        Mono<Long> countMono;
-        Flux<DonationResponse> dataFlux;
+        Criteria criteria = new Criteria()
+                .and("deleted_at").is(null);
+        Mono<Criteria> criteriaMono;
 
         if (authUser.isAgent()) {
-            Mono<ObjectId> agentIdMono = agentRepository
-                    .findByUserId(authUser.getId())
-                    .map(Agents::getId);
-            countMono = agentIdMono.flatMap(donationRepository::countByAgentIdAndDeletedAtIsNull);
-            dataFlux = agentIdMono.flatMapMany(agentId -> donationRepository
-                    .findByAgentIdAndDeletedAtIsNull(agentId)
-                    .sort(java.util.Comparator.comparing(Donations::getCreatedAt,
-                            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
-                    .skip(skip)
-                    .take(limit)
-                    .map(this::toResponse));
+            criteriaMono = agentRepository.findByUserId(authUser.getId())
+                    .map(agent -> criteria.and("agent_id").is(agent.getId()));
 
         } else if (authUser.isOrganization()) {
-            Mono<ObjectId> orgIdMono = organizationRepository
-                    .findByUserId(authUser.getId())
-                    .map(Organization::getId);
-
-            countMono = orgIdMono.flatMap(
-                    donationRepository::countByOrganizationIdAndDeletedAtIsNull
-            );
-
-            dataFlux = orgIdMono.flatMapMany(orgId ->
-                    donationRepository
-                            .findByOrganizationIdAndDeletedAtIsNull(orgId)
-                            .sort(java.util.Comparator.comparing(Donations::getCreatedAt,
-                                    java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
-                            .skip(skip)
-                            .take(limit)
-                            .map(this::toResponse)
-            );
+            criteriaMono = organizationRepository.findByUserId(authUser.getId())
+                    .map(org -> criteria.and("organization_id").is(org.getId()));
 
         } else {
-            countMono = donationRepository.count();
-            dataFlux = donationRepository.findAll()
-                    .sort(java.util.Comparator.comparing(Donations::getCreatedAt,
-                            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
-                    .skip(skip)
-                    .take(limit)
-                    .map(this::toResponse);
+            criteriaMono = Mono.just(criteria);
         }
 
-        return countMono.zipWith(dataFlux.collectList());
+        criteriaMono = criteriaMono.map(c -> {
+
+            if (params.containsKey("eventId") && !params.get("eventId").isBlank()) {
+                c.and("event_id").is(new ObjectId(params.get("eventId")));
+            }
+
+            if (params.containsKey("agentId") && !params.get("agentId").isBlank()
+                    && (authUser.isSuperUser() || authUser.isOrganization())) {
+                c.and("agent_id").is(new ObjectId(params.get("agentId")));
+            }
+
+            return c;
+        });
+        return criteriaMono.flatMap(c -> {
+
+            Query countQuery = Query.query(c);
+            Query dataQuery = Query.query(c)
+                    .with(Sort.by(Sort.Direction.DESC, "created_at"))
+                    .skip(skip)
+                    .limit(limit);
+
+            Mono<Long> totalMono = template.count(countQuery, Donations.class);
+
+            Mono<List<DonationResponse>> dataMono =
+                    template.find(dataQuery, Donations.class)
+                            .map(this::toResponse)
+                            .collectList();
+
+            return totalMono.zipWith(dataMono);
+        });
     }
 
     /* UPDATE */

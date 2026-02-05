@@ -40,7 +40,7 @@ public class DonationController {
     public Mono<ResponseEntity<ApiResponse<List<DonationResponse>>>> list(@RequestParam Map<String, String> params, @CurrentUser Users authUser) {
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
-        return donationService.listDonations(authUser, page, limit)
+        return donationService.listDonations(authUser, page, limit, params)
                 .map(response -> ResponseEntity.ok(
                         ApiResponse.<List<DonationResponse>>builder()
                                 .status(HttpStatus.OK.value())
