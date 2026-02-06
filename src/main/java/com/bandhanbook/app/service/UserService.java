@@ -10,6 +10,7 @@ import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.ProfileStatus;
 import com.bandhanbook.app.model.constants.RoleNames;
+import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.CandidateRequest;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
@@ -225,27 +226,23 @@ public class UserService {
             }
             return userRepository.findById(userObjectId).flatMap(users ->
                     matrimonyRepository.findByUserId(userObjectId).flatMap(candidate -> {
-                        if (null != req.getEmail() && !req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail()) && users.getRoles().contains(RoleNames.Candidate.name())) {
-                            users.setEmail(req.getEmail());
-                        } else {
-                            req.setEmail(users.getEmail());
-                        }
-                        if (null != req.getFullName() && !req.getFullName().isBlank() && !req.getFullName().equals(users.getFullName())) {
-                            users.setFullName(req.getFullName());
-                        }
-                        if (authUser.isCandidate()) {
-                            req.getMatrimonyData().setStatus(candidate.getStatus());
-                        }
+
                         if (users.getDeletedAt() != null && (authUser.isCandidate() || authUser.isAgent())) {
                             req.setDeletedAt(users.getDeletedAt());
                         }
+                        updateUserIfRequire(users,req);
                         if ((authUser.isOrganization() || authUser.isAgent()) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
                         if (candidate.getImages() != null && req.getMatrimonyData().getImages() == null) {
                             req.getMatrimonyData().setImages(candidate.getImages());
                         }
-                        validateAdult(req.getMatrimonyData().getPersonalDetails().getDob());
+                        if (authUser.isCandidate()) {
+                            req.getMatrimonyData().setStatus(candidate.getStatus());
+                        }
+                        if(null!=req.getMatrimonyData().getPersonalDetails()) {
+                            validateAdult(req.getMatrimonyData().getPersonalDetails().getDob());
+                        }
                         modelMapper.map(req.getMatrimonyData(), candidate);
                         return userRepository.save(users).flatMap(user -> matrimonyRepository.save(candidate)
                                 .map(updatedCandidate -> {
@@ -256,7 +253,25 @@ public class UserService {
                     }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
         });
     }
-
+    private void updateUserIfRequire(Users users,  CandidateRequest req){
+        if (null != req.getEmail() && !req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail()) && users.getRoles().contains(RoleNames.Candidate.name())) {
+            users.setEmail(req.getEmail());
+        } else {
+            req.setEmail(users.getEmail());
+        }
+        if (null != req.getFullName() && !req.getFullName().isBlank() && !req.getFullName().equals(users.getFullName())) {
+            users.setFullName(req.getFullName());
+        }
+        if(req.getMatrimonyData().getStatus()==null){
+            return;
+        }
+        ProfileStatus status = req.getMatrimonyData().getStatus();
+        if ( status.equals(ProfileStatus.blocked)) {
+            users.setLocked(true);
+        } else if (status.equals(ProfileStatus.active)) {
+            users.setLocked(false);
+        }
+    }
     public Mono<ApiResponse<List<CandidateResponse>>> listCandidates(Users authUser, Map<String, String> params, int page, int limit) {
         Document userFilters = new Document(
                 "role",
