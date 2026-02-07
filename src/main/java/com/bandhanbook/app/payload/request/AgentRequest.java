@@ -34,7 +34,7 @@ public class AgentRequest {
 
     private String phoneVerificationCode;
 
-    private String status ;
+    private ProfileStatus status ;
 
     private String address;
     private int country = 101; // India

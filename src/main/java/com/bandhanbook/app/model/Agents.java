@@ -44,7 +44,7 @@ public class Agents {
     private String phoneVerificationCode = null;
 
     @Builder.Default
-    private String status = ProfileStatus.pending.name();
+    private ProfileStatus status = ProfileStatus.pending;
 
 
     private int country = 101; // India

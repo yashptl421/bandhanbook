@@ -10,7 +10,6 @@ import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.ProfileStatus;
 import com.bandhanbook.app.model.constants.RoleNames;
-import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.CandidateRequest;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.request.UserRegisterRequest;
@@ -57,6 +56,7 @@ public class UserService {
     private final AuthService authService;
     private final OrganizationRepository organizationRepository;
     private final ReactiveMongoTemplate reactiveMongoTemplate;
+    private final EventsRepository eventsRepository;
     private final PasswordEncoder passwordEncoder;
     private final UtilityHelper utilityHelper;
     private final CommonService commonService;
@@ -230,7 +230,7 @@ public class UserService {
                         if (users.getDeletedAt() != null && (authUser.isCandidate() || authUser.isAgent())) {
                             req.setDeletedAt(users.getDeletedAt());
                         }
-                        updateUserIfRequire(users,req);
+                        updateUserIfRequire(users, req);
                         if ((authUser.isOrganization() || authUser.isAgent()) && req.getMatrimonyData().getStatus().equals(ProfileStatus.active)) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
@@ -240,7 +240,7 @@ public class UserService {
                         if (authUser.isCandidate()) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
-                        if(null!=req.getMatrimonyData().getPersonalDetails()) {
+                        if (null != req.getMatrimonyData().getPersonalDetails()) {
                             validateAdult(req.getMatrimonyData().getPersonalDetails().getDob());
                         }
                         modelMapper.map(req.getMatrimonyData(), candidate);
@@ -253,7 +253,8 @@ public class UserService {
                     }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
         });
     }
-    private void updateUserIfRequire(Users users,  CandidateRequest req){
+
+    private void updateUserIfRequire(Users users, CandidateRequest req) {
         if (null != req.getEmail() && !req.getEmail().isBlank() && !req.getEmail().equals(users.getEmail()) && users.getRoles().contains(RoleNames.Candidate.name())) {
             users.setEmail(req.getEmail());
         } else {
@@ -262,16 +263,15 @@ public class UserService {
         if (null != req.getFullName() && !req.getFullName().isBlank() && !req.getFullName().equals(users.getFullName())) {
             users.setFullName(req.getFullName());
         }
-        if(req.getMatrimonyData().getStatus()==null){
-            return;
-        }
         ProfileStatus status = req.getMatrimonyData().getStatus();
-        if ( status.equals(ProfileStatus.blocked)) {
-            users.setLocked(true);
-        } else if (status.equals(ProfileStatus.active)) {
-            users.setLocked(false);
+        if (status != null) {
+            users.setLocked(status.equals(ProfileStatus.blocked));
+        }
+        if (null!=status && users.getDeletedAt() != null && (status.equals(ProfileStatus.active) || status.equals(ProfileStatus.approved))) {
+            users.setDeletedAt(null);
         }
     }
+
     public Mono<ApiResponse<List<CandidateResponse>>> listCandidates(Users authUser, Map<String, String> params, int page, int limit) {
         Document userFilters = new Document(
                 "role",
@@ -658,14 +658,40 @@ public class UserService {
     }
 
     public Mono<Void> deactivateAccount(Users authUser) {
-        return userRepository.findById(authUser.getId())
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
-                .flatMap(user -> {
-                    user.setDeletedAt(LocalDateTime.now());
-                    user.setToken(null);
-                    return userRepository.save(user);
-                })
-                .then();
+        LocalDateTime now = LocalDateTime.now();
+        ObjectId userId = authUser.getId();
+
+        Mono<Void> deactivateUser =
+                userRepository.deactivateUser(userId, now)
+                        .switchIfEmpty(Mono.error(new RecordNotFoundException("User not found")))
+                        .then();
+        Mono<Void> roleDeactivation;
+
+        if (authUser.isCandidate()) {
+            roleDeactivation =
+                    matrimonyRepository.updateStatusByUserId(userId,ProfileStatus.inactive).then();
+        }
+        else if (authUser.isAgent()) {
+            roleDeactivation =
+                    agentRepository.deactivateAgentByUserId(userId).then();
+        }
+        else if (authUser.isOrganization()) {
+            roleDeactivation =
+                    organizationRepository.findByUserId(userId)
+                            .flatMap(org ->
+                                    Mono.when(
+                                            agentRepository.deactivateAgentsByOrganizationId(org.getId()),
+                                            eventsRepository.deactivateEventsByOrganizationId(org.getId()),
+                                            organizationRepository.deactivateOrganizationByUserId(userId)
+                                    )
+                            )
+                            .then();
+        }
+        else {
+            roleDeactivation = Mono.empty(); // SuperUser
+        }
+
+        return Mono.when(deactivateUser, roleDeactivation).then();
     }
 
     private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, Agents agent) {

@@ -165,7 +165,7 @@ public class UserController {
     }
 
     @DeleteMapping("/me")
-    public Mono<ResponseEntity<ApiResponse<String>>> destroy(@CurrentUser Users authUser) {
+    public Mono<ResponseEntity<ApiResponse<String>>> deactivateAccount(@CurrentUser Users authUser) {
         return userService.deactivateAccount(authUser)
                 .thenReturn(
                         ResponseEntity.ok(

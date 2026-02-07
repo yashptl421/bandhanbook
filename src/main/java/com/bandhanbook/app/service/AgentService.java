@@ -4,8 +4,8 @@ import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.constants.ProfileStatus;
 import com.bandhanbook.app.model.constants.RoleNames;
-import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.AgentRequest;
 import com.bandhanbook.app.payload.response.AgentResponse;
 import com.bandhanbook.app.repository.AgentRepository;
@@ -156,11 +156,15 @@ public class AgentService {
                     if (request.getFullName() != null && !request.getFullName().isBlank()) {
                         user.setFullName(request.getFullName());
                     }
-                    if (request.getStatus() != null && request.getStatus().equalsIgnoreCase(Status.blocked.name())) {
-                        user.setLocked(true);
-                    } else if (request.getStatus() != null && request.getStatus().equalsIgnoreCase(Status.active.name())) {
-                        user.setLocked(false);
+                    //block or unblock user based on status
+                    if (request.getStatus() != null) {
+                        user.setLocked(request.getStatus().equals(ProfileStatus.blocked));
                     }
+                    // active user if removed_at is not null
+                    if (null!=request.getStatus() && user.getDeletedAt() != null && request.getStatus().equals(ProfileStatus.active)) {
+                            user.setDeletedAt(null);
+                    }
+
                     return userRepository.save(user);
                 })
                 .then();
@@ -174,7 +178,7 @@ public class AgentService {
         if (StringUtils.hasText(request.getCaste()))
             agent.setCaste(request.getCaste());
 
-        if (StringUtils.hasText(request.getStatus()))
+        if (request.getStatus() != null)
             agent.setStatus(request.getStatus());
 
         if (StringUtils.hasText(request.getAddress()))
