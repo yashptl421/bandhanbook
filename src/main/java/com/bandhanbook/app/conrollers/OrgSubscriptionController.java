@@ -3,11 +3,14 @@ package com.bandhanbook.app.conrollers;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.BuySubscriptionRequest;
+import com.bandhanbook.app.payload.request.SubscriptionAddonRequest;
+import com.bandhanbook.app.payload.response.SubscriptionAddonResponse;
 import com.bandhanbook.app.payload.response.SubscriptionResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.OrgSubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -24,17 +27,14 @@ public class OrgSubscriptionController {
     private final OrgSubscriptionService service;
 
     @GetMapping
-    public Mono<ApiResponse<List<SubscriptionResponse>>> list(
-            @CurrentUser Users authUser,
-            @RequestParam Map<String, String> params
-    ) {
-        String orgid=null;
+    public Mono<ApiResponse<List<SubscriptionResponse>>> list(@CurrentUser Users authUser, @RequestParam Map<String, String> params) {
+        String orgid = null;
         if (params.containsKey("organization") && null != params.get("organization") && ObjectId.isValid(params.get("organization")))
             orgid = params.get("organization");
         return service.list(authUser, orgid)
                 .map(res ->
                         ApiResponse.<List<SubscriptionResponse>>builder()
-                                .status(200)
+                                .status(HttpStatus.OK.value())
                                 .message(DATA_FOUND)
                                 .data(res)
                                 .meta(ApiResponse.Meta.builder()
@@ -49,7 +49,7 @@ public class OrgSubscriptionController {
         return service.show(id)
                 .map(sub ->
                         ApiResponse.<SubscriptionResponse>builder()
-                                .status(200)
+                                .status(HttpStatus.OK.value())
                                 .message(DATA_FOUND)
                                 .data(sub)
                                 .build()
@@ -61,21 +61,48 @@ public class OrgSubscriptionController {
         return service.buySubscription(req)
                 .map(msg ->
                         ApiResponse.<String>builder()
-                                .status(200)
+                                .status(HttpStatus.OK.value())
                                 .message(msg)
                                 .build()
                 );
     }
 
     @PutMapping("/{id}")
-    public Mono<ApiResponse<String>> update(
-            @PathVariable String id,
-            @RequestParam boolean status
-    ) {
+    public Mono<ApiResponse<String>> update(@PathVariable String id, @RequestParam boolean status) {
         return service.updateStatus(id, status)
                 .map(msg ->
                         ApiResponse.<String>builder()
-                                .status(200)
+                                .status(HttpStatus.OK.value())
+                                .message(msg)
+                                .build()
+                );
+    }
+
+    @GetMapping("/addon")
+    public Mono<ApiResponse<List<SubscriptionAddonResponse>>> listAddons(@CurrentUser Users authUser, @RequestParam Map<String, String> params) {
+        String id = params.getOrDefault("subscriptionId", null);
+        int page = Integer.parseInt(params.getOrDefault("page", "1"));
+        int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
+        return service.listAddons(authUser, id, page, limit);
+    }
+
+    @PostMapping("/addon")
+    public Mono<ApiResponse<String>> buyAddon(@RequestBody SubscriptionAddonRequest req) {
+        return service.buyAddon(req)
+                .map(msg ->
+                        ApiResponse.<String>builder()
+                                .status(HttpStatus.OK.value())
+                                .message(msg)
+                                .build()
+                );
+    }
+
+    @PutMapping("/addon")
+    public Mono<ApiResponse<String>> updateAddon(@CurrentUser Users authUser, @RequestParam String id, @RequestParam boolean status) {
+        return service.updateAddonStatus(id, status, authUser)
+                .map(msg ->
+                        ApiResponse.<String>builder()
+                                .status(HttpStatus.OK.value())
                                 .message(msg)
                                 .build()
                 );

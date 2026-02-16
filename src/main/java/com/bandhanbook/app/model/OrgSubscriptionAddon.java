@@ -4,7 +4,6 @@ import lombok.*;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -15,8 +14,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Document(collection = "orgsubscriptions")
-public class OrgSubscriptions {
+@Document(collection = "org_subscription_addons")
+public class OrgSubscriptionAddon {
 
     @Id
     private ObjectId id;
@@ -24,20 +23,8 @@ public class OrgSubscriptions {
     @Field("org_id")
     private ObjectId orgId;
 
-    @Field("plan_id")
-    private String planId;
-
-    @Field("registration_period")
-    private String registrationPeriod;
-
-    @Field("start_date")
-    private String startDate;
-
-    @Field("end_date")
-    private String endDate;
-
-    @Field("is_active")
-    private boolean active;
+    @Field("subscription_id")
+    private ObjectId subscriptionId;
 
     @Field("max_agents")
     private int maxAgents;
@@ -51,16 +38,13 @@ public class OrgSubscriptions {
     @Field("max_advertisements")
     private int maxAdvertisements;
 
+    @Field("price")
+    private double price;
+
+    @Field("is_active")
+    private boolean active;
+
     @Field("created_at")
     @CreatedDate
     private LocalDateTime createdAt;
-
-    @Field("updated_at")
-    @LastModifiedDate
-    private LocalDateTime updatedAt;
-
-    @Field("deleted_at")
-    @Builder.Default
-    private LocalDateTime deletedAt = null;
-
 }

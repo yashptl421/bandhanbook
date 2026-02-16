@@ -35,5 +35,7 @@ public interface SuccessResponseMessages {
     String DONATION_CREATED = "Donation created successfully";
     String DONATION_UPDATED = "Donation updated successfully";
     String DONATION_DELETED = "Donation deleted successfully";
+    String SUBSCRIPTION_ADDON_PURCHASED = "Subscription Add-On purchased successfully";
+    String SUBSCRIPTION_ADDON_UPDATED = "Subscription Add-On updated successfully";
 
 }

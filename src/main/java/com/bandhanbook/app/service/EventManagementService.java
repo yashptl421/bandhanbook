@@ -287,14 +287,14 @@ public class EventManagementService {
 
     public Mono<ApiResponse<List<SettlementHistoryResponse>>> getCloserList(Users authUser, Map<String, String> params, int page, int limit) {
         String reqAgentId = params.getOrDefault("agentId", "");
-        SettlementStatus reqStatus = SettlementStatus.valueOf(params.getOrDefault("status", SettlementStatus.PENDING.name()));
+        String reqStatus = params.getOrDefault("status",null);
         if (authUser.isOrganization()) {
             return orgRepository.findByUserId(authUser.getId())
-                    .flatMap(org -> getPendingSettlements(org.getId(), reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), reqStatus, page, limit));
+                    .flatMap(org -> getSettlements(org.getId(), reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), reqStatus, page, limit));
         } else if (authUser.isAgent()) {
-            return agentRepository.findByUserId(authUser.getId()).flatMap(agents -> getPendingSettlements(null, agents.getId(),reqStatus, page, limit));
+            return agentRepository.findByUserId(authUser.getId()).flatMap(agents -> getSettlements(null, agents.getId(),reqStatus, page, limit));
         } else
-            return getPendingSettlements(null, reqAgentId.isBlank() ? null : new ObjectId(reqAgentId),reqStatus, page, limit);
+            return getSettlements(null, reqAgentId.isBlank() ? null : new ObjectId(reqAgentId),reqStatus, page, limit);
     }
 
     public Mono<SettlementSummaryResponse> getSettlementSummary(Users authUser, String eventId) {
@@ -384,7 +384,7 @@ public class EventManagementService {
         ).next().switchIfEmpty(Mono.error(new RecordNotFoundException(SETTLEMENT_NOT_FOUND)));
     }
 
-    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getPendingSettlements(ObjectId organizationId, ObjectId agentId, SettlementStatus status,  int page, int limit) {
+    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getSettlements(ObjectId organizationId, ObjectId agentId, String status,  int page, int limit) {
         int skip = (page - 1) * limit;
         Criteria baseCriteria = Criteria.where("deleted_at").is(null);
         if (organizationId != null) {
@@ -393,10 +393,12 @@ public class EventManagementService {
         if (agentId != null) {
             baseCriteria = baseCriteria.and("agent_id").is(agentId);
         }
+        if(status != null){
+            baseCriteria = baseCriteria.and("settlementHistory.status").is(status);
+        }
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(baseCriteria),
                 Aggregation.unwind("settlementHistory"),
-                Aggregation.match(Criteria.where("settlementHistory.status").is(status)),
                 Aggregation.lookup(
                         "agents",
                         "agent_id",

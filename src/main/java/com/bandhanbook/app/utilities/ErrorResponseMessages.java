@@ -27,4 +27,9 @@ public interface ErrorResponseMessages {
     String SETTLEMENT_INVALID = "Invalid settlement request settlement request";
     String SETTLEMENT_INSUFFICIENT = "Insufficient remaining amount";
     String SETTLEMENT_NOT_FOUND = "Settlement record not found";
+    String DONATION_NOT_FOUND = "Donation record not found";
+    String DONATION_INSUFFICIENT = "Insufficient remaining amount for donation";
+    String DONATION_INVALID = "Invalid donation request";
+    String SUBSCRIPTION_NOT_FOUND = "Subscription not found";
+    String ADDON_NOT_FOUND = "No addons found for the subscription";
 }
