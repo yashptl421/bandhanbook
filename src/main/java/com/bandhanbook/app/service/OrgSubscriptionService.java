@@ -246,7 +246,7 @@ public class OrgSubscriptionService {
                                             .maxAdvertisements(maxAdvertisements)
                                             .build();
                                 })
-                );
+                ).switchIfEmpty(Mono.error(new ValidationExceptions(SUBSCRIPTION_INACTIVE)));
     }
 
     private SubscriptionAddonResponse mapToResponse(OrgSubscriptionAddon addon) {
@@ -261,6 +261,7 @@ public class OrgSubscriptionService {
                 .price(addon.getPrice())
                 .status(addon.getStatus())
                 .createdAt(addon.getCreatedAt())
+                .updatedAt(addon.getUpdatedAt())
                 .build();
     }
 }

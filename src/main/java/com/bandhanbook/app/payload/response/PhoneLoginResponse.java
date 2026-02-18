@@ -28,5 +28,6 @@ public class PhoneLoginResponse {
     private MatrimonyCandidateResponse matrimony_data;
     private List<EventParticipantsResponse> eventParticipants;
     private AgentResponse agent_details;
+    private boolean isActiveSubscription;
     private OrganizationResponse organization_details;
 }

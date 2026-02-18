@@ -15,9 +15,9 @@ import com.bandhanbook.app.security.jwt.JwtService;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
 import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,31 +32,22 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.PASSWORD_UPD
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AuthService {
-    @Autowired
-    UserRepository userRepository;
-    @Autowired
-    MatrimonyRepository matrimonyRepository;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    UserDetailService userDetailService;
-    @Autowired
-    private JwtService jwtService;
-    @Autowired
-    private ModelMapper modelMapper;
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-    @Autowired
-    private EventParticipantsRepository eventParticipantRepo;
-    @Autowired
-    private OtpService otpService;
-    @Autowired
-    private AgentRepository agentRepository;
-    @Autowired
-    private CommonService commonService;
-    @Autowired
-    private OrganizationRepository organizationRepository;
+    private final UserRepository userRepository;
+    private final MatrimonyRepository matrimonyRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final UserDetailService userDetailService;
+    private final JwtService jwtService;
+    private final ModelMapper modelMapper;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final EventParticipantsRepository eventParticipantRepo;
+    private final OtpService otpService;
+    private final AgentRepository agentRepository;
+    private final CommonService commonService;
+    private final OrganizationRepository organizationRepository;
+    private final OrgSubscriptionsRepository orgSubscriptionsRepository;
+
 
     @Transactional
     public Mono<String> login(PhoneLoginRequest loginRequest) {
@@ -172,13 +163,17 @@ public class AuthService {
     }
 
     protected Mono<PhoneLoginResponse> getOrganizationDetails(String role, Users users) {
-        return organizationRepository.findByUserId(users.getId()).map(organization -> {
+        return organizationRepository.findByUserId(users.getId()).flatMap(organization -> {
             PhoneLoginResponse res = modelMapper.map(users, PhoneLoginResponse.class);
             res.setAgent(false);
             res.setRole(role);
             res.setOrganization_details(modelMapper.map(organization, OrganizationResponse.class));
             res.getOrganization_details().setLocalAddress(commonService.getAddressByIds(organization.getAddress(), organization.getCountry(), organization.getState(), organization.getCity(), organization.getZip()));
-            return res;
+            return orgSubscriptionsRepository.findByOrgIdAndActive(organization.getId(), true)
+                    .map(sub -> {
+                        res.setActiveSubscription(true);
+                        return res;
+                    }).defaultIfEmpty(res);
         }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 
