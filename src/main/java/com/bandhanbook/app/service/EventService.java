@@ -69,9 +69,9 @@ public class EventService {
                 }).then();
     }
 
-    public Mono<EventResponse> getEventById(String id) {
+    public Mono<EventResponse> getEventById(ObjectId id) {
         logger.info("get Event By event id {}", id);
-        return eventsRepository.findById(new ObjectId(id)).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+        return eventsRepository.findById((id)).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .map(events -> modelMapper.map(events, EventResponse.class));
     }
 

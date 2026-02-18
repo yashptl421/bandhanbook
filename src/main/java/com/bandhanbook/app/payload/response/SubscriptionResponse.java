@@ -20,6 +20,8 @@ public class SubscriptionResponse {
 
     private String eventId;
 
+    private String eventName;
+
     private String planName;
 
     private String planId;

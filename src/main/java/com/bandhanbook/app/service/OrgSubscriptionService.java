@@ -11,6 +11,7 @@ import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.SubscriptionAddonResponse;
 import com.bandhanbook.app.payload.response.SubscriptionResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
+import com.bandhanbook.app.repository.EventsRepository;
 import com.bandhanbook.app.repository.OrgSubscriptionAddonRepository;
 import com.bandhanbook.app.repository.OrgSubscriptionsRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
@@ -38,6 +39,7 @@ public class OrgSubscriptionService {
     private final OrganizationRepository organizationRepository;
     private final PricingPlanService pricingPlanService;
     private final OrgSubscriptionAddonRepository addonRepository;
+    private final EventsRepository eventsRepository;
     private final ModelMapper modelMapper;
 
     public Mono<String> buySubscription(BuySubscriptionRequest req) {
@@ -65,56 +67,71 @@ public class OrgSubscriptionService {
         return repository.findById(new ObjectId(id)).flatMap(sub -> {
             SubscriptionResponse res =
                     modelMapper.map(sub, SubscriptionResponse.class);
-            return organizationRepository.findById(sub.getOrgId())
+            return eventsRepository.findById(sub.getEventId()).flatMap( event ->
+             organizationRepository.findById(sub.getOrgId())
                     .flatMap(org -> {
+                        res.setEventName(event.getName());
                         res.setOrganizationDetails(modelMapper.map(org, OrganizationResponse.class));
                         return pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
                             res.setPlanName(plan.getName());
                             res.setPlanPrice(plan.getPrice());
                             return res;
                         });
-                    });
+                    }));
         }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 
     public Mono<List<SubscriptionResponse>> list(Users authUser, String orgId) {
-        if (authUser.isOrganization() || orgId != null) {
 
-            Mono<Organization> orgMono = orgId != null ? organizationRepository.findById(new ObjectId(orgId)) : organizationRepository.findByUserId(authUser.getId());
+        Mono<Organization> orgMono =
+                (authUser.isOrganization() || orgId != null)
+                        ? (orgId != null
+                        ? organizationRepository.findById(new ObjectId(orgId))
+                        : organizationRepository.findByUserId(authUser.getId()))
+                        : Mono.empty();
 
-            return orgMono.flatMapMany(org ->
-                    repository.findByOrgId(org.getId()).flatMap(sub -> {
+        Flux<OrgSubscriptions> subscriptionFlux =
+                (authUser.isOrganization() || orgId != null)
+                        ? orgMono.flatMapMany(org -> repository.findByOrgId(org.getId()))
+                        : repository.findAll();
+
+        return subscriptionFlux.flatMap(sub -> {
+
+            Mono<Organization> organizationMono =
+                    (authUser.isOrganization() || orgId != null)
+                            ? orgMono
+                            : organizationRepository.findById(sub.getOrgId());
+
+            Mono<PricingPlans> planMono = pricingPlanService.getPlanById(sub.getPlanId());
+
+            // 🔹 Fetch event name
+            Mono<String> eventNameMono =
+                    sub.getEventId() != null
+                            ? eventsRepository.findById(sub.getEventId())
+                            .map(Events::getName)
+                            : Mono.just("");
+
+            return Mono.zip(organizationMono, planMono, eventNameMono)
+                    .map(tuple -> {
+
+                        Organization org = tuple.getT1();
+                        PricingPlans plan = tuple.getT2();
+                        String eventName = tuple.getT3();
+
                         SubscriptionResponse res =
                                 modelMapper.map(sub, SubscriptionResponse.class);
-                        pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
-                            res.setPlanName(plan.getName());
-                            res.setPlanPrice(plan.getPrice());
-                            return res;
-                        });
-                        res.setOrganizationDetails(modelMapper.map(org, OrganizationResponse.class));
 
-                        return pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
-                            res.setPlanName(plan.getName());
-                            res.setPlanPrice(plan.getPrice());
-                            return res;
-                        });
-                    })).collectList();
-        } else {
-            return repository.findAll().flatMap(sub -> {
-                SubscriptionResponse res =
-                        modelMapper.map(sub, SubscriptionResponse.class);
+                        res.setOrganizationDetails(
+                                modelMapper.map(org, OrganizationResponse.class)
+                        );
+                        res.setPlanName(plan.getName());
+                        res.setPlanPrice(plan.getPrice());
+                        res.setEventName(eventName);   // ✅ Added
 
-                return organizationRepository.findById(sub.getOrgId())
-                        .flatMap(org -> {
-                            res.setOrganizationDetails(modelMapper.map(org, OrganizationResponse.class));
-                            return pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
-                                res.setPlanName(plan.getName());
-                                res.setPlanPrice(plan.getPrice());
-                                return res;
-                            });
-                        });
-            }).collectList();
-        }
+                        return res;
+                    });
+
+        }).collectList();
     }
 
     public Mono<String> updateStatus(String id, boolean status) {

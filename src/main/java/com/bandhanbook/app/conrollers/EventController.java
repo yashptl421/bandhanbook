@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +35,7 @@ public class EventController {
 
     @GetMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<EventResponse>>> show(@PathVariable String id) {
-        return eventService.getEventById(id)
+        return eventService.getEventById(new ObjectId(id))
                 .map(response -> ResponseEntity.ok(
                         ApiResponse.<EventResponse>builder()
                                 .status(HttpStatus.OK.value())
