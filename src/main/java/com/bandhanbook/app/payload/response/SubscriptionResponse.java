@@ -1,7 +1,6 @@
 package com.bandhanbook.app.payload.response;
 
 import com.bandhanbook.app.model.PricingPlans;
-import com.bandhanbook.app.model.constants.AddOnStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,7 +33,7 @@ public class SubscriptionResponse {
 
     private String endDate;
 
-    private AddOnStatus status;
+    private boolean active;
 
     private int maxAgents;
 
