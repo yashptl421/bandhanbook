@@ -4,6 +4,7 @@ import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.exception.ValidationExceptions;
 import com.bandhanbook.app.model.*;
+import com.bandhanbook.app.model.constants.AddOnStatus;
 import com.bandhanbook.app.payload.request.BuySubscriptionRequest;
 import com.bandhanbook.app.payload.request.SubscriptionAddonRequest;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
@@ -141,6 +142,7 @@ public class OrgSubscriptionService {
                     OrgSubscriptionAddon addon =
                             modelMapper.map(request, OrgSubscriptionAddon.class);
                     addon.setSubscriptionId(sub.getId());
+                    addon.setStatus(AddOnStatus.PENDING);
                     addon.setOrgId(sub.getOrgId());
                     return addonRepository.save(addon);
                 })
@@ -148,17 +150,17 @@ public class OrgSubscriptionService {
     }
 
     public Mono<ApiResponse<List<SubscriptionAddonResponse>>> listAddons(Users authUser, String subscriptionId, int page, int limit) {
-        if(subscriptionId==null || subscriptionId.isBlank()){
+        if (subscriptionId == null || subscriptionId.isBlank()) {
             return Mono.error(new ValidationExceptions(SUBSCRIPTION_NOT_FOUND));
         }
-        Pageable pageable = PageRequest.of(page-1, limit);
+        Pageable pageable = PageRequest.of(page - 1, limit);
         ObjectId subId = new ObjectId(subscriptionId);
 
         Flux<SubscriptionAddonResponse> dataFlux =
-                addonRepository.findBySubscriptionIdAndActiveTrue(subId, pageable)
+                addonRepository.findBySubscriptionId(subId, pageable)
                         .map(this::mapToResponse);
         Mono<Long> countMono =
-                addonRepository.countBySubscriptionIdAndActiveTrue(subId);
+                addonRepository.countBySubscriptionId(subId);
 
         return Mono.zip(dataFlux.collectList(), countMono)
                 .map(tuple -> ApiResponse.<List<SubscriptionAddonResponse>>builder()
@@ -174,17 +176,60 @@ public class OrgSubscriptionService {
                         .build());
     }
 
-    public Mono<String> updateAddonStatus(String id, boolean status, Users authUser) {
-        if(!authUser.isSuperUser()){
+    public Mono<String> updateAddonStatus(String id, AddOnStatus status, Users authUser) {
+        if (!authUser.isSuperUser()) {
             return Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS));
         }
         return addonRepository.findById(new ObjectId(id))
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(ADDON_NOT_FOUND)))
                 .flatMap(addon -> {
-                    addon.setActive(status);
+                    addon.setStatus(status);
                     return addonRepository.save(addon);
                 })
                 .thenReturn(SUBSCRIPTION_ADDON_UPDATED);
+    }
+
+    public Mono<SubscriptionLimits> getMergedLimits(ObjectId orgId, ObjectId eventId) {
+        if (orgId == null && eventId == null) {
+            return Mono.error(new ValidationExceptions(SUBSCRIPTION_NOT_FOUND));
+        }
+        Mono<OrgSubscriptions> subscriptionMono = null;
+        if (orgId == null) {
+            subscriptionMono = repository.findByEventIdAndActive(eventId, true)
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(SUBSCRIPTION_NOT_FOUND)))
+                    .flatMap(Mono::just);
+        } else {
+            subscriptionMono = repository.findByOrgIdAndActive(orgId, true)
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(SUBSCRIPTION_NOT_FOUND)))
+                    .flatMap(Mono::just);
+        }
+        return subscriptionMono
+                .flatMap(sub ->
+                        addonRepository
+                                .findBySubscriptionIdAndStatus(sub.getId(),AddOnStatus.APPROVED)
+                                .collectList()
+                                .map(addons -> {
+
+                                    int maxUsers = sub.getMaxUsers();
+                                    int maxAgents = sub.getMaxAgents();
+                                    int maxBanners = sub.getMaxBanners();
+                                    int maxAdvertisements = sub.getMaxAdvertisements();
+
+
+                                    for (OrgSubscriptionAddon addon : addons) {
+                                        maxUsers += addon.getMaxUsers();
+                                        maxAgents += addon.getMaxAgents();
+                                        maxBanners += addon.getMaxBanners();
+                                        maxAdvertisements += addon.getMaxAdvertisements();
+                                    }
+                                    return SubscriptionLimits.builder()
+                                            .maxUsers(maxUsers)
+                                            .maxAgents(maxAgents)
+                                            .maxBanners(maxBanners)
+                                            .maxAdvertisements(maxAdvertisements)
+                                            .build();
+                                })
+                );
     }
 
     private SubscriptionAddonResponse mapToResponse(OrgSubscriptionAddon addon) {
@@ -197,7 +242,7 @@ public class OrgSubscriptionService {
                 .maxBanners(addon.getMaxBanners())
                 .maxAdvertisements(addon.getMaxAdvertisements())
                 .price(addon.getPrice())
-                .active(addon.isActive())
+                .status(addon.getStatus())
                 .createdAt(addon.getCreatedAt())
                 .build();
     }

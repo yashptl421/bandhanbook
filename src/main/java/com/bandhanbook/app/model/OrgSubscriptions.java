@@ -24,6 +24,9 @@ public class OrgSubscriptions {
     @Field("org_id")
     private ObjectId orgId;
 
+    @Field("event_id")
+    private ObjectId eventId;
+
     @Field("plan_id")
     private String planId;
 

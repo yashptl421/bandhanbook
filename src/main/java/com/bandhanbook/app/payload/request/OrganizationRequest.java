@@ -6,8 +6,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
 @Setter
 @Getter
 @RequiredArgsConstructor
@@ -34,12 +32,7 @@ public class OrganizationRequest {
     private int city;
     private String zip;
 
-    private String planId;
-
     private String status;
-
-    @Future(message = "The date must be in the future.")
-    private LocalDateTime planStartDate;
 
     private Image profileImage;
 

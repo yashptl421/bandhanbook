@@ -21,6 +21,7 @@ public interface ErrorResponseMessages {
     String INVALID_RESOURCE = "Please login to access this resource.";
     String SUBSCRIPTION_INACTIVE = "Organization subscription is inactive. Please contact administrator.";
     String AGENT_LIMIT_EXCEED = "Agent Limit Exceeded. Please Upgrade your Plan.";
+    String CANDIDATE_LIMIT_EXCEED = "Candidate Limit Exceeded. Please Upgrade your Plan.";
     String PENDING_CLOSER = "You have pending closure, Please contact organization to accept pending one";
     String SETTLEMENT_ACCESS_ERROR = "Don't have access to settlement";
     String SETTLEMENT_REVERT_ERROR = "Can not revert to pending status";

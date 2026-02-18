@@ -61,6 +61,7 @@ public class UserService {
     private final UtilityHelper utilityHelper;
     private final CommonService commonService;
     private final EventManagementService eventManagementService;
+    private final OrgSubscriptionService orgSubscriptionService;
 
 
     public Users getUsers() {
@@ -267,7 +268,7 @@ public class UserService {
         if (status != null) {
             users.setLocked(status.equals(ProfileStatus.blocked));
         }
-        if (null!=status && users.getDeletedAt() != null && (status.equals(ProfileStatus.active) || status.equals(ProfileStatus.approved))) {
+        if (null != status && users.getDeletedAt() != null && (status.equals(ProfileStatus.active) || status.equals(ProfileStatus.approved))) {
             users.setDeletedAt(null);
         }
     }
@@ -534,11 +535,12 @@ public class UserService {
         // If no OTP → Send OTP
         if (request.getOtp() == null || request.getOtp().isBlank()) {
             return authService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), role)
+                    .then(candidateAddLimit(request))
+
                     .then(otpService.requestOtp(request.getPhoneNumber(), role));
         }
         Mono<String> verifiedOtp = otpService.verifyOtp(request.getPhoneNumber(), role, request.getOtp());
 
-        // STEP 3 — Check if user exists by phone
         return verifiedOtp.flatMap(str -> userRepository.findByPhoneNumber(request.getPhoneNumber())
 
                 .flatMap(existingUser ->
@@ -669,13 +671,11 @@ public class UserService {
 
         if (authUser.isCandidate()) {
             roleDeactivation =
-                    matrimonyRepository.updateStatusByUserId(userId,ProfileStatus.inactive).then();
-        }
-        else if (authUser.isAgent()) {
+                    matrimonyRepository.updateStatusByUserId(userId, ProfileStatus.inactive).then();
+        } else if (authUser.isAgent()) {
             roleDeactivation =
                     agentRepository.deactivateAgentByUserId(userId).then();
-        }
-        else if (authUser.isOrganization()) {
+        } else if (authUser.isOrganization()) {
             roleDeactivation =
                     organizationRepository.findByUserId(userId)
                             .flatMap(org ->
@@ -686,8 +686,7 @@ public class UserService {
                                     )
                             )
                             .then();
-        }
-        else {
+        } else {
             roleDeactivation = Mono.empty(); // SuperUser
         }
 
@@ -894,5 +893,18 @@ public class UserService {
                                 .collectList()
                                 .map(list -> list.stream().findFirst().get().toHexString()));
 
+    }
+
+    private Mono<Void> candidateAddLimit(UserRegisterRequest request) {
+        return orgSubscriptionService.getMergedLimits(null, new ObjectId(request.getEventId()))
+                .flatMap(limits ->
+                        eventParticipantRepo.countByEventId(new ObjectId(request.getEventId()))
+                                .flatMap(count -> {
+                                    if (count >= limits.getMaxUsers()) {
+                                        return Mono.error(new UnAuthorizedException(CANDIDATE_LIMIT_EXCEED));
+                                    }
+                                    return Mono.empty();
+                                })
+                );
     }
 }

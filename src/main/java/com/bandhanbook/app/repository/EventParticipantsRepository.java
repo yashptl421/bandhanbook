@@ -14,4 +14,6 @@ public interface EventParticipantsRepository extends ReactiveMongoRepository<Eve
     Mono<Boolean> existsByCandidateIdAndEventId(ObjectId candidate_id, ObjectId event_id);
     //Mono<EventParticipants> findByCandidateId(String candidate_id);
     Flux<EventParticipants> findByCandidateId(ObjectId candidate_id);
+
+    Mono<Long> countByEventId(ObjectId event_id);
 }

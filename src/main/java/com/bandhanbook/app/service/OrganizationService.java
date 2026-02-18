@@ -4,7 +4,6 @@ import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.OrgSubscriptions;
 import com.bandhanbook.app.model.Organization;
-import com.bandhanbook.app.model.PricingPlans;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
@@ -154,11 +153,7 @@ public class OrganizationService {
                             .flatMap(savedUser -> {
                                 Organization org = modelMapper.map(organizationRequest, Organization.class);
                                 org.setUserId(savedUser.getId());
-                                return organizationRepository.save(org)
-                                        .flatMap(savedOrg ->
-                                                getOrgSubscriptions(organizationRequest, savedOrg)
-                                                        .flatMap(orgSubscriptionsRepository::save)
-                                        );
+                                return organizationRepository.save(org);
                             });
                 }))
                 .then();
@@ -195,22 +190,6 @@ public class OrganizationService {
                         modelMapper.map(organizationRequest, existingOrg);
                         // STEP 4 — update organization
                         return organizationRepository.save(existingOrg);
-                    }).flatMap(savedOrg -> {
-
-                        // STEP 5 — update subscription (optional)
-                        return getOrgSubscriptions(organizationRequest, savedOrg).flatMap(subscription -> orgSubscriptionsRepository.findByOrgId(savedOrg.getId()).flatMap(existingSubscription -> {
-                            //modelMapper.map(subscription, existingSubscription);
-                            existingSubscription.setPlanId(subscription.getPlanId());
-                            existingSubscription.setMaxAgents(subscription.getMaxAgents());
-                            existingSubscription.setMaxUsers(subscription.getMaxUsers());
-                            existingSubscription.setStartDate(subscription.getStartDate());
-                            existingSubscription.setEndDate(subscription.getEndDate());
-                            existingSubscription.setRegistrationPeriod(subscription.getRegistrationPeriod());
-                            // Update existing subscription
-                            return orgSubscriptionsRepository.save(existingSubscription);
-                        }).switchIfEmpty(
-                                // Create new subscription
-                                orgSubscriptionsRepository.save(subscription)));
                     });
         })).then();
     }
@@ -224,28 +203,4 @@ public class OrganizationService {
                 .build();
     }
 
-    private Mono<PricingPlans> getPlanById(String id) {
-        return pricingPlanService.getPricingPlans()
-                .flatMapMany(Flux::fromIterable)
-                .filter(plan -> plan.getId().equals(id))
-                .next()                               // returns Mono<PricingPlan>
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(PLAN_NOT_FOUND)));
-    }
-
-    private Mono<OrgSubscriptions> getOrgSubscriptions(OrganizationRequest organizationRequest, Organization organization) {
-        return getPlanById(organizationRequest.getPlanId())
-                .map(plan -> OrgSubscriptions.builder()
-                        .planId(plan.getId())
-                        .orgId(organization.getId())
-                        .maxAgents(plan.getMaxAgents())
-                        .maxUsers(plan.getMaxUsers())
-                        .registrationPeriod(organizationRequest.getPlanStartDate()
-                                .minusDays(plan.getRegistrationPeriod())
-                                .toString())
-                        .startDate(organizationRequest.getPlanStartDate().toString())
-                        .endDate(organizationRequest.getPlanStartDate().plusYears(1).toString())
-                        .active(false)
-                        .build()
-                );
-    }
 }

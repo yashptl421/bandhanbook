@@ -1,9 +1,11 @@
 package com.bandhanbook.app.model;
 
+import com.bandhanbook.app.model.constants.AddOnStatus;
 import lombok.*;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -41,10 +43,19 @@ public class OrgSubscriptionAddon {
     @Field("price")
     private double price;
 
-    @Field("is_active")
-    private boolean active;
+    @Field("status")
+    private AddOnStatus status;
 
     @Field("created_at")
     @CreatedDate
     private LocalDateTime createdAt;
+
+    @Field("updated_at")
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
+
+    @Field("deleted_at")
+    @Builder.Default
+    private LocalDateTime deletedAt = null;
+
 }

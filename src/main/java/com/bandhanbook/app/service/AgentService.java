@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_CREATED;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_UPDATED;
 
@@ -43,6 +43,7 @@ public class AgentService {
     private final OrganizationRepository organizationRepository;
     private final ReactiveMongoTemplate mongoTemplate;
     private final CommonService commonService;
+    private final OrgSubscriptionService orgSubscriptionService;
 
     public Mono<String> createAgent(AgentRequest request, Users authUser) {
 
@@ -54,29 +55,31 @@ public class AgentService {
                     .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                     .map(org -> org.getId().toHexString());
         }
+
         return orgId
                 .flatMap(org -> {
-                    if (!org.isEmpty()) {
-                       /* return subscriptionService.getActiveSubscription(new ObjectId(org))
-                                .switchIfEmpty(Mono.error(new UnAuthorizedException(SUBSCRIPTION_INACTIVE)))
-                                .flatMap(sub -> agentRepository.countByOrganizationId(new ObjectId(org))
-                                        .flatMap(count -> {
-                                            if (count >= sub.getMaxAgents()) {
-                                                return Mono.error(new UnAuthorizedException(AGENT_LIMIT_EXCEED));
-                                            }
-                                            return Mono.just(count);
-                                        }))
-                        ;*/
-                        request.setOrganizationId(org);
+                    if (org.isEmpty()) {
+                        return Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS));
                     }
-                    return validUser.flatMap(existingUser -> {
-                        existingUser.getRoles().add(role);
-                        return saveAgent(request, existingUser);
-                    }).switchIfEmpty(Mono.defer(() -> {
-                        Users newUser = modelMapper.map(request, Users.class);
-                        newUser.getRoles().add(role);
-                        return saveAgent(request, newUser);
-                    }));
+                    ObjectId orgObjectId = new ObjectId(org);
+                    return orgSubscriptionService.getMergedLimits(orgObjectId,null)
+                            .flatMap(limits ->
+                                    agentRepository.countByOrganizationId(orgObjectId)
+                                            .flatMap(count -> {
+                                                if (count >= limits.getMaxAgents()) {
+                                                    return Mono.error(new UnAuthorizedException(AGENT_LIMIT_EXCEED));
+                                                }
+                                                request.setOrganizationId(org);
+                                                return validUser.flatMap(existingUser -> {
+                                                    existingUser.getRoles().add(role);
+                                                    return saveAgent(request, existingUser);
+                                                }).switchIfEmpty(Mono.defer(() -> {
+                                                    Users newUser = modelMapper.map(request, Users.class);
+                                                    newUser.getRoles().add(role);
+                                                    return saveAgent(request, newUser);
+                                                }));
+                                            })
+                            );
                 });
     }
 
@@ -161,8 +164,8 @@ public class AgentService {
                         user.setLocked(request.getStatus().equals(ProfileStatus.blocked));
                     }
                     // active user if removed_at is not null
-                    if (null!=request.getStatus() && user.getDeletedAt() != null && request.getStatus().equals(ProfileStatus.active)) {
-                            user.setDeletedAt(null);
+                    if (null != request.getStatus() && user.getDeletedAt() != null && request.getStatus().equals(ProfileStatus.active)) {
+                        user.setDeletedAt(null);
                     }
 
                     return userRepository.save(user);

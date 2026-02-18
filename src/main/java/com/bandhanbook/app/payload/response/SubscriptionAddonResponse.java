@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.constants.AddOnStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,7 +20,8 @@ public class SubscriptionAddonResponse {
     private int maxUsers;
     private int maxBanners;
     private int maxAdvertisements;
-    private boolean active;
+    private AddOnStatus status;
     private double price;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

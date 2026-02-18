@@ -2,6 +2,7 @@ package com.bandhanbook.app.conrollers;
 
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.constants.AddOnStatus;
 import com.bandhanbook.app.payload.request.BuySubscriptionRequest;
 import com.bandhanbook.app.payload.request.SubscriptionAddonRequest;
 import com.bandhanbook.app.payload.response.SubscriptionAddonResponse;
@@ -28,10 +29,10 @@ public class OrgSubscriptionController {
 
     @GetMapping
     public Mono<ApiResponse<List<SubscriptionResponse>>> list(@CurrentUser Users authUser, @RequestParam Map<String, String> params) {
-        String orgid = null;
+        String orgId = null;
         if (params.containsKey("organization") && null != params.get("organization") && ObjectId.isValid(params.get("organization")))
-            orgid = params.get("organization");
-        return service.list(authUser, orgid)
+            orgId = params.get("organization");
+        return service.list(authUser, orgId)
                 .map(res ->
                         ApiResponse.<List<SubscriptionResponse>>builder()
                                 .status(HttpStatus.OK.value())
@@ -98,7 +99,7 @@ public class OrgSubscriptionController {
     }
 
     @PutMapping("/addon")
-    public Mono<ApiResponse<String>> updateAddon(@CurrentUser Users authUser, @RequestParam String id, @RequestParam boolean status) {
+    public Mono<ApiResponse<String>> updateAddon(@CurrentUser Users authUser, @RequestParam String id, @RequestParam AddOnStatus status) {
         return service.updateAddonStatus(id, status, authUser)
                 .map(msg ->
                         ApiResponse.<String>builder()

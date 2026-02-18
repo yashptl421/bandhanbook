@@ -34,6 +34,7 @@ public interface UserRepository extends ReactiveMongoRepository<Users, ObjectId>
 
     Mono<Users> findByPhoneNumberAndRolesContaining(String email, String role);
 
+
     @Query("{ '_id': ?0, 'deleted_at': null }")
     @Update("{ '$set': { 'deleted_at': ?1, 'token': null } }")
     Mono<Long> deactivateUser(ObjectId userId, LocalDateTime deletedAt);

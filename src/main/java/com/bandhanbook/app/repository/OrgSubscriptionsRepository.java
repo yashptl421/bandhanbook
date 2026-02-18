@@ -11,4 +11,5 @@ import reactor.core.publisher.Mono;
 public interface OrgSubscriptionsRepository extends ReactiveMongoRepository<OrgSubscriptions, ObjectId> {
     Mono<OrgSubscriptions> findByOrgId(ObjectId org_id);
     Mono<OrgSubscriptions> findByOrgIdAndActive(ObjectId orgId, boolean active);
+    Mono<OrgSubscriptions> findByEventIdAndActive(ObjectId eventId, boolean active);
 }
