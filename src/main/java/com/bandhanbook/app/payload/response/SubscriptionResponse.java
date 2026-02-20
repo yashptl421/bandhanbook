@@ -1,10 +1,10 @@
 package com.bandhanbook.app.payload.response;
 
+import com.bandhanbook.app.model.OrgSubscriptions;
 import com.bandhanbook.app.model.PricingPlans;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.bandhanbook.app.model.SubscriptionLimits;
+import lombok.*;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
@@ -22,10 +22,10 @@ public class SubscriptionResponse {
     private String eventName;
 
     private String planName;
-
+    private SubscriptionLimits limits;
     private String planId;
 
-    private int planPrice;
+    private double planPrice;
 
     private String registrationPeriod;
 
@@ -34,10 +34,6 @@ public class SubscriptionResponse {
     private String endDate;
 
     private boolean active;
-
-    private int maxAgents;
-
-    private int maxUsers;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;

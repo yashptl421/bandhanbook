@@ -115,7 +115,7 @@ public class OrganizationService {
                         userRepository.findById(org.getUserId())
                                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                                 .zipWith(
-                                        orgSubscriptionsRepository.findByOrgId(org.getId())
+                                        orgSubscriptionsRepository.findByOrgIdAndActive(org.getId(),true)
                                                 .switchIfEmpty(Mono.just(new OrgSubscriptions())),  // avoid null
                                         (user, subscription) -> {
                                             OrganizationResponse res = modelMapper.map(org, OrganizationResponse.class);

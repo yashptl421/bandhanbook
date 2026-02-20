@@ -1,5 +1,6 @@
 package com.bandhanbook.app.payload.request;
 
+import com.bandhanbook.app.model.SubscriptionLimits;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,9 +10,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SubscriptionAddonRequest {
     private String subscriptionId;
-    private int maxAgents;
-    private int maxUsers;
-    private int maxBanners;
-    private int maxAdvertisements;
+    SubscriptionLimits limits;
     private double price;
 }

@@ -28,23 +28,13 @@ public class OrgSubscriptionAddon {
     @Field("subscription_id")
     private ObjectId subscriptionId;
 
-    @Field("max_agents")
-    private int maxAgents;
-
-    @Field("max_users")
-    private int maxUsers;
-
-    @Field("max_banners")
-    private int maxBanners;
-
-    @Field("max_advertisements")
-    private int maxAdvertisements;
-
     @Field("price")
     private double price;
 
     @Field("status")
     private AddOnStatus status;
+
+    private SubscriptionLimits limits;
 
     @Field("created_at")
     @CreatedDate
@@ -57,5 +47,4 @@ public class OrgSubscriptionAddon {
     @Field("deleted_at")
     @Builder.Default
     private LocalDateTime deletedAt = null;
-
-}
+ }

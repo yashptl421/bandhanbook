@@ -33,4 +33,5 @@ public interface ErrorResponseMessages {
     String DONATION_INVALID = "Invalid donation request";
     String SUBSCRIPTION_NOT_FOUND = "Subscription not found";
     String ADDON_NOT_FOUND = "No addons found for the subscription";
+    String SUBSCRIPTION_EXIST = "An active subscription already exists for this organization. Please contact support for assistance.";
 }

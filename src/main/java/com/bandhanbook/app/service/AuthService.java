@@ -173,7 +173,7 @@ public class AuthService {
                     .map(sub -> {
                         res.setActiveSubscription(true);
                         return res;
-                    }).defaultIfEmpty(res);
+                        }).defaultIfEmpty(res);
         }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 

@@ -24,11 +24,15 @@ public class OrgSubscriptions {
     @Field("org_id")
     private ObjectId orgId;
 
+    private SubscriptionLimits limits;
     @Field("event_id")
     private ObjectId eventId;
 
     @Field("plan_id")
-    private String planId;
+    private ObjectId planId;
+
+    @Field("plan_name")
+    private String planName;
 
     @Field("registration_period")
     private String registrationPeriod;
@@ -41,18 +45,6 @@ public class OrgSubscriptions {
 
     @Field("is_active")
     private boolean active;
-
-    @Field("max_agents")
-    private int maxAgents;
-
-    @Field("max_users")
-    private int maxUsers;
-
-    @Field("max_banners")
-    private int maxBanners;
-
-    @Field("max_advertisements")
-    private int maxAdvertisements;
 
     @Field("created_at")
     @CreatedDate

@@ -12,4 +12,5 @@ public interface OrgSubscriptionsRepository extends ReactiveMongoRepository<OrgS
     Mono<OrgSubscriptions> findByOrgId(ObjectId org_id);
     Mono<OrgSubscriptions> findByOrgIdAndActive(ObjectId orgId, boolean active);
     Mono<OrgSubscriptions> findByEventIdAndActive(ObjectId eventId, boolean active);
+    Mono<Boolean> findByOrgIdAndEventIdAndActive(ObjectId orgId, ObjectId eventId, boolean active);
 }

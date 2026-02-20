@@ -1,8 +1,8 @@
 package com.bandhanbook.app.conrollers;
 
-import com.bandhanbook.app.model.PricingPlans;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
+import com.bandhanbook.app.payload.response.PricingPlanResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.payload.response.base.CommonApiResponse;
 import com.bandhanbook.app.service.OrganizationService;
@@ -81,10 +81,11 @@ public class OrganizationController {
     }
 
     @GetMapping("/pricing-plan")
-    public Mono<ResponseEntity<CommonApiResponse<List<PricingPlans>>>> getPricingPlans() {
-        return pricingPlanService.getPricingPlans()
+    public Mono<ResponseEntity<CommonApiResponse<List<PricingPlanResponse>>>> getPricingPlans() {
+        return pricingPlanService.getActivePlans()
+                .collectList()
                 .map(json -> ResponseEntity.ok(
-                        CommonApiResponse.<List<PricingPlans>>builder()
+                        CommonApiResponse.<List<PricingPlanResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message(DATA_FOUND)
                                 .data(json)

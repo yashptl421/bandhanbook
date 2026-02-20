@@ -80,11 +80,11 @@ public class OrgSubscriptionController {
     }
 
     @GetMapping("/addon")
-    public Mono<ApiResponse<List<SubscriptionAddonResponse>>> listAddons(@CurrentUser Users authUser, @RequestParam Map<String, String> params) {
+    public Mono<ApiResponse<List<SubscriptionAddonResponse>>> listAddons(@RequestParam Map<String, String> params) {
         String id = params.getOrDefault("subscriptionId", null);
         int page = Integer.parseInt(params.getOrDefault("page", "1"));
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
-        return service.listAddons(authUser, id, page, limit);
+        return service.listAddons(id, page, limit);
     }
 
     @PostMapping("/addon")

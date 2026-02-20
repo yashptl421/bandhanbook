@@ -16,6 +16,7 @@ import com.bandhanbook.app.repository.OrgSubscriptionAddonRepository;
 import com.bandhanbook.app.repository.OrgSubscriptionsRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +32,7 @@ import java.util.List;
 import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrgSubscriptionService {
@@ -40,26 +42,32 @@ public class OrgSubscriptionService {
     private final PricingPlanService pricingPlanService;
     private final OrgSubscriptionAddonRepository addonRepository;
     private final EventsRepository eventsRepository;
+    private final UsageMetricsService usageMetricsService;
     private final ModelMapper modelMapper;
 
     public Mono<String> buySubscription(BuySubscriptionRequest req) {
-
-        Mono<PricingPlans> planMono = pricingPlanService.getPlanById(req.getPlanId());
+        ObjectId planId = new ObjectId(req.getPlanId());
+        Mono<PricingPlans> planMono = pricingPlanService.getPlanById(planId);
 
         LocalDate start = req.getPlanStartDate().toLocalDate();
         return planMono.flatMap(plan -> {
+            PricingPlans.Limits limits = plan.getLimits();
             OrgSubscriptions subscription = OrgSubscriptions.builder()
                     .orgId(new ObjectId(req.getOrgId()))
-                    .planId(req.getPlanId())
-                    .maxAgents(plan.getMaxAgents())
-                    .maxUsers(plan.getMaxUsers())
+                    .eventId(new ObjectId(req.getEventId()))
+                    .planId(plan.getId())
+                    .planName(plan.getName())
+                    .limits(SubscriptionLimits.builder()
+                            .maxAgents(limits.getMaxAgents())
+                            .maxUsers(limits.getMaxUsers())
+                            .maxBanners(limits.getMaxBanners())
+                            .maxAdvertisements(limits.getMaxAdvertisements()).build())
                     .active(false)
                     .registrationPeriod(start.minusDays(plan.getRegistrationPeriod()).toString())
                     .startDate(start.toString())
                     .endDate(start.plusYears(1).toString())
                     .build();
             return repository.save(subscription);
-
         }).thenReturn(SUBSCRIPTION_PURCHASED);
     }
 
@@ -67,17 +75,17 @@ public class OrgSubscriptionService {
         return repository.findById(new ObjectId(id)).flatMap(sub -> {
             SubscriptionResponse res =
                     modelMapper.map(sub, SubscriptionResponse.class);
-            return eventsRepository.findById(sub.getEventId()).flatMap( event ->
-             organizationRepository.findById(sub.getOrgId())
-                    .flatMap(org -> {
-                        res.setEventName(event.getName());
-                        res.setOrganizationDetails(modelMapper.map(org, OrganizationResponse.class));
-                        return pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
-                            res.setPlanName(plan.getName());
-                            res.setPlanPrice(plan.getPrice());
-                            return res;
-                        });
-                    }));
+            return eventsRepository.findById(sub.getEventId()).flatMap(event ->
+                    organizationRepository.findById(sub.getOrgId())
+                            .flatMap(org -> {
+                                res.setEventName(event.getName());
+                                res.setOrganizationDetails(modelMapper.map(org, OrganizationResponse.class));
+                                return pricingPlanService.getPlanById(sub.getPlanId()).map(plan -> {
+                                    res.setPlanName(plan.getName());
+                                    res.setPlanPrice(plan.getPrice());
+                                    return res;
+                                });
+                            }));
         }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
     }
 
@@ -126,7 +134,7 @@ public class OrgSubscriptionService {
                         );
                         res.setPlanName(plan.getName());
                         res.setPlanPrice(plan.getPrice());
-                        res.setEventName(eventName);   // ✅ Added
+                        res.setEventName(eventName);
 
                         return res;
                     });
@@ -139,17 +147,23 @@ public class OrgSubscriptionService {
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .flatMap(sub -> {
                     sub.setActive(status);
-                    return repository.save(sub);
+                    return checkExistingActiveSubscription(sub.getOrgId(), sub.getEventId())
+                            .then(usageMetricsService.createDefault(sub.getOrgId(), sub.getEventId(),status))
+                            .then(repository.save(sub));
                 })
                 .thenReturn(SUBSCRIPTION_UPDATED);
     }
 
-    public Mono<OrgSubscriptions> getActiveSubscription(ObjectId orgId) {
-        return repository
-                .findByOrgIdAndActive(orgId, true)
-                .switchIfEmpty(Mono.error(
-                        new ValidationExceptions(SUBSCRIPTION_NOT_FOUND)
-                ));
+    private Mono<Boolean> checkExistingActiveSubscription(ObjectId orgId, ObjectId eventId) {
+        return repository.findByOrgIdAndEventIdAndActive(orgId, eventId, true)
+                .switchIfEmpty(Mono.just(false))
+                .flatMap(exists -> {
+            if (exists) {
+                return Mono.error(new ValidationExceptions(SUBSCRIPTION_EXIST));
+            }
+            return Mono.just(true);
+        });
+
     }
 
     public Mono<String> buyAddon(SubscriptionAddonRequest request) {
@@ -166,7 +180,7 @@ public class OrgSubscriptionService {
                 .thenReturn(SUBSCRIPTION_ADDON_PURCHASED);
     }
 
-    public Mono<ApiResponse<List<SubscriptionAddonResponse>>> listAddons(Users authUser, String subscriptionId, int page, int limit) {
+    public Mono<ApiResponse<List<SubscriptionAddonResponse>>> listAddons(String subscriptionId, int page, int limit) {
         if (subscriptionId == null || subscriptionId.isBlank()) {
             return Mono.error(new ValidationExceptions(SUBSCRIPTION_NOT_FOUND));
         }
@@ -210,7 +224,7 @@ public class OrgSubscriptionService {
         if (orgId == null && eventId == null) {
             return Mono.error(new ValidationExceptions(SUBSCRIPTION_NOT_FOUND));
         }
-        Mono<OrgSubscriptions> subscriptionMono = null;
+        Mono<OrgSubscriptions> subscriptionMono;
         if (orgId == null) {
             subscriptionMono = repository.findByEventIdAndActive(eventId, true)
                     .switchIfEmpty(Mono.error(new RecordNotFoundException(SUBSCRIPTION_NOT_FOUND)))
@@ -223,21 +237,22 @@ public class OrgSubscriptionService {
         return subscriptionMono
                 .flatMap(sub ->
                         addonRepository
-                                .findBySubscriptionIdAndStatus(sub.getId(),AddOnStatus.APPROVED)
+                                .findBySubscriptionIdAndStatus(sub.getId(), AddOnStatus.APPROVED)
                                 .collectList()
                                 .map(addons -> {
-
-                                    int maxUsers = sub.getMaxUsers();
-                                    int maxAgents = sub.getMaxAgents();
-                                    int maxBanners = sub.getMaxBanners();
-                                    int maxAdvertisements = sub.getMaxAdvertisements();
+                                    SubscriptionLimits limits = sub.getLimits();
+                                    int maxUsers = limits.getMaxUsers();
+                                    int maxAgents = limits.getMaxAgents();
+                                    int maxBanners = limits.getMaxBanners();
+                                    int maxAdvertisements = limits.getMaxAdvertisements();
 
 
                                     for (OrgSubscriptionAddon addon : addons) {
-                                        maxUsers += addon.getMaxUsers();
-                                        maxAgents += addon.getMaxAgents();
-                                        maxBanners += addon.getMaxBanners();
-                                        maxAdvertisements += addon.getMaxAdvertisements();
+                                        SubscriptionLimits addOnLimit = addon.getLimits();
+                                        maxUsers += addOnLimit.getMaxUsers();
+                                        maxAgents += addOnLimit.getMaxAgents();
+                                        maxBanners += addOnLimit.getMaxBanners();
+                                        maxAdvertisements += addOnLimit.getMaxAdvertisements();
                                     }
                                     return SubscriptionLimits.builder()
                                             .maxUsers(maxUsers)
@@ -250,14 +265,16 @@ public class OrgSubscriptionService {
     }
 
     private SubscriptionAddonResponse mapToResponse(OrgSubscriptionAddon addon) {
+        SubscriptionLimits addOnLimit = addon.getLimits();
         return SubscriptionAddonResponse.builder()
                 .id(addon.getId().toHexString())
                 .orgId(addon.getOrgId().toHexString())
                 .subscriptionId(addon.getSubscriptionId().toHexString())
-                .maxAgents(addon.getMaxAgents())
-                .maxUsers(addon.getMaxUsers())
-                .maxBanners(addon.getMaxBanners())
-                .maxAdvertisements(addon.getMaxAdvertisements())
+                .limits(SubscriptionLimits.builder()
+                        .maxAgents(addOnLimit.getMaxAgents())
+                        .maxUsers(addOnLimit.getMaxUsers())
+                        .maxBanners(addOnLimit.getMaxBanners())
+                        .maxAdvertisements(addOnLimit.getMaxAdvertisements()).build())
                 .price(addon.getPrice())
                 .status(addon.getStatus())
                 .createdAt(addon.getCreatedAt())
