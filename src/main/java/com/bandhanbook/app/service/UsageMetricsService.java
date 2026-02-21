@@ -31,29 +31,32 @@ public class UsageMetricsService {
         }
     }
 
-    public Mono<Void> createDefault(ObjectId orgId, ObjectId eventId, boolean subscriptionActive) {
-        return repository.findByOrgIdAndEventIdAndSubscriptionActive(orgId, eventId, subscriptionActive)
-                .flatMap(exists -> {
-                    exists.setSubscriptionActive(subscriptionActive);
-                    return repository.save(exists).then();
+    public Mono<Void> createDefault(ObjectId orgId,
+                                    ObjectId eventId,
+                                    boolean subscriptionActive) {
 
+        return repository.findByOrgIdAndEventId(orgId, eventId)
+                .flatMap(existing -> {
+                    existing.setSubscriptionActive(subscriptionActive);
+                    existing.setUpdatedAt(LocalDateTime.now());
+                    return repository.save(existing);
                 })
                 .switchIfEmpty(Mono.defer(() -> {
-                            OrgUsageMetrics metrics = OrgUsageMetrics.builder()
-                                    .orgId(orgId)
-                                    .eventId(eventId)
-                                    .currentUsers(0)
-                                    .currentAgents(0)
-                                    .currentBanners(0)
-                                    .currentAdvertisements(0)
-                                    .updatedAt(LocalDateTime.now())
-                                    .build();
+                    OrgUsageMetrics metrics = OrgUsageMetrics.builder()
+                            .orgId(orgId)
+                            .eventId(eventId)
+                            .currentUsers(0)
+                            .currentAgents(0)
+                            .currentBanners(0)
+                            .currentAdvertisements(0)
+                            .subscriptionActive(subscriptionActive)
+                            .updatedAt(LocalDateTime.now())
+                            .build();
 
-                            return repository.save(metrics).then();
-                        })
-                        .then());
+                    return repository.save(metrics);
+                }))
+                .then();
     }
-
     public Mono<Void> incrementUsers(ObjectId orgId) {
         return updateMetric(orgId, "current_users", 1);
     }

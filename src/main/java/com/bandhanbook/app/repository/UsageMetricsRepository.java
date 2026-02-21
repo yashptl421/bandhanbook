@@ -10,6 +10,7 @@ public interface UsageMetricsRepository
 
     Mono<OrgUsageMetrics> findByOrgIdAndSubscriptionActive(ObjectId orgId, boolean subscriptionActive);
     Mono<OrgUsageMetrics> findByOrgIdAndEventIdAndSubscriptionActive(ObjectId orgId, ObjectId eventId, boolean subscriptionActive);
+    Mono<OrgUsageMetrics> findByOrgIdAndEventId(ObjectId orgId, ObjectId eventId);
     Mono<OrgUsageMetrics> findByEventIdAndSubscriptionActive(ObjectId eventId, boolean subscriptionActive);
 
 

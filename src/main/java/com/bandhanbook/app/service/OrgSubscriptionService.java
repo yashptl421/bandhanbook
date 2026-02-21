@@ -147,15 +147,18 @@ public class OrgSubscriptionService {
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .flatMap(sub -> {
                     sub.setActive(status);
-                    return checkExistingActiveSubscription(sub.getOrgId(), sub.getEventId())
+                    return checkExistingActiveSubscription(sub.getOrgId(), sub.getEventId(),status)
                             .then(usageMetricsService.createDefault(sub.getOrgId(), sub.getEventId(),status))
                             .then(repository.save(sub));
                 })
                 .thenReturn(SUBSCRIPTION_UPDATED);
     }
 
-    private Mono<Boolean> checkExistingActiveSubscription(ObjectId orgId, ObjectId eventId) {
-        return repository.findByOrgIdAndEventIdAndActive(orgId, eventId, true)
+    private Mono<Boolean> checkExistingActiveSubscription(ObjectId orgId, ObjectId eventId, boolean status) {
+        if(!status){
+            return Mono.just(true);
+        }
+        return repository.existsByOrgIdAndEventIdAndActive(orgId, eventId, true)
                 .switchIfEmpty(Mono.just(false))
                 .flatMap(exists -> {
             if (exists) {
