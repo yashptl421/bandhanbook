@@ -1,6 +1,7 @@
 package com.bandhanbook.app.service;
 
 import com.bandhanbook.app.exception.RecordNotFoundException;
+import com.bandhanbook.app.exception.ValidationExceptions;
 import com.bandhanbook.app.model.Advertisement;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.Frequency;
@@ -48,6 +49,8 @@ public class AdvertisementService {
     private final ImageUploadService fileUploadService;
     private final ReactiveMongoTemplate template;
     private final ModelMapper modelMapper;
+    private final UsageMetricsService usageMetricsService;
+    private final LimitEnforcementComponent limitEnforcementComponent;
 
 
     @Value("${images.base.path}")
@@ -57,53 +60,49 @@ public class AdvertisementService {
     private String advertisementPath;
     private final ObjectMapper objectMapper;
 
-    public Mono<String> createAdvertisement(
-            String dataJson,
-            Flux<FilePart> files,
-            Users authUser
-    ) {
+    public Mono<String> createAdvertisement(String dataJson, Flux<FilePart> files, Users authUser) {
         AdvertisementRequest request;
         try {
             request = objectMapper.readValue(dataJson, AdvertisementRequest.class);
         } catch (Exception e) {
-            return Mono.error(new IllegalArgumentException("Invalid advertisement data"));
+            return Mono.error(new ValidationExceptions("Invalid advertisement data"));
         }
-
         ObjectId eventId = new ObjectId(request.getEventId());
         List<Frequency> frequencies = request.getFrequency();
-
         return eventRepository.findById(eventId)
                 .switchIfEmpty(Mono.error(new RecordNotFoundException("Event not found")))
                 .flatMap(event -> {
-
                     String folder = basePath + event.getId().toHexString() + advertisementPath;
-
-                    return files
-                            .index()
-                            .flatMap(tuple -> {
-                                int index = tuple.getT1().intValue();
-                                FilePart file = tuple.getT2();
-
-                                if (index >= frequencies.size()) {
-                                    return Mono.error(
-                                            new IllegalArgumentException(
-                                                    "Frequency missing for image index " + index));
+                    return files.collectList()
+                            .flatMap(fileList -> {
+                                if (fileList.size() != frequencies.size()) {
+                                    return Mono.error(new ValidationExceptions("Frequencies count must match files"));
                                 }
-                                Frequency frequency = frequencies.get(index);
-                                return fileUploadService
-                                        .upload(file, event.getId().toHexString(), folder)
-                                        .flatMap(img -> {
-                                            Advertisement ad = Advertisement.builder()
-                                                    .images(img)
-                                                    .frequency(frequency)
-                                                    .eventId(eventId)
-                                                    .active(true)
-                                                    .createdBy(authUser.getId())
-                                                    .build();
-                                            return repository.save(ad);
-                                        });
-                            })
-                            .then(Mono.just(ADVERTISEMENT_CREATED));
+                                return limitEnforcementComponent
+                                        .checkAdvertisementLimit(eventId, fileList.size())
+                                        .thenMany(Flux.fromIterable(fileList))
+                                        .index()
+                                        .flatMap(tuple -> {
+                                            int index = tuple.getT1().intValue();
+                                            FilePart file = tuple.getT2();
+                                            Frequency frequency = frequencies.get(index);
+                                            return fileUploadService
+                                                    .upload(file, event.getId().toHexString(), folder)
+                                                    .flatMap(img -> {
+                                                        Advertisement ad = Advertisement.builder()
+                                                                .images(img)
+                                                                .frequency(frequency)
+                                                                .eventId(eventId)
+                                                                .active(true)
+                                                                .organizationId(event.getOrganizationId())
+                                                                .createdBy(authUser.getId())
+                                                                .build();
+                                                        return repository.save(ad)
+                                                                .doOnSuccess(ep -> usageMetricsService.incrementAdvertisement(event.getOrganizationId(), eventId).subscribe());
+                                                    });
+                                        })
+                                        .then(Mono.just(ADVERTISEMENT_CREATED));
+                            });
                 });
     }
 
@@ -120,6 +119,7 @@ public class AdvertisementService {
                             .map(ad -> AdvertisementResponse.builder()
                                     .id(ad.getId().toHexString())
                                     .eventId(ad.getEventId().toHexString())
+                                    .organizationId(ad.getOrganizationId().toHexString())
                                     .images(ad.getImages())
                                     .frequency(ad.getFrequency())
                                     .durationInDays(ad.getDurationInDays())
@@ -190,22 +190,28 @@ public class AdvertisementService {
 
     public Mono<Void> deleteAdvertisement(List<String> requests) {
         List<ObjectId> ids = requests.stream().map(ObjectId::new).toList();
-        return deleteAdvertisementImages(ids).then(repository.deleteByIdIn(ids));
+
+        return repository.findAllById(ids)
+                .collectList()
+                .flatMapMany(Flux::fromIterable)
+                .groupBy(ad -> ad.getOrganizationId().toHexString() + "_" + ad.getEventId().toHexString())
+                .flatMap(group -> group.collectList().flatMap(ads -> {
+
+                    ObjectId orgId = ads.get(0).getOrganizationId();
+                    ObjectId eventId = ads.get(0).getEventId();
+                    int count = ads.size();
+
+                    List<String> imageIds = ads.stream()
+                            .map(ad -> ad.getImages().getId())
+                            .toList();
+
+                    return fileUploadService.bulkDelete(imageIds)
+                            .then(repository.deleteAllById(
+                                    ads.stream().map(Advertisement::getId).toList()))
+                            .then(usageMetricsService.decrementAdvertisement(orgId, eventId, count));
+                }))
+                .then();
     }
-
-    private Mono<Void> deleteAdvertisementImages(List<ObjectId> ids) {
-        Mono<List<Advertisement>> MonoList = repository.findAllById(ids)
-                .collectList();
-
-        return MonoList.flatMap(ads -> {
-            List<String> imageIds = ads.stream()
-                    .filter(ad -> ad.getImages() != null && ad.getImages().getId() != null)
-                    .map(ad -> ad.getImages().getId())
-                    .toList();
-            return fileUploadService.bulkDelete(imageIds);
-        });
-    }
-
     public Mono<AdvertisementWrapper> findWithCounts(AdvertisementFilterRequest filter, List<ObjectId> eventIds, Users authUser) {
         int skip = (filter.getPage() - 1) * filter.getLimit();
         Criteria criteria = new Criteria();

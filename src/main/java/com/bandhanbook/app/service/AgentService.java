@@ -13,6 +13,7 @@ import com.bandhanbook.app.repository.OrganizationRepository;
 import com.bandhanbook.app.repository.UserRepository;
 import com.bandhanbook.app.wrappers.AgentWrapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Sort;
@@ -29,12 +30,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
+import static com.bandhanbook.app.utilities.ErrorResponseMessages.UNAUTHORIZED_ACCESS;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_CREATED;
 import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_UPDATED;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AgentService {
     private final UserRepository userRepository;
     private final AuthService authService;
@@ -43,43 +46,34 @@ public class AgentService {
     private final OrganizationRepository organizationRepository;
     private final ReactiveMongoTemplate mongoTemplate;
     private final CommonService commonService;
-    private final OrgSubscriptionService orgSubscriptionService;
+    private final UsageMetricsService usageMetricsService;
+    private final LimitEnforcementComponent limitEnforcementComponent;
 
     public Mono<String> createAgent(AgentRequest request, Users authUser) {
 
         String role = RoleNames.Agent.name();
-        Mono<Users> validUser = authService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), role);
-        Mono<String> orgId = Mono.just("");
-        if (authUser.isOrganization()) {
-            orgId = organizationRepository.findByUserId(authUser.getId())
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
-                    .map(org -> org.getId().toHexString());
+
+        if (!authUser.isOrganization()) {
+            return Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS));
         }
 
-        return orgId
+        return organizationRepository.findByUserId(authUser.getId())
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
                 .flatMap(org -> {
-                    if (org.isEmpty()) {
-                        return Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS));
-                    }
-                    ObjectId orgObjectId = new ObjectId(org);
-                    return orgSubscriptionService.getMergedLimits(orgObjectId,null)
-                            .flatMap(limits ->
-                                    agentRepository.countByOrganizationId(orgObjectId)
-                                            .flatMap(count -> {
-                                                if (count >= limits.getMaxAgents()) {
-                                                    return Mono.error(new UnAuthorizedException(AGENT_LIMIT_EXCEED));
-                                                }
-                                                request.setOrganizationId(org);
-                                                return validUser.flatMap(existingUser -> {
-                                                    existingUser.getRoles().add(role);
-                                                    return saveAgent(request, existingUser);
-                                                }).switchIfEmpty(Mono.defer(() -> {
-                                                    Users newUser = modelMapper.map(request, Users.class);
-                                                    newUser.getRoles().add(role);
-                                                    return saveAgent(request, newUser);
-                                                }));
-                                            })
-                            );
+                    ObjectId orgId = org.getId();
+                    request.setOrganizationId(orgId.toHexString());
+
+                    return limitEnforcementComponent.checkAgentLimit(orgId)
+                            .then(authService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), role))
+                            .flatMap(existingUser -> {
+                                existingUser.getRoles().add(role);
+                                return saveAgent(request, existingUser);
+                            })
+                            .switchIfEmpty(Mono.defer(() -> {
+                                Users newUser = modelMapper.map(request, Users.class);
+                                newUser.getRoles().add(role);
+                                return saveAgent(request, newUser);
+                            }));
                 });
     }
 
@@ -90,7 +84,7 @@ public class AgentService {
                         organizationRepository.findByUserId(authUser.getId())
                                 .flatMap(org -> {
                                     if (!org.getId().equals(agents.getOrganizationId())) {
-                                        return Mono.error(new UnAuthorizedException("User Not Authorized"));
+                                        return Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS));
                                     }
                                     return userRepository.findById(agents.getUserId())
                                             .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
@@ -126,15 +120,24 @@ public class AgentService {
     private Mono<String> saveAgent(AgentRequest request, Users newUser) {
         return userRepository.save(newUser)
                 .flatMap(savedUser -> {
-                    // Resolve Organization ID
+
                     String organizationId = request.getOrganizationId();
-                    // 5. Create Agent
+
                     Agents agent = modelMapper.map(request, Agents.class);
                     agent.setUserId(savedUser.getId());
                     agent.setOrganizationId(new ObjectId(organizationId));
+
                     return agentRepository.save(agent)
+                            .doOnSuccess(savedAgent ->
+                                    triggerAgentMetrics(savedAgent.getOrganizationId())
+                            )
                             .thenReturn(AGENT_CREATED);
                 });
+    }
+    private void triggerAgentMetrics(ObjectId orgId) {
+        usageMetricsService.incrementAgents(orgId)
+                .doOnError(e -> log.error("Failed to increment agent metrics", e))
+                .subscribe(); // controlled fire-and-forget
     }
 
     @Transactional

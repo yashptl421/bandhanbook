@@ -23,10 +23,10 @@ public class UsageMetricsService {
 
     public Mono<OrgUsageMetrics> getUsageMetrics(ObjectId orgId, ObjectId eventId) {
         if (orgId != null && eventId != null) {
-            return repository.findByOrgIdAndEventIdAndSubscriptionActive(orgId, eventId,true);
+            return repository.findByOrgIdAndEventIdAndSubscriptionActive(orgId, eventId, true);
         } else if (orgId != null) {
             return repository.findByOrgIdAndSubscriptionActive(orgId, true);
-        } else  {
+        } else {
             return repository.findByEventIdAndSubscriptionActive(eventId, true);
         }
     }
@@ -57,43 +57,48 @@ public class UsageMetricsService {
                 }))
                 .then();
     }
-    public Mono<Void> incrementUsers(ObjectId orgId) {
-        return updateMetric(orgId, "current_users", 1);
+
+    public Mono<Void> incrementUsers(ObjectId orgId, ObjectId eventId) {
+        return updateMetric(orgId, eventId, "current_users", 1);
     }
 
-    public Mono<Void> decrementUsers(ObjectId orgId) {
-        return updateMetric(orgId, "current_users", -1);
+    public Mono<Void> decrementUsers(ObjectId orgId, ObjectId eventId) {
+        return updateMetric(orgId, eventId, "current_users", -1);
     }
 
     public Mono<Void> incrementAgents(ObjectId orgId) {
-        return updateMetric(orgId, "current_agents", 1);
+        return updateMetric(orgId, null, "current_agents", 1);
     }
 
-    public Mono<Void> decrementAgents(ObjectId orgId) {
-        return updateMetric(orgId, "current_agents", -1);
+    public Mono<Void> decrementAgents(ObjectId orgId, ObjectId eventId) {
+        return updateMetric(orgId, null, "current_agents", -1);
     }
 
     public Mono<Void> incrementBanners(ObjectId orgId) {
-        return updateMetric(orgId, "current_banners", 1);
+        return updateMetric(orgId, null, "current_banners", 1);
     }
 
     public Mono<Void> decrementBanners(ObjectId orgId) {
-        return updateMetric(orgId, "current_banners", -1);
+        return updateMetric(orgId, null, "current_banners", -1);
     }
 
-    public Mono<Void> incrementAdvertisement(ObjectId orgId) {
-        return updateMetric(orgId, "current_advertisements", 1);
+    public Mono<Void> incrementAdvertisement(ObjectId orgId, ObjectId eventId) {
+        return updateMetric(orgId, eventId, "current_advertisements", 1);
     }
 
-    public Mono<Void> decrementAdvertisement(ObjectId orgId) {
-        return updateMetric(orgId, "current_advertisements", -1);
+    public Mono<Void> decrementAdvertisement(ObjectId orgId, ObjectId eventId, int count) {
+        return updateMetric(orgId, eventId, "current_advertisements", -count);
     }
 
 
-    private Mono<Void> updateMetric(ObjectId orgId, String field, int delta) {
-
-        Query query = Query.query(Criteria.where("org_id").is(orgId));
-
+    private Mono<Void> updateMetric(ObjectId orgId, ObjectId eventId, String field, int delta) {
+        Criteria criteria = new Criteria();
+        criteria.and("org_id").is(orgId);
+        if (eventId != null) {
+            criteria.and("event_id").is(eventId);
+        }
+        criteria.and("subscription_active").is(true);
+        Query query = new Query(criteria);
         Update update = new Update()
                 .inc(field, delta)
                 .set("updated_at", LocalDateTime.now());

@@ -8,6 +8,7 @@ import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.EventParticipants;
 import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.Users;
+import com.bandhanbook.app.model.constants.ManglikOptions;
 import com.bandhanbook.app.model.constants.ProfileStatus;
 import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.CandidateRequest;
@@ -62,12 +63,12 @@ public class UserService {
     private final CommonService commonService;
     private final EventManagementService eventManagementService;
     private final LimitEnforcementComponent limitEnforcementComponent;
+    private final UsageMetricsService usageMetricsService;
 
 
     public Users getUsers() {
         return new Users();
     }
-
 
     public Mono<CandidateResponse> showCandidates(String userId, Users authUser) {
 
@@ -692,24 +693,32 @@ public class UserService {
         return Mono.when(deactivateUser, roleDeactivation).then();
     }
 
-    private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate, UserRegisterRequest request, Agents agent) {
+    private Mono<EventParticipants> saveEventParticipant(MatrimonyCandidate candidate,
+                                                         UserRegisterRequest request,
+                                                         Agents agent) {
+
+        ObjectId eventId = new ObjectId(request.getEventId());
+        ObjectId orgId = agent.getOrganizationId();
+        ObjectId agentId = agent.getId();
+
         return eventParticipantRepo.save(EventParticipants.builder()
                         .candidateId(candidate.getId())
-                        .eventId(new ObjectId(request.getEventId()))
-                        .addedBy(agent.getId())
+                        .eventId(eventId)
+                        .addedBy(agentId)
                         .registrationFee(request.getRegistrationFee())
-                        .organizationId(agent.getOrganizationId())
+                        .organizationId(orgId)
                         .build())
-                .doOnSuccess(ep ->
-                        eventManagementService.onCandidateRegistration(
-                                agent.getId(),
-                                new ObjectId(request.getEventId()),
-                                agent.getOrganizationId(),
-                                request.getRegistrationFee()
-                        ).subscribe() // ASYNC fire-and-forget
-                );
+                .doOnSuccess(ep -> triggerAsyncProcesses(agentId, eventId, orgId, request.getRegistrationFee()));
     }
+    private void triggerAsyncProcesses(ObjectId agentId, ObjectId eventId, ObjectId orgId, Double fee) {
+        Mono<Void> asyncTasks = Mono.when(
+                        eventManagementService.onCandidateRegistration(agentId, eventId, orgId, fee).then(),
+                        usageMetricsService.incrementUsers(orgId, eventId).then()
+                )
+                .doOnError(e -> log.error("Async post-registration failed", e));
 
+        asyncTasks.subscribe(); 
+    }
     private MatrimonyCandidate registerReqToCandidate(UserRegisterRequest req, Users user) {
         return MatrimonyCandidate.builder().userId(user.getId())
                 .personalDetails(MatrimonyCandidate.PersonalDetails.builder()
@@ -775,7 +784,7 @@ public class UserService {
             filter.put("personal_details.maternal_gotra", params.get("maternalGotra"));
 
         if (params.containsKey("manglik") && null != params.get("manglik") && !params.get("manglik").isBlank())
-            filter.put("personal_details.manglik", Boolean.parseBoolean(params.get("manglik")));
+            filter.put("personal_details.manglik", ManglikOptions.valueOf(params.get("manglik")));
 
         if (params.containsKey("maritalStatus") && null != params.get("maritalStatus") && !params.get("maritalStatus").isBlank())
             filter.put("personal_details.marital_status", params.get("maritalStatus"));

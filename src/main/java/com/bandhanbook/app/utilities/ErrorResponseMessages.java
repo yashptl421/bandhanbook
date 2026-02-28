@@ -34,4 +34,6 @@ public interface ErrorResponseMessages {
     String SUBSCRIPTION_NOT_FOUND = "Subscription not found";
     String ADDON_NOT_FOUND = "No addons found for the subscription";
     String SUBSCRIPTION_EXIST = "An active subscription already exists for this organization. Please contact support for assistance.";
+    String BANNER_LIMIT_EXCEED = "Banner Limit Exceeded. Please Upgrade your Plan.";
+    String ADVERTISEMENT_LIMIT_EXCEED = "Advertisement Limit Exceeded. Please Upgrade your Plan.";
 }

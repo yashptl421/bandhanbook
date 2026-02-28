@@ -19,6 +19,8 @@ public class AdvertisementResponse {
 
     private String eventId;
 
+    private String organizationId;
+
     private Image images;
 
     private Frequency frequency;

@@ -92,9 +92,7 @@ public class OrgSubscriptionService {
     public Mono<List<SubscriptionResponse>> list(Users authUser, String orgId) {
 
         Mono<Organization> orgMono =
-                (authUser.isOrganization() || orgId != null)
-                        ? (orgId != null
-                        ? organizationRepository.findById(new ObjectId(orgId))
+                (authUser.isOrganization() || orgId != null) ? (orgId != null ? organizationRepository.findById(new ObjectId(orgId))
                         : organizationRepository.findByUserId(authUser.getId()))
                         : Mono.empty();
 
@@ -106,8 +104,7 @@ public class OrgSubscriptionService {
         return subscriptionFlux.flatMap(sub -> {
 
             Mono<Organization> organizationMono =
-                    (authUser.isOrganization() || orgId != null)
-                            ? orgMono
+                    (authUser.isOrganization() || orgId != null) ? orgMono
                             : organizationRepository.findById(sub.getOrgId());
 
             Mono<PricingPlans> planMono = pricingPlanService.getPlanById(sub.getPlanId());

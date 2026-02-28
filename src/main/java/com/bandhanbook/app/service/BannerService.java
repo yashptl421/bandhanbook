@@ -8,9 +8,9 @@ import com.bandhanbook.app.payload.request.BannerRequest;
 import com.bandhanbook.app.payload.response.BannerResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.repository.BannerRepository;
-import com.bandhanbook.app.repository.OrganizationRepository;
 import com.bandhanbook.app.wrappers.BannerWrapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,15 +31,17 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BannerService {
     private final BannerRepository bannerRepository;
-    private final OrganizationRepository organizationRepository;
     private final ImageUploadService imageUploadService;
     private final ModelMapper modelMapper;
     private final ReactiveMongoTemplate mongoTemplate;
     private final AgentService agentService;
     private final UserService userService;
     private final ProfileService profileService;
+    private final UsageMetricsService usageMetricsService;
+    private final LimitEnforcementComponent limitEnforcementComponent;
 
     @Value("${images.base.path}")
     private String basePath;
@@ -60,9 +62,11 @@ public class BannerService {
 
 
         return orgIdMono.flatMap(orgId -> {
+
             String filename = orgId + "_" + System.currentTimeMillis();
             String folder = basePath + orgId + bannerPath;
-            return imageUploadService.upload(file, filename, folder)
+            return limitEnforcementComponent.checkBannerLimit(new ObjectId(orgId))
+                    .then(imageUploadService.upload(file, filename, folder)
                     .flatMap(image -> {
 
                         Banners banner = Banners.builder()
@@ -73,11 +77,18 @@ public class BannerService {
                                 .organizationId(new ObjectId(orgId))
                                 .createdBy(authUser.getId())
                                 .build();
-                        return bannerRepository.save(banner).thenReturn(modelMapper.map(banner, BannerResponse.class));
-                    });
+                        return bannerRepository.save(banner)
+                                .doOnSuccess(banners ->
+                                        triggerBannerMetrics(banners.getOrganizationId())
+                                ).thenReturn(modelMapper.map(banner, BannerResponse.class));
+                    }));
         });
     }
-
+    private void triggerBannerMetrics(ObjectId orgId) {
+        usageMetricsService.incrementBanners(orgId)
+                .doOnError(e -> log.error("Failed to increment Banner metrics", e))
+                .subscribe();
+    }
     public Mono<ApiResponse<List<BannerResponse>>> listBanners(Users authUser, int page, int limit) {
         Mono<String> orgIdMono = agentService.getOrgIdMono(authUser, new HashMap<>());
         if (authUser.isCandidate()) {
@@ -194,6 +205,7 @@ public class BannerService {
 
                     return deleteImageMono
                             .then(bannerRepository.deleteById(bannerId))
+                            .then(usageMetricsService.decrementBanners(banner.getOrganizationId()))
                             .thenReturn(BANNER_DELETED);
                 });
     }

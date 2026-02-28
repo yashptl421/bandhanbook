@@ -41,10 +41,4 @@ public class AgentRequest {
     private int state = 4039; // Madhya Pradesh
     private int city;
     private String zip;
-
-    private LocalDateTime createdAt;
-
-    private LocalDateTime updatedAt;
-
-    private LocalDateTime deletedAt;
 }

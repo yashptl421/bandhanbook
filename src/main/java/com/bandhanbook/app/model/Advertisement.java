@@ -28,6 +28,9 @@ public class Advertisement {
     @Field("event_id")
     private ObjectId eventId;
 
+    @Field("organization_id")
+    private ObjectId organizationId;
+
     @Field("images")
     private Image images;
 
