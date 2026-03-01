@@ -242,9 +242,10 @@ public class UserService {
                         if (authUser.isCandidate()) {
                             req.getMatrimonyData().setStatus(candidate.getStatus());
                         }
-                        if (null != req.getMatrimonyData().getPersonalDetails()) {
-                            validateAdult(req.getMatrimonyData().getPersonalDetails().getDob());
+                        if (null != req.getMatrimonyData().getPersonalDetails() && null == req.getMatrimonyData().getPersonalDetails().getDob()) {
+                            req.getMatrimonyData().getPersonalDetails().setDob(candidate.getPersonalDetails().getDob());
                         }
+
                         modelMapper.map(req.getMatrimonyData(), candidate);
                         return userRepository.save(users).flatMap(user -> matrimonyRepository.save(candidate)
                                 .map(updatedCandidate -> {
@@ -710,6 +711,7 @@ public class UserService {
                         .build())
                 .doOnSuccess(ep -> triggerAsyncProcesses(agentId, eventId, orgId, request.getRegistrationFee()));
     }
+
     private void triggerAsyncProcesses(ObjectId agentId, ObjectId eventId, ObjectId orgId, Double fee) {
         Mono<Void> asyncTasks = Mono.when(
                         eventManagementService.onCandidateRegistration(agentId, eventId, orgId, fee).then(),
@@ -717,8 +719,9 @@ public class UserService {
                 )
                 .doOnError(e -> log.error("Async post-registration failed", e));
 
-        asyncTasks.subscribe(); 
+        asyncTasks.subscribe();
     }
+
     private MatrimonyCandidate registerReqToCandidate(UserRegisterRequest req, Users user) {
         return MatrimonyCandidate.builder().userId(user.getId())
                 .personalDetails(MatrimonyCandidate.PersonalDetails.builder()
@@ -797,6 +800,38 @@ public class UserService {
 
         if (params.containsKey("bloodDonated") && null != params.get("bloodDonated") && !params.get("bloodDonated").isBlank())
             filter.put("blood_donated", Boolean.parseBoolean(params.get("bloodDonated")));
+
+        if (params.containsKey("age[min]") && params.containsKey("age[max]") && !params.get("age[max]").isBlank()) {
+
+            int minAge = Integer.parseInt(params.get("age[min]"));
+            int maxAge = Integer.parseInt(params.get("age[max]"));
+
+            filter.put(
+                    "personal_details.date_of_birth",
+                    new Document("$gte", UtilityHelper.getDateFromAge(maxAge, true))
+                            .append("$lte", UtilityHelper.getDateFromAge(minAge, false))
+            );
+        }
+        if (params.containsKey("height[min]") && params.get("height[max]") != null && !params.get("height[max]").isBlank()) {
+            String minHeight = params.get("height[min]");
+            String maxHeight = params.get("height[max]");
+            filter.put("personal_details.height",
+                    new Document("$gte", minHeight)
+                            .append("$lte", maxHeight)
+            );
+        }
+
+        if (params.containsKey("salary[min]") && params.containsKey("salary[max]") && !params.get("salary[min]").isBlank()) {
+            String minSalary = params.get("salary[min]");
+            String maxSalary = params.get("salary[max]");
+            if(maxSalary==null || maxSalary.isBlank()){
+                maxSalary = String.valueOf(Integer.MAX_VALUE);
+            }
+            filter.put("occupation_details.annual_income",
+                    new Document("$gte", minSalary)
+                            .append("$lte", maxSalary)
+            );
+        }
     }
 
     private void applyEventFilters(Map<String, String> params, Document filter) {
