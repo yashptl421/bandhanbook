@@ -75,29 +75,11 @@ public class DonationService {
     public Mono<Tuple2<Long, List<DonationResponse>>> listDonations(Users authUser, int page, int limit, Map<String, String> params) {
         int skip = Math.max(page - 1, 0) * limit;
         Criteria criteria = Criteria.where("deleted_at").is(null);
-
-        Mono<Criteria> criteriaMono;
-        if (authUser.isAgent()) {
-            criteriaMono = agentRepository.findByUserId(authUser.getId())
-                    .map(agent -> criteria.and("agent_id").is(agent.getId()));
-        } else if (authUser.isOrganization()) {
-            criteriaMono = organizationRepository.findByUserId(authUser.getId())
-                    .map(org -> criteria.and("organization_id").is(org.getId()));
-        } else {
-            criteriaMono = Mono.just(criteria);
-        }
+        Mono<Criteria> criteriaMono = resolveUserCriteria(authUser, criteria);
         return criteriaMono.flatMap(c -> {
-
-            if (params.containsKey("eventId")) {
-                c.and("event_id").is(new ObjectId(params.get("eventId")));
-            }
-            if (params.containsKey("agentId")) {
-                c.and("agent_id").is(new ObjectId(params.get("agentId")));
-            }
+            applyFilters(c, params);
             Aggregation aggregation = Aggregation.newAggregation(
-
                     Aggregation.match(c),
-
                     Aggregation.lookup("events", "event_id", "_id", "event"),
                     Aggregation.unwind("event", true),
 
@@ -137,12 +119,7 @@ public class DonationService {
             return template.aggregate(aggregation, "donations", DonationWrapper.class)
                     .next()
                     .defaultIfEmpty(new DonationWrapper())
-                    .map(wrapper ->
-                            Tuples.of(
-                                    wrapper.getTotal(),
-                                    wrapper.getData()
-                            )
-                    );
+                    .map(wrapper -> Tuples.of(wrapper.getTotal(), wrapper.getData()));
         });
     }
 
@@ -189,4 +166,35 @@ public class DonationService {
                 .then();
     }
 
+    private Mono<Criteria> resolveUserCriteria(Users authUser, Criteria base) {
+        if (authUser.isAgent()) {
+            return agentRepository.findByUserId(authUser.getId())
+                    .map(agent -> base.and("agent_id").is(agent.getId()));
+        }
+        if (authUser.isOrganization()) {
+            return organizationRepository.findByUserId(authUser.getId())
+                    .map(org -> base.and("organization_id").is(org.getId()));
+        }
+        return Mono.just(base);
+    }
+
+    private void applyFilters(Criteria c, Map<String, String> params) {
+
+        if (params.containsKey("eventId")) {
+            c.and("event_id").is(new ObjectId(params.get("eventId")));
+        }
+
+        if (params.containsKey("agentId")) {
+            c.and("agent_id").is(new ObjectId(params.get("agentId")));
+        }
+
+        if (params.containsKey("search")) {
+            String search = params.get("search");
+            c.orOperator(
+                    Criteria.where("donor_name").regex(search, "i"),
+                    Criteria.where("email").regex(search, "i"),
+                    Criteria.where("phone_number").regex(search, "i")
+            );
+        }
+    }
 }

@@ -9,5 +9,14 @@ import java.util.List;
 @Data
 public class DonationWrapper {
     private List<DonationResponse> data = new ArrayList<>();
-    private long total;
+    private List<Metadata> metadata = new ArrayList<>();
+
+    public long getTotal() {
+        return metadata.isEmpty() ? 0 : metadata.get(0).getTotal();
+    }
+
+    @Data
+    public static class Metadata {
+        private long total;
+    }
 }
