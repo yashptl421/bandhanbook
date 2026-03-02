@@ -50,7 +50,6 @@ public class AuthService {
 
     @Transactional
     public Mono<String> login(PhoneLoginRequest loginRequest) {
-
         return userDetailService.findByPhoneNumber(loginRequest.getPhoneNumber())
                 .switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(messageUtil.get("phoneNumber.not.found"))))
                 .flatMap(user -> {
@@ -59,7 +58,8 @@ public class AuthService {
                         return Mono.error(new EmailNotFoundException(messageUtil.get("email.not.found")));
                     }
                     if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {
-                        return Mono.error(new RecordNotFoundException(messageUtil.get(loginRequest.getRole()) + " " + messageUtil.get("user.not.registered")));
+                        String role = loginRequest.getRole();
+                        return Mono.error(new RecordNotFoundException( messageUtil.get(role)+ " " + messageUtil.get("user.not.registered")));
                     }
                     return otpService.requestOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
                 });

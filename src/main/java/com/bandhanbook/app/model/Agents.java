@@ -7,6 +7,10 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.IndexDirection;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -18,6 +22,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 @Document(collection = "agents")
+@CompoundIndexes({
+        @CompoundIndex(name = "org_created_idx", def = "{'organization_id': 1, 'created_at': -1}")
+})
 public class Agents {
 
     @Id
@@ -27,6 +34,7 @@ public class Agents {
     private ObjectId userId;
 
     @Field("organization_id")
+    @Indexed
     private ObjectId organizationId;
 
     @Builder.Default
@@ -54,6 +62,7 @@ public class Agents {
 
     @Field("created_at")
     @CreatedDate
+    @Indexed(direction = IndexDirection.DESCENDING)
     private LocalDateTime createdAt;
 
     @Field("updated_at")

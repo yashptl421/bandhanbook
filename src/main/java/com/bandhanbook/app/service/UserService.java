@@ -601,13 +601,26 @@ public class UserService {
         return matrimonyRepository.findByUserId(authUser.getId())
                 .flatMapMany(candidateProfile -> {
                     List<ObjectId> favoriteIds = candidateProfile.getFavorites() != null ? candidateProfile.getFavorites() : new ArrayList<>();
-                    return matrimonyRepository.findAllById(favoriteIds);
+                    return matrimonyRepository.findVisibleFavorites(favoriteIds);
                 })
                 .flatMap(favoriteCandidate ->
                         userRepository.findById(favoriteCandidate.getUserId())
                                 .map(user -> {
                                     PhoneLoginResponse res = modelMapper.map(user, PhoneLoginResponse.class);
                                     res.setMatrimony_data(modelMapper.map(favoriteCandidate, MatrimonyCandidateResponse.class));
+                                    if (res.getMatrimony_data() != null && res.getMatrimony_data().getPrivacySettings() != null) {
+                                        MatrimonyCandidateResponse.PrivacySettings settings = res.getMatrimony_data().getPrivacySettings();
+                                        if (settings.isHidePhone()) {
+                                            res.setPhoneNumber(UtilityHelper.maskPhoneNumber(res.getPhoneNumber()));
+                                        }
+                                        if (settings.isHideEmail()) {
+                                            res.setEmail(UtilityHelper.maskEmail(res.getEmail()));
+                                        }
+                                        if (settings.isHideProfileImage()) {
+                                            res.setProfileImage(null);
+                                            res.getMatrimony_data().setImages(null);
+                                        }
+                                    }
                                     return res;
                                 })
                 )
@@ -819,7 +832,7 @@ public class UserService {
         if (params.containsKey("salary[min]") && params.containsKey("salary[max]") && !params.get("salary[min]").isBlank()) {
             String minSalary = params.get("salary[min]");
             String maxSalary = params.get("salary[max]");
-            if(maxSalary==null || maxSalary.isBlank()){
+            if (maxSalary == null || maxSalary.isBlank()) {
                 maxSalary = String.valueOf(Integer.MAX_VALUE);
             }
             filter.put("occupation_details.annual_income",

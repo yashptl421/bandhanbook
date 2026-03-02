@@ -47,95 +47,59 @@ public class AgentService {
     private final MessageUtil messageUtil;
 
     public Mono<String> createAgent(AgentRequest request, Users authUser) {
-
-        String role = RoleNames.Agent.name();
-
         if (!authUser.isOrganization()) {
             return Mono.error(new UnAuthorizedException(messageUtil.get("authorization.error")));
         }
-
         return organizationRepository.findByUserId(authUser.getId())
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(org -> {
+
                     ObjectId orgId = org.getId();
                     request.setOrganizationId(orgId.toHexString());
 
                     return limitEnforcementComponent.checkAgentLimit(orgId)
-                            .then(authService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), role))
-                            .flatMap(existingUser -> {
-                                existingUser.getRoles().add(role);
-                                return saveAgent(request, existingUser);
+                            .then(authService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), RoleNames.Agent.name()))
+                            .defaultIfEmpty(modelMapper.map(request, Users.class))
+                            .flatMap(user -> {
+                                user.getRoles().add(RoleNames.Agent.name());
+                                return userRepository.save(user);
                             })
-                            .switchIfEmpty(Mono.defer(() -> {
-                                Users newUser = modelMapper.map(request, Users.class);
-                                newUser.getRoles().add(role);
-                                return saveAgent(request, newUser);
-                            }));
+                            .flatMap(savedUser -> saveAgentRecord(request, savedUser));
                 });
     }
 
     public Mono<AgentResponse> showAgent(ObjectId agentId, Users authUser) {
-        return agentRepository.findById(agentId)
+
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("_id").is(agentId)),
+
+                Aggregation.lookup("users", "user_id", "_id", "user_details"),
+                Aggregation.unwind("user_details", true),
+
+                Aggregation.lookup("organizations", "organization_id", "_id", "organization_details"),
+                Aggregation.unwind("organization_details", true)
+        );
+
+        return mongoTemplate.aggregate(aggregation, "agents", AgentResponse.class)
+                .next()
+                .doOnNext(doc -> log.info("Agent aggregation result: {}", doc))
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
-                .flatMap(agents ->
-                        organizationRepository.findByUserId(authUser.getId())
-                                .flatMap(org -> {
-                                    if (!org.getId().equals(agents.getOrganizationId())) {
-                                        return Mono.error(new UnAuthorizedException(messageUtil.get("authorization.error")));
-                                    }
-                                    return userRepository.findById(agents.getUserId())
-                                            .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
-                                            .map(users -> {
-                                                AgentResponse res = modelMapper.map(agents, AgentResponse.class);
-                                                res.setUser_id(agents.getUserId().toHexString());
-                                                res.setOrganization_id(agents.getOrganizationId().toHexString());
-                                                res.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
-                                                AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
-                                                userDetails.setFull_name(users.getFullName());
-                                                userDetails.setPhone_number(users.getPhoneNumber());
-                                                userDetails.setRole(users.getRoles().get(0));
-                                                userDetails.setProfile_image(users.getProfileImage());
-                                                res.setUser_details(userDetails);
-                                                return res;
-                                            });
-                                }).switchIfEmpty(Mono.defer(() -> userRepository.findById(agents.getUserId())
-                                        .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
-                                        .map(users -> {
-                                            AgentResponse res = modelMapper.map(agents, AgentResponse.class);
-                                            res.setUser_id(agents.getUserId().toHexString());
-                                            res.setOrganization_id(agents.getOrganizationId().toHexString());
-                                            res.setLocalAddress(commonService.getAddressByIds(agents.getAddress(), agents.getCountry(), agents.getState(), agents.getCity(), agents.getZip()));
-                                            AgentResponse.UserDetails userDetails = modelMapper.map(users, AgentResponse.UserDetails.class);
-                                            userDetails.setFull_name(users.getFullName());
-                                            userDetails.setPhone_number(users.getPhoneNumber());
-                                            userDetails.setRole(users.getRoles().get(0));
-                                            res.setUser_details(userDetails);
-                                            return res;
-                                        }))));
+                .map(res -> {
+                            res.setLocalAddress(commonService.getAddressByIds(res.getAddress(), res.getCountry(), res.getState(), res.getCity(), res.getZip()));
+                            return res;
+                        }
+                );
     }
 
-    private Mono<String> saveAgent(AgentRequest request, Users newUser) {
-        return userRepository.save(newUser)
-                .flatMap(savedUser -> {
+    private Mono<String> saveAgentRecord(AgentRequest request, Users savedUser) {
 
-                    String organizationId = request.getOrganizationId();
+        Agents agent = modelMapper.map(request, Agents.class);
+        agent.setUserId(savedUser.getId());
+        agent.setOrganizationId(new ObjectId(request.getOrganizationId()));
 
-                    Agents agent = modelMapper.map(request, Agents.class);
-                    agent.setUserId(savedUser.getId());
-                    agent.setOrganizationId(new ObjectId(organizationId));
-
-                    return agentRepository.save(agent)
-                            .doOnSuccess(savedAgent ->
-                                    triggerAgentMetrics(savedAgent.getOrganizationId())
-                            )
-                            .thenReturn(messageUtil.get("agent.created"));
-                });
-    }
-
-    private void triggerAgentMetrics(ObjectId orgId) {
-        usageMetricsService.incrementAgents(orgId)
-                .doOnError(e -> log.error("Failed to increment agent metrics", e))
-                .subscribe(); // controlled fire-and-forget
+        return agentRepository.save(agent)
+                .then(usageMetricsService.incrementAgents(agent.getOrganizationId()))
+                .thenReturn(messageUtil.get("agent.created"));
     }
 
     @Transactional
@@ -168,7 +132,6 @@ public class AgentService {
                     if (null != request.getStatus() && user.getDeletedAt() != null && request.getStatus().equals(ProfileStatus.active)) {
                         user.setDeletedAt(null);
                     }
-
                     return userRepository.save(user);
                 })
                 .then();
@@ -260,14 +223,21 @@ public class AgentService {
                     .and(Aggregation.count().as("totalRecords")).as("totalRecords");
 
             Aggregation aggregation = Aggregation.newAggregation(
-                    matchStage,
-                    userLookup,
-                    unwindUser,
-                    orgLookup,
-                    unwindOrg,
-                    searchMatch != null ? searchMatch : Aggregation.match(new Criteria()),
+                    Aggregation.match(criteria),   // 🔥 filter first
+
+                    Aggregation.lookup("users", "user_id", "_id", "user_details"),
+                    Aggregation.unwind("user_details"),
+
+                    Aggregation.lookup("organizations", "organization_id", "_id", "organization_details"),
+                    Aggregation.unwind("organization_details"),
+
                     sort,
-                    facet
+
+                    Aggregation.facet(
+                                    Aggregation.skip(skip),
+                                    Aggregation.limit(limit)
+                            ).as("data")
+                            .and(Aggregation.count().as("totalRecords")).as("totalRecords")
             );
 
             return mongoTemplate.aggregate(aggregation, "agents", AgentWrapper.class)
