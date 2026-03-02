@@ -29,10 +29,11 @@ public class AgentController {
 
     @PostMapping()
     public Mono<ResponseEntity<ApiResponse<String>>> createAgent(@Valid @RequestBody AgentRequest request, @CurrentUser Users authUser) {
-        return agentService.createAgent(request, authUser).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                messageUtil.get("organization.not.fount"),
-                HttpStatus.OK.value()
-        )));
+        return agentService.createAgent(request, authUser)
+                .map(res -> ResponseEntity.ok(new ApiResponse<>(
+                        messageUtil.get(res),
+                        HttpStatus.OK.value()
+                )));
     }
 
     @GetMapping("/{id}")
@@ -48,10 +49,11 @@ public class AgentController {
 
     @PutMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<String>>> updateAgent(@Valid @RequestBody AgentRequest req, @PathVariable String id) {
-        return agentService.updateAgent(req, new ObjectId(id)).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                messageUtil.get("agent.updated"),
-                HttpStatus.OK.value()
-        )));
+        return agentService.updateAgent(req, new ObjectId(id)).map(res -> ResponseEntity.ok(
+                ApiResponse.<String>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(res)
+                        .build()));
     }
 
     @GetMapping("")
@@ -60,9 +62,8 @@ public class AgentController {
         int limit = Integer.parseInt(params.getOrDefault("limit", "10"));
         return agentService.listAgents(authUser, params, page, limit).map(res ->
         {
-            AgentWrapper result = res.get(0);
-            List<AgentResponse> data = result.getData();
-            List<AgentWrapper.RecordCount> recordCount = result.getTotalRecords();
+            List<AgentResponse> data = res.getData();
+            List<AgentWrapper.RecordCount> recordCount = res.getTotalRecords();
 
             long total = recordCount.isEmpty() ? 0 : recordCount.get(0).getTotalRecords();
             int totalRecords = (int) Math.ceil((double) total / limit);

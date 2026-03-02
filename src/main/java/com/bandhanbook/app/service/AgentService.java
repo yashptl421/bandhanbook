@@ -29,7 +29,6 @@ import reactor.core.publisher.Mono;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 @Service
 @RequiredArgsConstructor
@@ -166,83 +165,66 @@ public class AgentService {
         return Mono.just(agent);
     }
 
-    public Mono<List<AgentWrapper>> listAgents(Users authUser, Map<String, String> filterReq, int page, int limit) {
+    public Mono<AgentWrapper> listAgents(Users authUser, Map<String, String> filterReq, int page, int limit) {
         int skip = (page - 1) * limit;
-
         return getOrgIdMono(authUser, filterReq).flatMap(orgId -> {
             Criteria criteria = new Criteria();
-
-            if (!orgId.isEmpty())
+            if (!orgId.isEmpty()) {
                 criteria.and("organization_id").is(new ObjectId(orgId));
-            // Optional filters
-            if (filterReq.get("status") != null) criteria.and("status").is(filterReq.get("status"));
-            if (filterReq.get("gender") != null) criteria.and("gender").is(filterReq.get("gender"));
-            if (filterReq.get("city") != null) criteria.and("city").is(filterReq.get("city"));
-            if (filterReq.get("state") != null) criteria.and("state").is(filterReq.get("state"));
-            if (filterReq.get("country") != null) criteria.and("country").is(filterReq.get("country"));
-            if (filterReq.get("zip") != null) criteria.and("zip").is(filterReq.get("zip"));
+            }
+            if (filterReq.get("status") != null)
+                criteria.and("status").is(filterReq.get("status"));
 
+            if (filterReq.get("gender") != null)
+                criteria.and("gender").is(filterReq.get("gender"));
+
+            if (filterReq.get("city") != null)
+                criteria.and("city").is(filterReq.get("city"));
+
+            if (filterReq.get("state") != null)
+                criteria.and("state").is(filterReq.get("state"));
+
+            if (filterReq.get("country") != null)
+                criteria.and("country").is(filterReq.get("country"));
+
+            if (filterReq.get("zip") != null)
+                criteria.and("zip").is(filterReq.get("zip"));
             MatchOperation matchStage = Aggregation.match(criteria);
-            LookupOperation userLookup = LookupOperation.newLookup()
-                    .from("users")
-                    .localField("user_id")
-                    .foreignField("_id")
-                    .as("user_details");
+            LookupOperation userLookup = Aggregation.lookup(
+                    "users", "user_id", "_id", "user_details");
+            UnwindOperation unwindUser =
+                    Aggregation.unwind("user_details", true); // safe unwind
+            LookupOperation orgLookup = Aggregation.lookup(
+                    "organizations", "organization_id", "_id", "organization_details");
+            UnwindOperation unwindOrg =
+                    Aggregation.unwind("organization_details", true);
+            List<AggregationOperation> operations = new ArrayList<>();
+            operations.add(matchStage);
+            operations.add(userLookup);
+            operations.add(unwindUser);
+            operations.add(orgLookup);
+            operations.add(unwindOrg);
 
-
-            UnwindOperation unwindUser = Aggregation.unwind("user_details");
-
-            LookupOperation orgLookup = LookupOperation.newLookup()
-                    .from("organizations")
-                    .localField("organization_id")
-                    .foreignField("_id")
-                    .as("organization_details");
-
-
-            UnwindOperation unwindOrg = Aggregation.unwind("organization_details");
-
-            List<Criteria> searchCriteria = new ArrayList<>();
-            String search = filterReq.getOrDefault("search", "");
-            if (search != null && !search.isEmpty()) {
-                searchCriteria.add(new Criteria().orOperator(
-                        Criteria.where("user_details.full_name").regex(search, "i"),
-                        Criteria.where("user_details.email").regex(search, "i")
+            String search = filterReq.get("search");
+            if (search != null && !search.isBlank()) {
+                operations.add(Aggregation.match(
+                        new Criteria().orOperator(
+                                Criteria.where("user_details.full_name").regex(search, "i"),
+                                Criteria.where("user_details.email").regex(search, "i")
+                        )
                 ));
             }
-
-            MatchOperation searchMatch = searchCriteria.isEmpty()
-                    ? null
-                    : Aggregation.match(new Criteria().andOperator(searchCriteria));
-
-            SortOperation sort = Aggregation.sort(Sort.by(Sort.Direction.DESC, "created_at"));
-
-            FacetOperation facet = Aggregation.facet(
-                            Aggregation.skip(skip),
-                            Aggregation.limit(limit)
-                    ).as("data")
-                    .and(Aggregation.count().as("totalRecords")).as("totalRecords");
-
-            Aggregation aggregation = Aggregation.newAggregation(
-                    Aggregation.match(criteria),   // 🔥 filter first
-
-                    Aggregation.lookup("users", "user_id", "_id", "user_details"),
-                    Aggregation.unwind("user_details"),
-
-                    Aggregation.lookup("organizations", "organization_id", "_id", "organization_details"),
-                    Aggregation.unwind("organization_details"),
-
-                    sort,
-
-                    Aggregation.facet(
+            operations.add(Aggregation.sort(Sort.Direction.DESC, "created_at"));
+            operations.add(Aggregation.facet(
                                     Aggregation.skip(skip),
                                     Aggregation.limit(limit)
                             ).as("data")
                             .and(Aggregation.count().as("totalRecords")).as("totalRecords")
             );
-
+            Aggregation aggregation = Aggregation.newAggregation(operations);
             return mongoTemplate.aggregate(aggregation, "agents", AgentWrapper.class)
-                    .collectList()
-                    .map(Function.identity());
+                    .next()
+                    .defaultIfEmpty(new AgentWrapper());
         });
     }
 
