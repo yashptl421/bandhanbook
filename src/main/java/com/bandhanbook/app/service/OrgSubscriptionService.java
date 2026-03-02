@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.exception.ValidationExceptions;
@@ -29,9 +30,6 @@ import reactor.core.publisher.Mono;
 import java.time.LocalDate;
 import java.util.List;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -44,6 +42,7 @@ public class OrgSubscriptionService {
     private final EventsRepository eventsRepository;
     private final UsageMetricsService usageMetricsService;
     private final ModelMapper modelMapper;
+    private final MessageUtil messageUtil;
 
     public Mono<String> buySubscription(BuySubscriptionRequest req) {
         ObjectId planId = new ObjectId(req.getPlanId());
@@ -68,7 +67,7 @@ public class OrgSubscriptionService {
                     .endDate(start.plusYears(1).toString())
                     .build();
             return repository.save(subscription);
-        }).thenReturn(SUBSCRIPTION_PURCHASED);
+        }).thenReturn(messageUtil.get("subscription.purchased"));
     }
 
     public Mono<SubscriptionResponse> show(String id) {
@@ -86,7 +85,7 @@ public class OrgSubscriptionService {
                                     return res;
                                 });
                             }));
-        }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+        }).switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
     }
 
     public Mono<List<SubscriptionResponse>> list(Users authUser, String orgId) {
@@ -141,14 +140,14 @@ public class OrgSubscriptionService {
 
     public Mono<String> updateStatus(String id, boolean status) {
         return repository.findById(new ObjectId(id))
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(sub -> {
                     sub.setActive(status);
                     return checkExistingActiveSubscription(sub.getOrgId(), sub.getEventId(),status)
                             .then(usageMetricsService.createDefault(sub.getOrgId(), sub.getEventId(),status))
                             .then(repository.save(sub));
                 })
-                .thenReturn(SUBSCRIPTION_UPDATED);
+                .thenReturn(messageUtil.get("subscription.updated"));
     }
 
     private Mono<Boolean> checkExistingActiveSubscription(ObjectId orgId, ObjectId eventId, boolean status) {
@@ -159,7 +158,7 @@ public class OrgSubscriptionService {
                 .switchIfEmpty(Mono.just(false))
                 .flatMap(exists -> {
             if (exists) {
-                return Mono.error(new ValidationExceptions(SUBSCRIPTION_EXIST));
+                return Mono.error(new ValidationExceptions(messageUtil.get("subscription.exist")));
             }
             return Mono.just(true);
         });
@@ -168,7 +167,7 @@ public class OrgSubscriptionService {
 
     public Mono<String> buyAddon(SubscriptionAddonRequest request) {
         return repository.findById(new ObjectId(request.getSubscriptionId()))
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(SUBSCRIPTION_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("subscription.not.found"))))
                 .flatMap(sub -> {
                     OrgSubscriptionAddon addon =
                             modelMapper.map(request, OrgSubscriptionAddon.class);
@@ -177,12 +176,12 @@ public class OrgSubscriptionService {
                     addon.setOrgId(sub.getOrgId());
                     return addonRepository.save(addon);
                 })
-                .thenReturn(SUBSCRIPTION_ADDON_PURCHASED);
+                .thenReturn(messageUtil.get("subscription.addon.purchased"));
     }
 
     public Mono<ApiResponse<List<SubscriptionAddonResponse>>> listAddons(String subscriptionId, int page, int limit) {
         if (subscriptionId == null || subscriptionId.isBlank()) {
-            return Mono.error(new ValidationExceptions(SUBSCRIPTION_NOT_FOUND));
+            return Mono.error(new ValidationExceptions(messageUtil.get("subscription.not.found")));
         }
         Pageable pageable = PageRequest.of(page - 1, limit);
         ObjectId subId = new ObjectId(subscriptionId);
@@ -202,36 +201,36 @@ public class OrgSubscriptionService {
                                 .limit(limit)
                                 .totalPages((int) Math.ceil((double) tuple.getT2() / limit))
                                 .build())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .status(HttpStatus.OK.value())
                         .build());
     }
 
     public Mono<String> updateAddonStatus(String id, AddOnStatus status, Users authUser) {
         if (!authUser.isSuperUser()) {
-            return Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS));
+            return Mono.error(new UnAuthorizedException(messageUtil.get("authorization.error")));
         }
         return addonRepository.findById(new ObjectId(id))
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(ADDON_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("addon.not.found"))))
                 .flatMap(addon -> {
                     addon.setStatus(status);
                     return addonRepository.save(addon);
                 })
-                .thenReturn(SUBSCRIPTION_ADDON_UPDATED);
+                .thenReturn(messageUtil.get("subscription.addon.updated"));
     }
 
     public Mono<SubscriptionLimits> getMergedLimits(ObjectId orgId, ObjectId eventId) {
         if (orgId == null && eventId == null) {
-            return Mono.error(new ValidationExceptions(SUBSCRIPTION_NOT_FOUND));
+            return Mono.error(new ValidationExceptions(messageUtil.get("subscription.not.found")));
         }
         Mono<OrgSubscriptions> subscriptionMono;
         if (orgId == null) {
             subscriptionMono = repository.findByEventIdAndActive(eventId, true)
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(SUBSCRIPTION_NOT_FOUND)))
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("subscription.not.found"))))
                     .flatMap(Mono::just);
         } else {
             subscriptionMono = repository.findByOrgIdAndActive(orgId, true)
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(SUBSCRIPTION_NOT_FOUND)))
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("subscription.not.found"))))
                     .flatMap(Mono::just);
         }
         return subscriptionMono
@@ -261,7 +260,7 @@ public class OrgSubscriptionService {
                                             .maxAdvertisements(maxAdvertisements)
                                             .build();
                                 })
-                ).switchIfEmpty(Mono.error(new ValidationExceptions(SUBSCRIPTION_INACTIVE)));
+                ).switchIfEmpty(Mono.error(new ValidationExceptions(messageUtil.get("subscription.inactive"))));
     }
 
     private SubscriptionAddonResponse mapToResponse(OrgSubscriptionAddon addon) {

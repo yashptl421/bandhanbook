@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.ValidationExceptions;
 import com.bandhanbook.app.model.Advertisement;
@@ -9,7 +10,8 @@ import com.bandhanbook.app.payload.request.AdvertisementFilterRequest;
 import com.bandhanbook.app.payload.request.AdvertisementRequest;
 import com.bandhanbook.app.payload.request.AdvertisementUpdateRequest;
 import com.bandhanbook.app.payload.response.AdvertisementResponse;
-import com.bandhanbook.app.repository.*;
+import com.bandhanbook.app.repository.AdvertisementRepository;
+import com.bandhanbook.app.repository.EventsRepository;
 import com.bandhanbook.app.wrappers.AdvertisementWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.model.Filters;
@@ -19,7 +21,6 @@ import com.mongodb.client.model.WriteModel;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
@@ -27,7 +28,6 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
@@ -35,9 +35,6 @@ import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.ADVERTISEMENT_CREATED;
 
 @Service
 @RequiredArgsConstructor
@@ -48,9 +45,9 @@ public class AdvertisementService {
     private final AdvertisementRepository repository;
     private final ImageUploadService fileUploadService;
     private final ReactiveMongoTemplate template;
-    private final ModelMapper modelMapper;
     private final UsageMetricsService usageMetricsService;
     private final LimitEnforcementComponent limitEnforcementComponent;
+    private final MessageUtil messageUtil;
 
 
     @Value("${images.base.path}")
@@ -61,59 +58,57 @@ public class AdvertisementService {
     private final ObjectMapper objectMapper;
 
     public Mono<String> createAdvertisement(String dataJson, Flux<FilePart> files, Users authUser) {
+
         AdvertisementRequest request;
         try {
             request = objectMapper.readValue(dataJson, AdvertisementRequest.class);
         } catch (Exception e) {
-            return Mono.error(new ValidationExceptions("Invalid advertisement data"));
+            return Mono.error(new ValidationExceptions(messageUtil.get("invalid.advertisement.data")));
         }
+
         ObjectId eventId = new ObjectId(request.getEventId());
         List<Frequency> frequencies = request.getFrequency();
+
         return eventRepository.findById(eventId)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException("Event not found")))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("event.not.found"))))
                 .flatMap(event -> {
+
                     String folder = basePath + event.getId().toHexString() + advertisementPath;
-                    return files.collectList()
-                            .flatMap(fileList -> {
-                                if (fileList.size() != frequencies.size()) {
-                                    return Mono.error(new ValidationExceptions("Frequencies count must match files"));
+
+                    return files.index()
+                            .flatMap(tuple -> {
+
+                                int index = tuple.getT1().intValue();
+                                FilePart file = tuple.getT2();
+
+                                if (index >= frequencies.size()) {
+                                    return Mono.error(new ValidationExceptions(messageUtil.get("frequencies.count.mismatch")));
                                 }
                                 return limitEnforcementComponent
-                                        .checkAdvertisementLimit(eventId, fileList.size())
-                                        .thenMany(Flux.fromIterable(fileList))
-                                        .index()
-                                        .flatMap(tuple -> {
-                                            int index = tuple.getT1().intValue();
-                                            FilePart file = tuple.getT2();
-                                            Frequency frequency = frequencies.get(index);
-                                            return fileUploadService
-                                                    .upload(file, event.getId().toHexString(), folder)
-                                                    .flatMap(img -> {
-                                                        Advertisement ad = Advertisement.builder()
-                                                                .images(img)
-                                                                .frequency(frequency)
-                                                                .eventId(eventId)
-                                                                .active(true)
-                                                                .organizationId(event.getOrganizationId())
-                                                                .createdBy(authUser.getId())
-                                                                .build();
-                                                        return repository.save(ad)
-                                                                .doOnSuccess(ep -> usageMetricsService.incrementAdvertisement(event.getOrganizationId(), eventId).subscribe());
-                                                    });
-                                        })
-                                        .then(Mono.just(ADVERTISEMENT_CREATED));
-                            });
+                                        .checkAdvertisementLimit(eventId, 1)
+                                        .then(fileUploadService.upload(file, event.getId().toHexString(), folder))
+                                        .map(img -> Advertisement.builder()
+                                                .images(img)
+                                                .frequency(frequencies.get(index))
+                                                .eventId(eventId)
+                                                .active(true)
+                                                .organizationId(event.getOrganizationId())
+                                                .createdBy(authUser.getId())
+                                                .build());
+                            }, 4)
+                            .collectList()
+                            .flatMapMany(repository::saveAll)
+                            .then(usageMetricsService.incrementAdvertisement(
+                                    event.getOrganizationId(), eventId, frequencies.size()))
+                            .thenReturn(messageUtil.get("advertisement.created"));
                 });
     }
 
     public Mono<Tuple3<Long, Long, List<AdvertisementResponse>>> advertisementList(AdvertisementFilterRequest filter, Users authUser) {
 
         return eventService.getEventIdMono(authUser)
-                .flatMap(eventIds ->
-                        findWithCounts(filter, eventIds, authUser)
-                )
+                .flatMap(eventIds -> findWithCounts(filter, eventIds, authUser))
                 .map(result -> {
-
                     List<AdvertisementResponse> ads = result.getData()
                             .stream()
                             .map(ad -> AdvertisementResponse.builder()
@@ -128,44 +123,12 @@ public class AdvertisementService {
                                     .updatedAt(ad.getUpdatedAt())
                                     .build())
                             .toList();
-
                     return Tuples.of(
                             result.getTotalCount(),
                             result.getActiveCount(),
                             ads
                     );
                 });
-    }
-
-    @Transactional
-    public Mono<List<AdvertisementResponse>> updateAdvertisement(
-            List<AdvertisementUpdateRequest> requests
-    ) {
-        if (requests.isEmpty()) {
-            return Mono.just(List.of());
-        }
-
-        List<ObjectId> ids = requests.stream()
-                .map(r -> new ObjectId(r.getId()))
-                .toList();
-
-        return repository.findAllById(ids)
-                .collectMap(ad -> ad.getId().toHexString())
-                .flatMapMany(existingMap -> Flux.fromIterable(requests)
-                        .map(req -> {
-                            Advertisement ad = existingMap.get(req.getId());
-                            if (ad == null) {
-                                throw new RecordNotFoundException(DATA_NOT_FOUND);
-                            }
-
-                            ad.setActive(req.isActive());
-                            return ad;
-                        })
-                )
-                .collectList()
-                .flatMapMany(repository::saveAll)
-                .map(ad -> modelMapper.map(ad, AdvertisementResponse.class))
-                .collectList();
     }
 
     public Mono<Void> bulkUpdate(List<AdvertisementUpdateRequest> requests) {
@@ -189,56 +152,53 @@ public class AdvertisementService {
     }
 
     public Mono<Void> deleteAdvertisement(List<String> requests) {
+
         List<ObjectId> ids = requests.stream().map(ObjectId::new).toList();
 
         return repository.findAllById(ids)
                 .collectList()
-                .flatMapMany(Flux::fromIterable)
-                .groupBy(ad -> ad.getOrganizationId().toHexString() + "_" + ad.getEventId().toHexString())
-                .flatMap(group -> group.collectList().flatMap(ads -> {
+                .flatMap(ads -> {
+
+                    if (ads.isEmpty()) return Mono.empty();
 
                     ObjectId orgId = ads.get(0).getOrganizationId();
                     ObjectId eventId = ads.get(0).getEventId();
-                    int count = ads.size();
 
                     List<String> imageIds = ads.stream()
                             .map(ad -> ad.getImages().getId())
                             .toList();
 
                     return fileUploadService.bulkDelete(imageIds)
-                            .then(repository.deleteAllById(
-                                    ads.stream().map(Advertisement::getId).toList()))
-                            .then(usageMetricsService.decrementAdvertisement(orgId, eventId, count));
-                }))
-                .then();
+                            .then(repository.deleteAllById(ids))
+                            .then(usageMetricsService.decrementAdvertisement(orgId, eventId, ids.size()));
+                });
     }
-    public Mono<AdvertisementWrapper> findWithCounts(AdvertisementFilterRequest filter, List<ObjectId> eventIds, Users authUser) {
+
+    public Mono<AdvertisementWrapper> findWithCounts(
+            AdvertisementFilterRequest filter, List<ObjectId> eventIds, Users authUser) {
+
         int skip = (filter.getPage() - 1) * filter.getLimit();
-        Criteria criteria = new Criteria();
-        criteria.and("event_id").in(eventIds);
+
+        Criteria criteria = Criteria.where("event_id").in(eventIds);
 
         if (filter.getFrequencies() != null) {
-            List<Frequency> fre = filter.getFrequencies().stream().map(Frequency::valueOf).toList();
-            criteria.and("frequency").in(fre);
-        }
-        if (filter.getIsActive() != null && !authUser.isCandidate()) {
-            criteria.and("is_active").is(filter.getIsActive());
+            criteria.and("frequency").in(
+                    filter.getFrequencies().stream().map(Frequency::valueOf).toList()
+            );
         }
         if (authUser.isCandidate()) {
-            criteria.and("is_active").in(true);
+            criteria.and("is_active").is(true);
+        } else if (filter.getIsActive() != null) {
+            criteria.and("is_active").is(filter.getIsActive());
         }
         Aggregation aggregation = Aggregation.newAggregation(
-
                 Aggregation.match(criteria),
+                Aggregation.sort(Sort.Direction.DESC, "created_at"),
                 Aggregation.facet(
-                                Aggregation.sort(Sort.Direction.DESC, "createdAt"),
                                 Aggregation.skip(skip),
                                 Aggregation.limit(filter.getLimit())
                         ).as("data")
-
-                        .and(Aggregation.count().as("count"))
-                        .as("total")
-
+                        .and(Aggregation.count().as("count")).as("total")
                         .and(
                                 Aggregation.match(Criteria.where("is_active").is(true)),
                                 Aggregation.count().as("count")

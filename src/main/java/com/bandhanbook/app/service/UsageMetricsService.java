@@ -82,8 +82,8 @@ public class UsageMetricsService {
         return updateMetric(orgId, null, "current_banners", -1);
     }
 
-    public Mono<Void> incrementAdvertisement(ObjectId orgId, ObjectId eventId) {
-        return updateMetric(orgId, eventId, "current_advertisements", 1);
+    public Mono<Void> incrementAdvertisement(ObjectId orgId, ObjectId eventId, int count) {
+        return updateMetric(orgId, eventId, "current_advertisements", count);
     }
 
     public Mono<Void> decrementAdvertisement(ObjectId orgId, ObjectId eventId, int count) {

@@ -1,5 +1,6 @@
 package com.bandhanbook.app.conrollers;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.PricingPlanResponse;
@@ -12,7 +13,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +21,6 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 
 @Slf4j
@@ -33,10 +32,9 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 @RequestMapping("/organization")
 public class OrganizationController {
 
-    @Autowired
     private final OrganizationService organizationService;
-    @Autowired
     private final PricingPlanService pricingPlanService;
+    private final MessageUtil messageUtil;
 
     @GetMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<OrganizationResponse>>> show(@PathVariable String id) {
@@ -44,7 +42,7 @@ public class OrganizationController {
                 .map(response -> ResponseEntity.ok(
                         ApiResponse.<OrganizationResponse>builder()
                                 .status(HttpStatus.OK.value())
-                                .message(DATA_FOUND)
+                                .message(messageUtil.get("records.found"))
                                 .data(response)
                                 .build()
                 ));
@@ -57,7 +55,7 @@ public class OrganizationController {
         return organizationService.listOrganizations(params).map(tuple -> ResponseEntity.ok(
                 ApiResponse.<List<OrganizationResponse>>builder()
                         .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .data(tuple.getT2())
                         .meta(ApiResponse.Meta.builder().page(page).limit(limit).totalPages((int) Math.ceil((double) tuple.getT1() / limit)).totalRecords(tuple.getT1()).build())
                         .build()
@@ -67,7 +65,7 @@ public class OrganizationController {
     @PostMapping()
     public Mono<ResponseEntity<ApiResponse<String>>> createOrganization(@Valid @RequestBody OrganizationRequest req) {
         return organizationService.createOrganization(req).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                ORGANIZATION_CREATED,
+                messageUtil.get("organization.created"),
                 HttpStatus.OK.value()
         )));
     }
@@ -75,7 +73,7 @@ public class OrganizationController {
     @PutMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<String>>> updateOrganization(@Valid @RequestBody OrganizationRequest req, @PathVariable String id) {
         return organizationService.updateOrganization(req, new ObjectId(id)).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                ORGANIZATION_UPDATED,
+                messageUtil.get("organization.updated"),
                 HttpStatus.OK.value()
         )));
     }
@@ -87,7 +85,7 @@ public class OrganizationController {
                 .map(json -> ResponseEntity.ok(
                         CommonApiResponse.<List<PricingPlanResponse>>builder()
                                 .status(HttpStatus.OK.value())
-                                .message(DATA_FOUND)
+                                .message(messageUtil.get("records.found"))
                                 .data(json)
                                 .totalRecords(json.size())
                                 .build()

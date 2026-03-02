@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.Image;
 import com.bandhanbook.app.model.UploadContext;
@@ -22,10 +23,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.Objects;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.INVALID_FILE_TYPE;
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.RECORD_NOT_FOUND;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.IMAGES_REMOVED;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,6 +32,7 @@ public class ProfileService {
     private final OrganizationRepository orgRepository;
     private final AuthService authService;
     private final UserRepository userRepository;
+    private final MessageUtil messageUtil;
 
     @Value("${images.base.path}")
     private String basePath;
@@ -56,7 +54,7 @@ public class ProfileService {
         validateImage(file);
 
         return userRepository.findById(authUser.getId())
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(user ->
                         resolveUploadContext(authUser)
                                 .flatMap(ctx ->
@@ -86,7 +84,7 @@ public class ProfileService {
                                 .stream()
                                 .findFirst()
                                 .map(EventParticipantsResponse::getOrganizationId)
-                                .orElseThrow(() -> new RecordNotFoundException(RECORD_NOT_FOUND));
+                                .orElseThrow(() -> new RecordNotFoundException(messageUtil.get("record.not.found")));
 
                         return matrimonyRepository.findByUserId(authUser.getId())
                                 .map(candidate ->
@@ -121,12 +119,12 @@ public class ProfileService {
             return Mono.just(
                     new UploadContext(
                             authUser.getId().toHexString(),
-                            basePath +  superUserImagePath + authUser.getId()
+                            basePath + superUserImagePath + authUser.getId()
                     )
             );
         }
 
-        return Mono.error(new RecordNotFoundException("Unsupported user role for profile image upload"));
+        return Mono.error(new RecordNotFoundException(messageUtil.get("unsupported.role.for.profile")));
     }
 
     public Mono<Void> removeProfileImage(Users authUser) {
@@ -141,7 +139,7 @@ public class ProfileService {
                     .then();
         }).onErrorResume(e -> {
             log.error("Error removing profile image for user {}: {}", authUser.getId(), e.getMessage());
-            return Mono.error(new RecordNotFoundException("Error removing profile image"));
+            return Mono.error(new RecordNotFoundException(messageUtil.get("profile.remove.error")));
         });
     }
 
@@ -152,10 +150,10 @@ public class ProfileService {
                 .flatMapMany(res -> {
 
                     String orgId = res.getEventParticipants().stream().findFirst().map(EventParticipantsResponse::getOrganizationId)
-                            .orElseThrow(() -> new RecordNotFoundException(RECORD_NOT_FOUND));
+                            .orElseThrow(() -> new RecordNotFoundException(messageUtil.get("record.not.found")));
 
                     return matrimonyRepository.findByUserId(authUser.getId())
-                            .switchIfEmpty(Mono.error(new RecordNotFoundException("Candidate profile not found")))
+                            .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("candidate.profile.not.found"))))
                             .flatMapMany(candidate -> {
                                 String folder = basePath + orgId + candidateImagePath + authUser.getId() + "/gallery";
 
@@ -178,23 +176,23 @@ public class ProfileService {
 
     public Mono<String> removeMatrimonyImages(String imageId, Users authUser) {
         return matrimonyRepository.findByUserId(authUser.getId())
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(candidate -> {
 
                     if (candidate.getImages() == null || candidate.getImages().isEmpty()) {
-                        return Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND));
+                        return Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")));
                     }
 
                     Image image = candidate.getImages()
                             .stream()
                             .filter(img -> img.getId().equals(imageId))
                             .findFirst()
-                            .orElseThrow(() -> new RecordNotFoundException(RECORD_NOT_FOUND));
+                            .orElseThrow(() -> new RecordNotFoundException(messageUtil.get("record.not.found")));
 
                     return deleteExistingImage(image)
                             .then(Mono.fromRunnable(() -> candidate.getImages().remove(image)))
                             .then(matrimonyRepository.save(candidate))
-                            .thenReturn(IMAGES_REMOVED);
+                            .thenReturn(messageUtil.get("images.removed"));
                 });
     }
 
@@ -211,7 +209,7 @@ public class ProfileService {
         if (file == null ||
                 file.headers().getContentType() == null ||
                 !Objects.requireNonNull(file.headers().getContentType()).toString().startsWith("image/")) {
-            throw new RecordNotFoundException(INVALID_FILE_TYPE);
+            throw new RecordNotFoundException(messageUtil.get("invalid.file.type"));
         }
     }
 }

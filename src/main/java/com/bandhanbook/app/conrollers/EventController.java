@@ -1,5 +1,6 @@
 package com.bandhanbook.app.conrollers;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.EventRequest;
@@ -21,8 +22,6 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
-
 @Slf4j
 @Tag(name = "Event API",
         description = "APIs for Event get, add, update and delete"
@@ -32,6 +31,7 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 @RequestMapping("/event")
 public class EventController {
     private final EventService eventService;
+    private final MessageUtil messageUtil;
 
     @GetMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<EventResponse>>> show(@PathVariable String id) {
@@ -39,7 +39,7 @@ public class EventController {
                 .map(response -> ResponseEntity.ok(
                         ApiResponse.<EventResponse>builder()
                                 .status(HttpStatus.OK.value())
-                                .message(DATA_FOUND)
+                                .message(messageUtil.get("records.found"))
                                 .data(response)
                                 .build()
                 ));
@@ -48,7 +48,7 @@ public class EventController {
     @PostMapping()
     public Mono<ResponseEntity<ApiResponse<String>>> createEvent(@Valid @RequestBody EventRequest req, @CurrentUser Users user) {
         return eventService.createEvent(req, user).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                EVENT_CREATED,
+                messageUtil.get("event.created"),
                 HttpStatus.OK.value()
         )));
     }
@@ -56,7 +56,7 @@ public class EventController {
     @PutMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<String>>> updateEvent(@Valid @RequestBody EventRequest req, @PathVariable String id) {
         return eventService.updateEvent(req, id).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                EVENT_UPDATED,
+                messageUtil.get("event.updated"),
                 HttpStatus.OK.value()
         )));
     }
@@ -74,7 +74,7 @@ public class EventController {
                     return ResponseEntity.ok(
                             ApiResponse.<List<EventDbResponse>>builder()
                                     .status(HttpStatus.OK.value())
-                                    .message(DATA_FOUND)
+                                    .message(messageUtil.get("records.found"))
                                     .data(data)
                                     .meta(ApiResponse.Meta.builder()
                                             .page(page)

@@ -1,5 +1,6 @@
 package com.bandhanbook.app.conrollers;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.AddOnStatus;
@@ -18,7 +19,6 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
 
 @RestController
 @RequestMapping("/subscription")
@@ -26,6 +26,7 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
 public class OrgSubscriptionController {
 
     private final OrgSubscriptionService service;
+    private final MessageUtil messageUtil;
 
     @GetMapping
     public Mono<ApiResponse<List<SubscriptionResponse>>> list(@CurrentUser Users authUser, @RequestParam Map<String, String> params) {
@@ -36,7 +37,7 @@ public class OrgSubscriptionController {
                 .map(res ->
                         ApiResponse.<List<SubscriptionResponse>>builder()
                                 .status(HttpStatus.OK.value())
-                                .message(DATA_FOUND)
+                                .message(messageUtil.get("records.found"))
                                 .data(res)
                                 .meta(ApiResponse.Meta.builder()
                                         .totalRecords(res.size())
@@ -51,7 +52,7 @@ public class OrgSubscriptionController {
                 .map(sub ->
                         ApiResponse.<SubscriptionResponse>builder()
                                 .status(HttpStatus.OK.value())
-                                .message(DATA_FOUND)
+                                .message(messageUtil.get("records.found"))
                                 .data(sub)
                                 .build()
                 );

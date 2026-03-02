@@ -1,11 +1,13 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
+import com.bandhanbook.app.exception.ValidationExceptions;
 import com.bandhanbook.app.model.Token;
 import com.bandhanbook.app.repository.TokensRepository;
 import com.bandhanbook.app.utilities.UtilityHelper;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -17,17 +19,14 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.Instant;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.INVALID_OTP;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.OTP_SENT;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.OTP_VERIFIED;
-
 @Service
+@RequiredArgsConstructor
 public class OtpService {
     private static final Logger log = LoggerFactory.getLogger(OtpService.class);
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    TokensRepository tokensRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final TokensRepository tokensRepository;
+    private final MessageUtil messageUtil;
+
     /* @Autowired
      private final SmsSender smsSender;
  */
@@ -46,28 +45,23 @@ public class OtpService {
    /* private final Duration otpCooldown = Duration.ofSeconds(duration); // min seconds between sends
     private final Duration windowDuration = Duration.ofHours(windowDurations); // window for maxRequests*/
 
-    /**
-     * Request (send) OTP.
-     */
     public Mono<String> requestOtp(String phoneNumber, String role) {
         Instant now = Instant.now();
         log.info("otp request for phone {}", phoneNumber);
         return tokensRepository.findByPhoneNumberAndRole(phoneNumber, role)
                 .flatMap(existing -> {
-                    // cooldown check
                     if (existing.getLastSentAt() != null && existing.getLastSentAt().plus(otpCooldown).isAfter(now)) {
                         long wait = Duration.between(now, existing.getLastSentAt().plus(otpCooldown)).getSeconds();
-                        return Mono.error(new IllegalStateException("Please wait " + wait + " seconds before requesting a new OTP"));
+                        return Mono.error(new ValidationExceptions("Please wait " + wait + " seconds before requesting a new OTP"));
                     }
 
-                    // sliding window check
                     if (existing.getWindowStart() == null || existing.getWindowStart().plus(windowDuration).isBefore(now)) {
                         existing.setWindowStart(now);
                         existing.setRequestCountInWindow(0);
                     }
 
                     if (existing.getRequestCountInWindow() >= maxRequestsPerWindow) {
-                        return Mono.error(new IllegalStateException("Too many OTP requests. Try later."));
+                        return Mono.error(new ValidationExceptions(messageUtil.get("otp.request.limit.exceeded")));
                     }
 
                     String otp = generateOtp();
@@ -80,7 +74,7 @@ public class OtpService {
                     existing.setExpiresAt(now.plusSeconds(otpExpiration));
 
                     // save then send
-                    return tokensRepository.save(existing).thenReturn(OTP_SENT);
+                    return tokensRepository.save(existing).thenReturn(messageUtil.get("otp.sent"));
                     /* .flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))*/
 
                 })
@@ -100,7 +94,7 @@ public class OtpService {
                             .expiresAt(Instant.now().plusSeconds(otpExpiration))
                             .build();
 
-                    return tokensRepository.save(token).thenReturn(OTP_SENT);
+                    return tokensRepository.save(token).thenReturn(messageUtil.get("otp.sent"));
                     /* .flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))*/
 
                 }));
@@ -146,17 +140,14 @@ public class OtpService {
         Instant now = Instant.now();
         log.info("Verify otp for phone {}", phoneNumber);
         return tokensRepository.findByPhoneNumberAndRole(phoneNumber, role)
-                .switchIfEmpty(Mono.error(new BadCredentialsException(INVALID_OTP)))
+                .switchIfEmpty(Mono.error(new ValidationExceptions(messageUtil.get("invalid.otp"))))
                 .flatMap(token -> {
-                    // check expiry via createdAt + TTL window (optional)
                     if (token.getExpiresAt() == null || token.getExpiresAt().isBefore(now)) {
                         return tokensRepository.delete(token)
-                                .then(Mono.error(new BadCredentialsException("OTP expired")));
+                                .then(Mono.error(new ValidationExceptions(messageUtil.get("invalid.otp"))));
                     }
-
-                    // check failed attempts
                     if (token.getFailedAttempts() >= maxFailedAttempts) {
-                        return Mono.error(new LockedException("Too many failed attempts. Contact support."));
+                        return Mono.error(new LockedException(messageUtil.get("too.many.otp")));
                     }
 
                     // compare hashed OTP
@@ -165,11 +156,11 @@ public class OtpService {
                         token.setFailedAttempts(token.getFailedAttempts() + 1);
                         return tokensRepository.save(token)
                                 .doOnSuccess(t -> log.info("Saved failedAttempts = {}", t.getFailedAttempts()))
-                                .then(Mono.error(new BadCredentialsException("Invalid OTP")));
+                                .then(Mono.error(new BadCredentialsException(messageUtil.get("invalid.otp"))));
                     }
 
                     // OTP matches -> remove token or mark consumed
-                    return tokensRepository.delete(token).thenReturn(OTP_VERIFIED);
+                    return tokensRepository.delete(token).thenReturn(messageUtil.get("otp.verified"));
                 });
     }
 

@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.*;
 import com.bandhanbook.app.model.MatrimonyCandidate;
 import com.bandhanbook.app.model.RefreshToken;
@@ -27,9 +28,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.PASSWORD_UPDATED;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -47,20 +45,21 @@ public class AuthService {
     private final CommonService commonService;
     private final OrganizationRepository organizationRepository;
     private final OrgSubscriptionsRepository orgSubscriptionsRepository;
+    private final MessageUtil messageUtil;
 
 
     @Transactional
     public Mono<String> login(PhoneLoginRequest loginRequest) {
 
         return userDetailService.findByPhoneNumber(loginRequest.getPhoneNumber())
-                .switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(INVALID_CREDENTIALS)))
+                .switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(messageUtil.get("phoneNumber.not.found"))))
                 .flatMap(user -> {
 
                     if (loginRequest.getPassword() != null && !loginRequest.getPassword().isBlank() && !passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-                        return Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS));
+                        return Mono.error(new EmailNotFoundException(messageUtil.get("email.not.found")));
                     }
                     if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {
-                        return Mono.error(new RecordNotFoundException(loginRequest.getRole() + " is not registered with this number"));
+                        return Mono.error(new RecordNotFoundException(messageUtil.get(loginRequest.getRole()) + " " + messageUtil.get("user.not.registered")));
                     }
                     return otpService.requestOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
                 });
@@ -79,26 +78,16 @@ public class AuthService {
 
     public Mono<PhoneLoginResponse> verifyOtp(PhoneLoginRequest request) {
 
-        return otpService.verifyOtp(
-                        request.getPhoneNumber(),
-                        request.getRole(),
-                        request.getOtp()
-                )
+        return otpService.verifyOtp(request.getPhoneNumber(), request.getRole(), request.getOtp())
                 .then(userDetailService.findByPhoneNumber(request.getPhoneNumber()))
                 .flatMap(userPrincipal -> {
 
                     Users user = userPrincipal.getUsers();
-
-                    // 1️⃣ Role validation
                     if (!user.getRoles().contains(request.getRole())) {
                         return Mono.error(
-                                new RecordNotFoundException(
-                                        request.getRole() + " is not registered with this number"
-                                )
+                                new RecordNotFoundException(messageUtil.get(request.getRole())  + " " + messageUtil.get("user.not.registered"))
                         );
                     }
-
-                    // Check if user has the requested role
                     if (user.getRoles().size() > 1) {
                         user.setRoles(List.of(request.getRole()));
                     }
@@ -139,7 +128,7 @@ public class AuthService {
                     res.setAgent_details(agentResponse);
                     return Mono.just(res);
                 })
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
     }
 
     public Mono<PhoneLoginResponse> getMatrimonyDetails(String role, Users users) {
@@ -159,7 +148,7 @@ public class AuthService {
                             }
                             return res;
                         }))
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
     }
 
     protected Mono<PhoneLoginResponse> getOrganizationDetails(String role, Users users) {
@@ -173,20 +162,18 @@ public class AuthService {
                     .map(sub -> {
                         res.setActiveSubscription(true);
                         return res;
-                        }).defaultIfEmpty(res);
-        }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+                    }).defaultIfEmpty(res);
+        }).switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
     }
 
     public Mono<LoginResponse> webLogin(LoginRequest loginRequest) {
 
         return userDetailService.findByEmail(loginRequest.getEmail())
-                .switchIfEmpty(Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS)))
+                .switchIfEmpty(Mono.error(new EmailNotFoundException(messageUtil.get("email.not.found"))))
                 .flatMap(user -> {
-
                     if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-                        return Mono.error(new EmailNotFoundException(INVALID_CREDENTIALS));
+                        return Mono.error(new EmailNotFoundException(messageUtil.get("email.not.found")));
                     }
-                    // Check if user has the requested role
                     String accessToken = null;
                     if (user.getUsers().getRoles().size() > 1) {
                         accessToken = jwtService.generateToken(user, loginRequest.getRole());
@@ -209,20 +196,16 @@ public class AuthService {
     }
 
     public Mono<LoginResponse> refreshToken(String oldRefreshToken) {
-
         return refreshTokenRepository.findByToken(oldRefreshToken)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(savedToken -> {
                     if (savedToken.isRevoked() || savedToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-                        return Mono.error(new RecordNotFoundException(DATA_NOT_FOUND));
+                        return Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")));
                     }
-
                     Claims claims = jwtService.validateRefreshToken(oldRefreshToken);
                     String userName = claims.getSubject();
-
                     String newRefreshToken = jwtService.generateRefreshToken(userName);
                     savedToken.setToken(newRefreshToken);
-
                     return refreshTokenRepository.save(savedToken)
                             .flatMap(t ->
                                     userDetailService.findByEmail(userName)
@@ -256,11 +239,11 @@ public class AuthService {
     public Mono<String> resendOtp(PhoneLoginRequest loginRequest) {
 
         return userDetailService.findByPhoneNumber(loginRequest.getPhoneNumber())
-                .switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(INVALID_CREDENTIALS)))
+                .switchIfEmpty(Mono.error(new PhoneNumberNotFoundException(messageUtil.get("phoneNumber.not.found"))))
                 .flatMap(user -> {
 
                     if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {
-                        return Mono.error(new RecordNotFoundException(loginRequest.getRole() + " is not registered with this number"));
+                        return Mono.error(new RecordNotFoundException(messageUtil.get(loginRequest.getRole()) + " " + messageUtil.get("user.not.registered")));
                     }
                     return otpService.requestOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
                 });
@@ -271,23 +254,23 @@ public class AuthService {
                 .flatMap(user -> {
                     String role = req.getRole() != null ? req.getRole() : RoleNames.Organization.name();
                     if (!user.getRoles().contains(role)) {
-                        return Mono.error(new RecordNotFoundException(role + " is not registered with this email"));
+                        return Mono.error(new RecordNotFoundException(messageUtil.get(role) + " " + messageUtil.get("user.not.registered.email")));
                     }
                     if (req.getOtp() != null && !req.getOtp().isBlank() && req.getPassword() != null && !req.getPassword().isBlank()) {
                         user.setPassword(passwordEncoder.encode(req.getPassword()));
                         return otpService.verifyOtp(user.getPhoneNumber(), role, req.getOtp()).flatMap(s ->
-                                userRepository.save(user)).thenReturn(PASSWORD_UPDATED);
+                                userRepository.save(user)).thenReturn(messageUtil.get("password.updated"));
                     } else {
                         return otpService.requestOtp(user.getPhoneNumber(), role);
                     }
-                }).switchIfEmpty(Mono.error(new EmailNotFoundException(USER_NOT_FOUND)));
+                }).switchIfEmpty(Mono.error(new EmailNotFoundException(messageUtil.get("user.not.found"))));
     }
 
     public Mono<Users> getValidatedUser(String phoneNumber, String email, String role) {
         return userRepository
                 .findByPhoneNumberOrEmail(phoneNumber, email).flatMap(existingUser -> {
                     if (!role.equalsIgnoreCase(RoleNames.Candidate.name()) && existingUser.getRoles().contains(role)) {
-                        return Mono.error(new PhoneOrEmailNotFoundException(PHONE_EMAIL_EXISTS));
+                        return Mono.error(new PhoneOrEmailNotFoundException(messageUtil.get("phone.email.exist")));
                     }
                     return Mono.just(existingUser);
                 }).switchIfEmpty(Mono.empty());
@@ -300,10 +283,10 @@ public class AuthService {
         return userRepository.findById(authUser.getId())
                 .flatMap(user -> {
                     if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-                        return Mono.error(new RecordNotFoundException(INCORRECT_PASSWORD));
+                        return Mono.error(new RecordNotFoundException(messageUtil.get("incorrect.password")));
                     }
                     user.setPassword(passwordEncoder.encode(request.getNewPassword()));
                     return userRepository.save(user);
-                }).thenReturn(PASSWORD_UPDATED);
+                }).thenReturn(messageUtil.get("password.updated"));
     }
 }

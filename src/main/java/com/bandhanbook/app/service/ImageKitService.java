@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.exception.ValidationExceptions;
@@ -27,8 +28,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
-
 @Primary
 @Service
 @RequiredArgsConstructor
@@ -36,6 +35,7 @@ public class ImageKitService implements ImageUploadService {
     private static final Logger logger = LoggerFactory.getLogger(ImageKitService.class);
     private final ImageKit imageKit;
     private final Tika tika = new Tika();
+    private final MessageUtil messageUtil;
 
     @Value("${images.max_size_mb}")
     private int maxImageSizeMb;
@@ -60,9 +60,9 @@ public class ImageKitService implements ImageUploadService {
             try {
                 imageKit.deleteFile(fileId);
             } catch (ForbiddenException | UnauthorizedException e) {
-                Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS, e));
+                Mono.error(new UnAuthorizedException(messageUtil.get("authorization.error"), e));
             } catch (TooManyRequestsException | InternalServerException | BadRequestException | UnknownException e) {
-                Mono.error(new ValidationExceptions(FILE_UPLOAD_ERROR, e));
+                Mono.error(new ValidationExceptions(messageUtil.get("file.upload.error"), e));
             }
         });
     }
@@ -73,10 +73,10 @@ public class ImageKitService implements ImageUploadService {
             try {
                 imageKit.bulkDeleteFiles(fileIds);
             } catch (ForbiddenException | UnauthorizedException e) {
-                Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS, e));
+                Mono.error(new UnAuthorizedException(messageUtil.get("authorization.error"), e));
             } catch (TooManyRequestsException | InternalServerException | BadRequestException | UnknownException |
                      PartialSuccessException | NotFoundException e) {
-                Mono.error(new ValidationExceptions(FILE_UPLOAD_ERROR, e));
+                Mono.error(new ValidationExceptions(messageUtil.get("file.upload.error"), e));
             }
         });
     }
@@ -127,7 +127,7 @@ public class ImageKitService implements ImageUploadService {
 
                     Result result = imageKit.upload(req);
                     if (result == null || result.getFileId() == null) {
-                        throw new RuntimeException("Image upload failed");
+                        throw new RuntimeException(messageUtil.get("image.upload.error"));
                     }
                     return Image.builder()
                             .id(result.getFileId())
@@ -139,14 +139,14 @@ public class ImageKitService implements ImageUploadService {
 
     private void validateSize(byte[] bytes) {
         if (bytes.length > maxImageSizeMb) {
-            throw new ValidationExceptions(IMAGE_SIZE_EXCEEDED);
+            throw new ValidationExceptions(messageUtil.get("image.size.exceeded"));
         }
     }
 
     private void validateMime(byte[] bytes) {
         String mime = tika.detect(bytes);
         if (!mime.startsWith("image/")) {
-            throw new ValidationExceptions(INVALID_FILE_TYPE);
+            throw new ValidationExceptions(messageUtil.get("invalid.file.type"));
         }
     }
 
@@ -154,7 +154,7 @@ public class ImageKitService implements ImageUploadService {
         return DataBufferUtils.join(file.content())
                 .flatMap(buffer -> {
                     if (buffer.readableByteCount() > maxImageSizeMb) {
-                        return Mono.error(new RecordNotFoundException("File too large"));
+                        return Mono.error(new RecordNotFoundException(messageUtil.get("file.too.large")));
                     }
                     return Mono.just(buffer);
                 });
@@ -170,7 +170,7 @@ public class ImageKitService implements ImageUploadService {
                     .toOutputStream(out);
             return out.toByteArray();
         } catch (IOException e) {
-            throw new ValidationExceptions("Image processing failed");
+            throw new ValidationExceptions(messageUtil.get("image.processing.failed"), e);
         }
     }
 }

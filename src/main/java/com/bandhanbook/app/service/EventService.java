@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.EventParticipants;
 import com.bandhanbook.app.model.Events;
@@ -29,8 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
-
 @Service
 @RequiredArgsConstructor
 public class EventService {
@@ -42,6 +41,7 @@ public class EventService {
     private final AgentService agentService;
     private final MatrimonyRepository matrimonyRepository;
     private final EventParticipantsRepository eventParticipantRepo;
+    private final MessageUtil messageUtil;
 
     @Autowired
     private ReactiveMongoTemplate template;
@@ -55,14 +55,14 @@ public class EventService {
                     events.setOrganizationId(organization.getId());
                     events.setCreatedBy(user.getId());
                     return eventsRepository.save(events);
-                }).switchIfEmpty(Mono.error(new RecordNotFoundException("Organization " + DATA_NOT_FOUND))).then();
+                }).switchIfEmpty(Mono.error(new RecordNotFoundException("Organization " + messageUtil.get("record.not.found")))).then();
     }
 
     @Transactional
     public Mono<Void> updateEvent(EventRequest eventRequest, String id) {
         logger.info("Updated Event of {}", eventRequest.getName());
         return eventsRepository.findById(new ObjectId(id))
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))).
                 flatMap(events -> {
                     modelMapper.map(eventRequest, events);
                     return eventsRepository.save(events);
@@ -71,7 +71,7 @@ public class EventService {
 
     public Mono<EventResponse> getEventById(ObjectId id) {
         logger.info("get Event By event id {}", id);
-        return eventsRepository.findById((id)).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+        return eventsRepository.findById((id)).switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .map(events -> modelMapper.map(events, EventResponse.class));
     }
 
@@ -90,7 +90,7 @@ public class EventService {
         // -------------------------
         Criteria criteria = new Criteria();
         return agentService.getOrgIdMono(authUser, params)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(id -> {
                     if (!id.isBlank()) {
                         criteria.and("organization_id").is(new ObjectId(id));
@@ -149,17 +149,17 @@ public class EventService {
                     .flatMap(org -> eventsRepository.findByOrganizationIdAndStatusAndEventType(org.getId(), Status.active, EventType.CANDIDATE_REGISTRATION)
                             .map(Events::getId)
                             .collectList()
-                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
+                            .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))));
         } else if (authUser.isAgent()) {
             return agentRepository.findByUserId(authUser.getId())
                     .flatMap(agents -> eventsRepository.findByOrganizationIdAndStatusAndEventType(agents.getOrganizationId(), Status.active, EventType.CANDIDATE_REGISTRATION)
                             .map(Events::getId)
                             .collectList()
-                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
+                            .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))));
         }
         if (authUser.isCandidate()) {
             return matrimonyRepository.findByUserId(authUser.getId())
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                     .flatMapMany(candidate ->
                             eventParticipantRepo.findByCandidateId(candidate.getId())
                     )
@@ -168,13 +168,13 @@ public class EventService {
                     .collectList()
                     .filter(list -> !list.isEmpty())
                     .switchIfEmpty(Mono.error(
-                            new RecordNotFoundException(DATA_NOT_FOUND)));
+                            new RecordNotFoundException(messageUtil.get("record.not.found"))));
         } else if (authUser.isSuperUser()) {
             return eventsRepository.findByStatus(Status.active)
                     .map(Events::getId)
                     .collectList()
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
         }
-        return Mono.error(new RecordNotFoundException(DATA_NOT_FOUND));
+        return Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")));
     }
 }

@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.Donations;
@@ -28,9 +29,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.RECORD_NOT_FOUND;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.DONATION_CREATED;
-
 @Service
 @RequiredArgsConstructor
 public class DonationService {
@@ -40,15 +38,16 @@ public class DonationService {
     private final OrganizationRepository organizationRepository;
     private final EventManagementService eventManagementService;
     private final ReactiveMongoTemplate template;
+    private final MessageUtil messageUtil;
 
     public Mono<String> createDonation(DonationCreateRequest request, Users authUser) {
         ObjectId eventId = new ObjectId(request.getEventId());
         Mono<Agents> agentsMono = agentRepository.findByUserId(authUser.getId());
         if (agentsMono == null) {
-            return Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND));
+            return Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")));
         }
         return agentsMono.flatMap(agent -> eventsRepository.findById(eventId)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(event -> {
 
                     Donations donation = Donations.builder()
@@ -68,7 +67,7 @@ public class DonationService {
 
                     return donationRepository.save(donation)
                             .then(eventManagementService.onDonationCreation(agent.getId(), eventId, event.getOrganizationId(), request.getAmount()))
-                            .thenReturn(DONATION_CREATED);
+                            .thenReturn(messageUtil.get("donation.created"));
                 }));
     }
 
@@ -123,10 +122,9 @@ public class DonationService {
         });
     }
 
-    /* UPDATE */
     public Mono<DonationResponse> updateDonation(String id, DonationUpdateRequest request) {
         return donationRepository.findById(new ObjectId(id))
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(d -> {
                     if (request.getAmount() != null) d.setAmount(request.getAmount());
                     if (request.getDonorName() != null) d.setDonorName(request.getDonorName());
@@ -158,7 +156,7 @@ public class DonationService {
     /* DELETE (SOFT) */
     public Mono<Void> deleteDonation(String id) {
         return donationRepository.findById(new ObjectId(id))
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(d -> {
                     d.setDeletedAt(LocalDateTime.now());
                     return donationRepository.save(d);

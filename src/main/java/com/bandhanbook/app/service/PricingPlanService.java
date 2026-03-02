@@ -1,66 +1,24 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.PricingPlans;
 import com.bandhanbook.app.payload.request.PricingPlanRequest;
 import com.bandhanbook.app.payload.response.PricingPlanResponse;
 import com.bandhanbook.app.repository.PricingPlanRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
-import java.util.List;
-
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.RECORD_NOT_FOUND;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class PricingPlanService {
-    private List<PricingPlans> cachedPlans;
-    @Autowired
-    private ObjectMapper objectMapper;
-    @Autowired
-    private ResourceLoader resourceLoader;
     private final PricingPlanRepository repository;
+    private final MessageUtil messageUtil;
 
- /*   public Mono<PricingPlans> getPlanById(String id) {
-        return getPricingPlans()
-                .flatMapMany(Flux::fromIterable)
-                .filter(plan -> plan.getId().equals(id))
-                .next()                               // returns Mono<PricingPlan>
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(PLAN_NOT_FOUND)));
-    }
-
-    private Mono<PricingPlans> getPlanById(String id) {
-        return getPricingPlans()
-                .flatMapMany(Flux::fromIterable)
-                .filter(plan -> plan.getId().equals(id))
-                .next()                               // returns Mono<PricingPlan>
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(PLAN_NOT_FOUND)));
-    }
-
-    public Mono<List<PricingPlans>> getPricingPlans() {
-        if (cachedPlans != null && !cachedPlans.isEmpty()) {
-            return Mono.just(cachedPlans);
-        }
-        return Mono.fromCallable(() -> {
-                    Resource resource =
-                            resourceLoader.getResource("classpath:Json/pricingPlans.json");
-
-                    try (InputStream inputStream = resource.getInputStream()) {
-                        return Arrays.asList(objectMapper.readValue(inputStream, PricingPlans[].class));
-                    }
-                })
-                .doOnNext(list -> cachedPlans = list)
-                .subscribeOn(Schedulers.boundedElastic());
-    }
-
-*/
     public Mono<PricingPlanResponse> create(PricingPlanRequest request) {
 
         PricingPlans plan = PricingPlans.builder()
@@ -88,12 +46,12 @@ public class PricingPlanService {
 
     public Mono<PricingPlans> getPlanById(ObjectId id) {
         return repository.findById(id)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)));
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
     }
 
     public Mono<PricingPlanResponse> update(ObjectId id, PricingPlanRequest request) {
         return repository.findById(id)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(plan -> {
                     plan.setName(request.getName());
                     plan.setPrice(request.getPrice());

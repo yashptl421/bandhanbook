@@ -1,5 +1,6 @@
 package com.bandhanbook.app.conrollers;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.BannerRequest;
@@ -8,6 +9,7 @@ import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.BannerService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
@@ -17,22 +19,21 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
-
 @RestController
 @RequestMapping("/banner")
 @RequiredArgsConstructor
 public class BannerController {
 
     private final BannerService bannerService;
+    private final MessageUtil messageUtil;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<ResponseEntity<ApiResponse<BannerResponse>>> createBanner(@RequestPart("data") BannerRequest request, @RequestPart("file") FilePart file, @CurrentUser Users authUser) {
         return bannerService.createBanner(request, file, authUser)
                 .map(banner -> ResponseEntity.ok(
                         ApiResponse.<BannerResponse>builder()
-                                .status(200)
-                                .message(BANNER_CREATED)
+                                .status(HttpStatus.OK.value())
+                                .message(messageUtil.get("banner.created"))
                                 .data(banner)
                                 .build()
                 ));
@@ -50,8 +51,8 @@ public class BannerController {
                 .map(res ->
                         ResponseEntity.ok(
                                 ApiResponse.<List<BannerResponse>>builder()
-                                        .status(200)
-                                        .message(DATA_FOUND)
+                                        .status(HttpStatus.OK.value())
+                                        .message(messageUtil.get("records.found"))
                                         .data(res.getData())
                                         .meta(res.getMeta())
                                         .activeCount(res.getActiveCount())
@@ -68,8 +69,8 @@ public class BannerController {
                 .map(updated ->
                         ResponseEntity.ok(
                                 ApiResponse.<BannerResponse>builder()
-                                        .status(200)
-                                        .message(BANNER_UPDATED)
+                                        .status(HttpStatus.OK.value())
+                                        .message(messageUtil.get("banner.updated"))
                                         .data(updated)
                                         .build()
                         )
@@ -84,8 +85,8 @@ public class BannerController {
                 .map(data ->
                         ResponseEntity.ok(
                                 ApiResponse.<BannerResponse>builder()
-                                        .status(200)
-                                        .message(DATA_FOUND)
+                                        .status(HttpStatus.OK.value())
+                                        .message(messageUtil.get("records.found"))
                                         .data(data)
                                         .build()
                         )
@@ -100,7 +101,7 @@ public class BannerController {
                 .map(msg ->
                         ResponseEntity.ok(
                                 ApiResponse.<String>builder()
-                                        .status(200)
+                                        .status(HttpStatus.OK.value())
                                         .message(msg)
                                         .build()
                         )

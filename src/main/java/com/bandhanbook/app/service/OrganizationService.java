@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.model.OrgSubscriptions;
@@ -13,12 +14,9 @@ import com.bandhanbook.app.payload.response.UserResponse;
 import com.bandhanbook.app.repository.OrgSubscriptionsRepository;
 import com.bandhanbook.app.repository.OrganizationRepository;
 import com.bandhanbook.app.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ResourceLoader;
-import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
@@ -28,30 +26,16 @@ import reactor.util.function.Tuple2;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
-
 @Service
+@RequiredArgsConstructor
 public class OrganizationService {
 
-    @Autowired
-    private OrganizationRepository organizationRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private ModelMapper modelMapper;
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private ResourceLoader resourceLoader;
-    @Autowired
-    private OrgSubscriptionsRepository orgSubscriptionsRepository;
-    @Autowired
-    private ReactiveMongoTemplate template;
-    @Autowired
-    CommonService commonService;
-    @Autowired
-    private PricingPlanService pricingPlanService;
+    private final OrganizationRepository organizationRepository;
+    private final UserRepository userRepository;
+    private final ModelMapper modelMapper;
+    private final OrgSubscriptionsRepository orgSubscriptionsRepository;
+    private final CommonService commonService;
+    private final MessageUtil messageUtil;
 
     public Mono<Tuple2<Long, List<OrganizationResponse>>> listOrganizations(Map<String, String> params) {
 
@@ -60,25 +44,17 @@ public class OrganizationService {
         String search = params.getOrDefault("search", "");
         String organizationId = params.get("organizationId");
         String status = params.get("status");
-
-        // 1. Base organization stream
         Flux<Organization> organizationsFlux = organizationRepository.findAll()
                 .filter(org -> {
-
                     boolean match = true;
-
                     if (organizationId != null && !organizationId.isEmpty()) {
                         match = org.getId().toHexString().equals(organizationId);
                     }
-
                     if (status != null && !status.isEmpty()) {
                         match = match && status.equalsIgnoreCase(org.getStatus());
                     }
-
                     return match;
                 });
-
-        // 2. Email search filter
         if (!search.isBlank()) {
             organizationsFlux = organizationsFlux
                     .flatMap(org ->
@@ -88,16 +64,11 @@ public class OrganizationService {
                                     .map(u -> org)
                     );
         }
-
-        // 3. Count total before pagination
         Mono<Long> totalMono = organizationsFlux.count();
-
-        // 4. Paginate
         Flux<Organization> pagedFlux = organizationsFlux
                 .skip((long) (page - 1) * limit)
                 .take(limit);
 
-        // 5. Convert to response
         Flux<OrganizationResponse> responseFlux = pagedFlux.flatMap(org ->
                 userRepository.findById(org.getUserId()).map(user -> {
                     OrganizationResponse res = modelMapper.map(org, OrganizationResponse.class);
@@ -110,13 +81,13 @@ public class OrganizationService {
 
     public Mono<OrganizationResponse> getOrganizationById(ObjectId id) {
         return organizationRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(org ->
                         userRepository.findById(org.getUserId())
-                                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                                 .zipWith(
-                                        orgSubscriptionsRepository.findByOrgIdAndActive(org.getId(),true)
-                                                .switchIfEmpty(Mono.just(new OrgSubscriptions())),  // avoid null
+                                        orgSubscriptionsRepository.findByOrgIdAndActive(org.getId(), true)
+                                                .switchIfEmpty(Mono.just(new OrgSubscriptions())),
                                         (user, subscription) -> {
                                             OrganizationResponse res = modelMapper.map(org, OrganizationResponse.class);
                                             res.setUser_details(modelMapper.map(user, UserResponse.class));
@@ -135,14 +106,14 @@ public class OrganizationService {
                 .existsByPhoneNumber(organizationRequest.getPhoneNumber())
                 .flatMap(exists -> {
                     if (exists) {
-                        return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
+                        return Mono.error(new PhoneNumberNotFoundException(messageUtil.get("phone.exist")));
                     }
                     return Mono.empty();
                 }).then(userRepository
                         .existsByEmail(organizationRequest.getEmail())
                         .flatMap(exists -> {
                             if (exists) {
-                                return Mono.error(new PhoneNumberNotFoundException(EMAIL_EXISTS));
+                                return Mono.error(new PhoneNumberNotFoundException(messageUtil.get("email.exist")));
                             }
                             return Mono.empty();
                         }))
@@ -162,25 +133,22 @@ public class OrganizationService {
 
     @Transactional
     public Mono<Void> updateOrganization(OrganizationRequest organizationRequest, ObjectId id) {
-        return organizationRepository.findById(id).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).flatMap(existingOrg -> userRepository.findById(existingOrg.getUserId()).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))).flatMap(existingUser -> {
+        return organizationRepository.findById(id).switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))).flatMap(existingOrg -> userRepository.findById(existingOrg.getUserId()).switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))).flatMap(existingUser -> {
 
-            // STEP 1 — validate duplicate phone (but ignore same user)
             Mono<Void> phoneCheck = userRepository.existsByPhoneNumber(organizationRequest.getPhoneNumber()).flatMap(exists -> {
                 if (exists && !organizationRequest.getPhoneNumber().equals(existingUser.getPhoneNumber())) {
-                    return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
+                    return Mono.error(new PhoneNumberNotFoundException(messageUtil.get("phone.exist")));
                 }
                 return Mono.empty();
             });
 
-            // STEP 2 — validate duplicate email (but ignore same user)
             Mono<Void> emailCheck = userRepository.existsByEmail(organizationRequest.getEmail()).flatMap(exists -> {
                 if (exists && !organizationRequest.getEmail().equals(existingUser.getEmail())) {
-                    return Mono.error(new PhoneNumberNotFoundException(EMAIL_EXISTS));
+                    return Mono.error(new PhoneNumberNotFoundException(messageUtil.get("email.exist")));
                 }
                 return Mono.empty();
             });
-
-            return Mono.when(phoneCheck, emailCheck) // run validations
+            return Mono.when(phoneCheck, emailCheck)
                     .then(Mono.defer(() -> {
                         existingUser.setFullName(organizationRequest.getFullName());
                         existingUser.setPhoneNumber(organizationRequest.getPhoneNumber());
@@ -188,7 +156,6 @@ public class OrganizationService {
                         return userRepository.save(existingUser);
                     })).flatMap(updatedUser -> {
                         modelMapper.map(organizationRequest, existingOrg);
-                        // STEP 4 — update organization
                         return organizationRepository.save(existingOrg);
                     });
         })).then();

@@ -1,5 +1,6 @@
 package com.bandhanbook.app.conrollers;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.DonationCreateRequest;
@@ -17,13 +18,12 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
-
 @RestController
 @RequestMapping("/donations")
 @RequiredArgsConstructor
 public class DonationController {
     private final DonationService donationService;
+    private final MessageUtil messageUtil;
 
     @PostMapping
     public Mono<ResponseEntity<ApiResponse<String>>> create(@RequestBody @Valid DonationCreateRequest request, @CurrentUser Users authUser) {
@@ -44,7 +44,7 @@ public class DonationController {
                 .map(response -> ResponseEntity.ok(
                         ApiResponse.<List<DonationResponse>>builder()
                                 .status(HttpStatus.OK.value())
-                                .message(DATA_FOUND)
+                                .message(messageUtil.get("records.found"))
                                 .data(response.getT2())
                                 .meta(ApiResponse.Meta.builder().limit(limit).page(page).totalRecords(response.getT1()).totalPages((int) Math.ceil((double) response.getT1() / limit)).build())
                                 .build()
@@ -57,7 +57,7 @@ public class DonationController {
                 .map(response -> ResponseEntity.ok(
                         ApiResponse.<DonationResponse>builder()
                                 .status(HttpStatus.OK.value())
-                                .message(DONATION_UPDATED)
+                                .message(messageUtil.get("donation.updated"))
                                 .data(response)
                                 .build()
                 ));
@@ -69,7 +69,7 @@ public class DonationController {
                 .thenReturn(ResponseEntity.ok(
                                 ApiResponse.<String>builder()
                                         .status(200)
-                                        .message(DONATION_DELETED)
+                                        .message(messageUtil.get("donation.deleted"))
                                         .build()
                         )
                 );

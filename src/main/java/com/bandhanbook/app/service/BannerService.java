@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.ValidationExceptions;
 import com.bandhanbook.app.model.Banners;
@@ -25,10 +26,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.*;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.BANNER_DELETED;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -42,6 +39,7 @@ public class BannerService {
     private final ProfileService profileService;
     private final UsageMetricsService usageMetricsService;
     private final LimitEnforcementComponent limitEnforcementComponent;
+    private final MessageUtil messageUtil;
 
     @Value("${images.base.path}")
     private String basePath;
@@ -53,7 +51,7 @@ public class BannerService {
     public Mono<BannerResponse> createBanner(BannerRequest request, FilePart file, Users authUser) {
         if (file == null || file.headers().getContentType() == null ||
                 !Objects.requireNonNull(file.headers().getContentType()).toString().startsWith("image/")) {
-            return Mono.error(new ValidationExceptions("Banner image is required"));
+            return Mono.error(new ValidationExceptions(messageUtil.get("banner.image.required")));
         }
         Map<String, String> params = new HashMap<>();
         if (request.getOrganizationId() != null && authUser.isSuperUser())
@@ -137,7 +135,7 @@ public class BannerService {
 
                         return ApiResponse.<List<BannerResponse>>builder()
                                 .status(200)
-                                .message(data.isEmpty() ? DATA_NOT_FOUND : DATA_FOUND)
+                                .message(data.isEmpty() ? messageUtil.get("record.not.found") : messageUtil.get("records.found"))
                                 .data(data)
                                 .meta(ApiResponse.Meta.builder()
                                         .page(page)
@@ -161,10 +159,10 @@ public class BannerService {
         try {
             id = new ObjectId(bannerId);
         } catch (Exception e) {
-            return Mono.error(new IllegalArgumentException("Invalid banner id"));
+            return Mono.error(new ValidationExceptions(messageUtil.get("banner.id.invalid")));
         }
         return bannerRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException("Banner not found")))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(banner -> {
                     banner.setActive(isActive);
                     return bannerRepository.save(banner).thenReturn(modelMapper.map(banner, BannerResponse.class));
@@ -177,10 +175,10 @@ public class BannerService {
         try {
             bannerId = new ObjectId(id);
         } catch (Exception e) {
-            return Mono.error(new RecordNotFoundException("Invalid banner id"));
+            return Mono.error(new RecordNotFoundException(messageUtil.get("banner.id.invalid")));
         }
         return bannerRepository.findById(bannerId)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .map(banner -> modelMapper.map(banner, BannerResponse.class));
     }
 
@@ -190,11 +188,11 @@ public class BannerService {
         try {
             bannerId = new ObjectId(id);
         } catch (Exception e) {
-            return Mono.error(new RecordNotFoundException("Invalid banner id"));
+            return Mono.error(new RecordNotFoundException(messageUtil.get("banner.id.invalid")));
         }
 
         return bannerRepository.findById(bannerId)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(banner -> {
 
                     Mono<Void> deleteImageMono = Mono.empty();
@@ -206,7 +204,7 @@ public class BannerService {
                     return deleteImageMono
                             .then(bannerRepository.deleteById(bannerId))
                             .then(usageMetricsService.decrementBanners(banner.getOrganizationId()))
-                            .thenReturn(BANNER_DELETED);
+                            .thenReturn(messageUtil.get("banner.deleted"));
                 });
     }
 }

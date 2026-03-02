@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.model.Agents;
@@ -30,11 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.DATA_NOT_FOUND;
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.UNAUTHORIZED_ACCESS;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_CREATED;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.AGENT_UPDATED;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -48,17 +44,18 @@ public class AgentService {
     private final CommonService commonService;
     private final UsageMetricsService usageMetricsService;
     private final LimitEnforcementComponent limitEnforcementComponent;
+    private final MessageUtil messageUtil;
 
     public Mono<String> createAgent(AgentRequest request, Users authUser) {
 
         String role = RoleNames.Agent.name();
 
         if (!authUser.isOrganization()) {
-            return Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS));
+            return Mono.error(new UnAuthorizedException(messageUtil.get("authorization.error")));
         }
 
         return organizationRepository.findByUserId(authUser.getId())
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(org -> {
                     ObjectId orgId = org.getId();
                     request.setOrganizationId(orgId.toHexString());
@@ -79,15 +76,15 @@ public class AgentService {
 
     public Mono<AgentResponse> showAgent(ObjectId agentId, Users authUser) {
         return agentRepository.findById(agentId)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(agents ->
                         organizationRepository.findByUserId(authUser.getId())
                                 .flatMap(org -> {
                                     if (!org.getId().equals(agents.getOrganizationId())) {
-                                        return Mono.error(new UnAuthorizedException(UNAUTHORIZED_ACCESS));
+                                        return Mono.error(new UnAuthorizedException(messageUtil.get("authorization.error")));
                                     }
                                     return userRepository.findById(agents.getUserId())
-                                            .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                                            .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                                             .map(users -> {
                                                 AgentResponse res = modelMapper.map(agents, AgentResponse.class);
                                                 res.setUser_id(agents.getUserId().toHexString());
@@ -102,7 +99,7 @@ public class AgentService {
                                                 return res;
                                             });
                                 }).switchIfEmpty(Mono.defer(() -> userRepository.findById(agents.getUserId())
-                                        .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                                        .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                                         .map(users -> {
                                             AgentResponse res = modelMapper.map(agents, AgentResponse.class);
                                             res.setUser_id(agents.getUserId().toHexString());
@@ -131,9 +128,10 @@ public class AgentService {
                             .doOnSuccess(savedAgent ->
                                     triggerAgentMetrics(savedAgent.getOrganizationId())
                             )
-                            .thenReturn(AGENT_CREATED);
+                            .thenReturn(messageUtil.get("agent.created"));
                 });
     }
+
     private void triggerAgentMetrics(ObjectId orgId) {
         usageMetricsService.incrementAgents(orgId)
                 .doOnError(e -> log.error("Failed to increment agent metrics", e))
@@ -144,7 +142,7 @@ public class AgentService {
     public Mono<String> updateAgent(AgentRequest request, ObjectId agentId) {
 
         return agentRepository.findById(agentId)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(agent ->
 
                         updateUserIfRequired(agent.getUserId(), request)
@@ -152,12 +150,12 @@ public class AgentService {
                                 .then(updateAgentFields(agent, request))
                                 .flatMap(agentRepository::save)
                 )
-                .thenReturn(AGENT_UPDATED);
+                .thenReturn(messageUtil.get("agent.updated"));
     }
 
     private Mono<Void> updateUserIfRequired(ObjectId userId, AgentRequest request) {
         return userRepository.findById(userId)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(user -> {
                     if (request.getFullName() != null && !request.getFullName().isBlank()) {
                         user.setFullName(request.getFullName());
@@ -288,11 +286,11 @@ public class AgentService {
         } else if (authUser.isAgent()) {
             return agentRepository.findByUserId(authUser.getId()).
                     map(agents -> agents.getOrganizationId().toHexString())
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException("Organization Not Found")));
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("organization.not.fount"))));
         } else if (authUser.isOrganization()) {
             return organizationRepository.findByUserId(authUser.getId())
                     .map(org -> org.getId().toHexString())
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException("Organization Not Found")));
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("organization.not.fount"))));
         } else {
             return Mono.just("");
         }

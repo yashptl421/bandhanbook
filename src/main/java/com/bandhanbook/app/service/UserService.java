@@ -1,9 +1,7 @@
 package com.bandhanbook.app.service;
 
-import com.bandhanbook.app.exception.EmailNotFoundException;
-import com.bandhanbook.app.exception.PhoneNumberNotFoundException;
-import com.bandhanbook.app.exception.RecordNotFoundException;
-import com.bandhanbook.app.exception.UnAuthorizedException;
+import com.bandhanbook.app.config.MessageUtil;
+import com.bandhanbook.app.exception.*;
 import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.EventParticipants;
 import com.bandhanbook.app.model.MatrimonyCandidate;
@@ -40,8 +38,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 import static com.bandhanbook.app.utilities.UtilityHelper.validateAdult;
 
 @Slf4j
@@ -64,6 +60,7 @@ public class UserService {
     private final EventManagementService eventManagementService;
     private final LimitEnforcementComponent limitEnforcementComponent;
     private final UsageMetricsService usageMetricsService;
+    private final MessageUtil messageUtil;
 
 
     public Users getUsers() {
@@ -71,14 +68,11 @@ public class UserService {
     }
 
     public Mono<CandidateResponse> showCandidates(String userId, Users authUser) {
-
         ObjectId targetUserId = new ObjectId(userId);
         Document matrimonyDataFilters = new Document();
         Document eventParticipantFilters = new Document();
         Document agentFilters = new Document();
-
         if (authUser.isCandidate()) {
-            // candidate event filtering
             matrimonyRepository.findByUserId(authUser.getId())
                     .flatMap(profile ->
                             eventParticipantRepo.findByCandidateId(profile.getId())
@@ -96,7 +90,6 @@ public class UserService {
                                     })
 
                     );
-
         } else if (authUser.isOrganization()) {
             return organizationRepository.findByUserId(authUser.getId())
                     .flatMap(org -> {
@@ -203,7 +196,7 @@ public class UserService {
 
         return reactiveMongoTemplate.aggregate(aggregation, "users", CandidateResponse.class)
                 .next()
-                .switchIfEmpty(Mono.error(new RuntimeException("Candidate not found")));
+                .switchIfEmpty(Mono.error(new ValidationExceptions(messageUtil.get("candidate.profile.not.found"))));
     }
 
     @Transactional
@@ -211,7 +204,7 @@ public class UserService {
 
         ObjectId userObjectId = new ObjectId(userId);
         if (authUser.isCandidate() && !Objects.equals(authUser.getId(), userObjectId)) {
-            return Mono.error(new UnAuthorizedException("You are not authorized to update this profile"));
+            return Mono.error(new UnAuthorizedException(messageUtil.get("authorization.error")));
         }
 
         Mono<Boolean> emailExists = Mono.justOrEmpty(req.getEmail())
@@ -224,7 +217,7 @@ public class UserService {
 
         return emailExists.flatMap(exists -> {
             if (exists) {
-                return Mono.error(new EmailNotFoundException(EMAIL_EXISTS));
+                return Mono.error(new EmailNotFoundException(messageUtil.get("email.exist")));
             }
             return userRepository.findById(userObjectId).flatMap(users ->
                     matrimonyRepository.findByUserId(userObjectId).flatMap(candidate -> {
@@ -253,7 +246,7 @@ public class UserService {
                                     res.setProfileCompletion(utilityHelper.getProfileCompletion(candidate));
                                     return res;
                                 }));
-                    }).switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
+                    }).switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))));
         });
     }
 
@@ -431,7 +424,7 @@ public class UserService {
 
                             return ApiResponse.<List<CandidateResponse>>builder()
                                     .status(200)
-                                    .message(res.isEmpty() ? DATA_NOT_FOUND : DATA_FOUND)
+                                    .message(res.isEmpty() ? messageUtil.get("record.not.found") : messageUtil.get("records.found"))
                                     .meta(ApiResponse.Meta.builder()
                                             .page(page)
                                             .limit(limit)
@@ -551,11 +544,11 @@ public class UserService {
                                                 .existsByCandidateIdAndEventId(candidate.getId(), new ObjectId(request.getEventId()))
                                                 .flatMap(exists -> {
                                                     if (exists) {
-                                                        return Mono.error(new PhoneNumberNotFoundException(PHONE_EXISTS));
+                                                        return Mono.error(new PhoneNumberNotFoundException(messageUtil.get("phone.exist")));
                                                     }
                                                     return agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
                                                                     saveEventParticipant(candidate, request, agent))
-                                                            .thenReturn(USER_REGISTERED);
+                                                            .thenReturn(messageUtil.get("candidate.registered"));
                                                 })
                                 )
                                 .switchIfEmpty(
@@ -568,7 +561,7 @@ public class UserService {
                                                                     .flatMap(matrimonyCandidate ->
                                                                             agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
                                                                                     saveEventParticipant(matrimonyCandidate, request, agent)
-                                                                            )).thenReturn(USER_REGISTERED)
+                                                                            )).thenReturn(messageUtil.get("candidate.registered"))
                                                     );
                                         })
                                 )
@@ -584,7 +577,7 @@ public class UserService {
                                                     .flatMap(matrimonyCandidate ->
                                                             agentRepository.findByUserId(authUser.getId()).flatMap(agent ->
                                                                     saveEventParticipant(matrimonyCandidate, request, agent)
-                                                            ).thenReturn(USER_REGISTERED)
+                                                            ).thenReturn(messageUtil.get("candidate.registered"))
                                                     )
                                     );
                         })
@@ -634,16 +627,18 @@ public class UserService {
                                     FavoriteResponse res = new FavoriteResponse();
                                     if (favorites.contains(targetProfile.getId())) {
                                         favorites.remove(targetProfile.getId());
+                                        res.setMessage(messageUtil.get("favorites.updated"));
                                     } else {
                                         favorites.add(targetProfile.getId());
+                                        res.setMessage(messageUtil.get("favorites.added"));
                                         res.setFavorite(true);
                                     }
                                     candidateProfile.setFavorites(favorites);
-                                    res.setMessage(FAVORITES_UPDATED);
+
                                     return matrimonyRepository.save(candidateProfile)
                                             .thenReturn(res);
                                 })
-                                .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND))));
+                                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))));
     }
 
     public Mono<String> updateProfile(OrganizationRequest request, Users authUser) {
@@ -652,11 +647,11 @@ public class UserService {
                     .flatMap(organization -> {
                         modelMapper.map(request, organization);
                         return organizationRepository.save(organization)
-                                .thenReturn(ORGANIZATION_UPDATED);
+                                .thenReturn(messageUtil.get("organization.updated"));
                     })
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(DATA_NOT_FOUND)));
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
         } else {
-            return Mono.error(new UnAuthorizedException("You are not authorized to update organization profile"));
+            return Mono.error(new UnAuthorizedException(messageUtil.get("authorization.error")));
         }
     }
 
@@ -666,7 +661,7 @@ public class UserService {
 
         Mono<Void> deactivateUser =
                 userRepository.deactivateUser(userId, now)
-                        .switchIfEmpty(Mono.error(new RecordNotFoundException("User not found")))
+                        .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                         .then();
         Mono<Void> roleDeactivation;
 

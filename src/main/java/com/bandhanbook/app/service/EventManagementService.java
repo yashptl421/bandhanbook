@@ -1,5 +1,6 @@
 package com.bandhanbook.app.service;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.exception.ValidationExceptions;
@@ -38,9 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.*;
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
-
 @Service
 @RequiredArgsConstructor
 public class EventManagementService {
@@ -50,6 +48,7 @@ public class EventManagementService {
     private final OrganizationRepository orgRepository;
     private final ModelMapper modelMapper;
     private final ReactiveMongoTemplate template;
+    private final MessageUtil messageUtil;
 
 
     public Mono<RegistrationSettlementResponse> createRegistrationSettlement(RegistrationSettlementRequest request, Users authUser) {
@@ -68,11 +67,11 @@ public class EventManagementService {
 
     public Mono<RegistrationSettlementResponse> updateRegistrationSettlement(SettlementUpdateRequest request, Users authUser) {
         if (!authUser.isOrganization() && request.getSettlementId() == null) {
-            return Mono.error(new UnAuthorizedException(SETTLEMENT_ACCESS_ERROR));
+            return Mono.error(new UnAuthorizedException(messageUtil.get("settlement.access.error")));
         }
 
         if (request.getStatus().equals(SettlementStatus.PENDING)) {
-            Mono.error(new UnAuthorizedException(SETTLEMENT_REVERT_ERROR));
+            Mono.error(new UnAuthorizedException(messageUtil.get("settlement.revert.error")));
         }
         return updateSettlementByOrganization(request)
                 .map(res -> modelMapper.map(res, RegistrationSettlementResponse.class));
@@ -127,13 +126,13 @@ public class EventManagementService {
                             if (existing.getSettlementHistory() != null) {
                                 Optional<History> pendingClosure = existing.getSettlementHistory().stream().filter(history -> history.getStatus().equals(SettlementStatus.PENDING)).findFirst();
                                 if (pendingClosure.isPresent()) {
-                                    return Mono.error(new ValidationExceptions(PENDING_CLOSER));
+                                    return Mono.error(new ValidationExceptions(messageUtil.get("pending.closer.error")));
                                 }
                             }
                             double newRemaining = existing.getTotalRemainingAmount() - request.getSettlementAmount();
 
                             if (newRemaining < 0) {
-                                return Mono.error(new ValidationExceptions(SETTLEMENT_INSUFFICIENT));
+                                return Mono.error(new ValidationExceptions(messageUtil.get("settlement.insufficient")));
                             }
                             Query query = Query.query(Criteria.where("event_id").is(new ObjectId(request.getEventId()))
                                     .and("agent_id").is(agentId)
@@ -145,7 +144,7 @@ public class EventManagementService {
                                                     .totalAmount(existing.getTotalRemainingAmount())
                                                     .batchId(UtilityHelper.getRegistrationBatchId())
                                                     .settledAmount(request.getSettlementAmount())
-                                                    .remainingAmount(newRemaining) // will be recalculated after save if needed
+                                                    .remainingAmount(newRemaining)
                                                     .status(request.getStatus())
                                                     .remark(request.getRemark() != null ? request.getRemark() : "Settlement")
                                                     .createdAt(LocalDateTime.now())
@@ -158,13 +157,13 @@ public class EventManagementService {
                                     FindAndModifyOptions.options().returnNew(true),
                                     RegistrationSettlement.class
                             );
-                        }).switchIfEmpty(Mono.error(new RecordNotFoundException(SETTLEMENT_NOT_FOUND))));
+                        }).switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))));
     }
 
    /* public Mono<RegistrationSettlement> settlementByOrganization(RegistrationSettlementRequest request) {
         Query query = Query.query(Criteria.where("_id").is(new ObjectId(request.getSettlementId())));
         return template.findOne(query, RegistrationSettlement.class)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(existing -> {
 
                     double newRemaining = existing.getTotalRemainingAmount() - request.getSettlementAmount();
@@ -204,7 +203,7 @@ public class EventManagementService {
                         .and("settlementHistory.status").is(SettlementStatus.PENDING)
         );
         return template.findOne(query, RegistrationSettlement.class)
-                .switchIfEmpty(Mono.error(new IllegalStateException(SETTLEMENT_INVALID)))
+                .switchIfEmpty(Mono.error(new IllegalStateException(messageUtil.get("settlement.invalid"))))
                 .flatMap(settlement -> {
 
                     History history = settlement.getSettlementHistory().stream()
@@ -219,7 +218,7 @@ public class EventManagementService {
                     double newRemaining = settlement.getTotalRemainingAmount() - amount;
 
                     if (newRemaining < 0) {
-                        return Mono.error(new ValidationExceptions(SETTLEMENT_INSUFFICIENT));
+                        return Mono.error(new ValidationExceptions(messageUtil.get("settlement.insufficient")));
                     }
 
                     Update u = new Update()
@@ -248,7 +247,7 @@ public class EventManagementService {
                     .collectList()
                     .filter(list -> !list.isEmpty())
                     .switchIfEmpty(
-                            Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND))
+                            Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))
                     );
             return eventIdsMono.flatMap(eventIds -> {
                 Query query = Query.query(
@@ -265,7 +264,7 @@ public class EventManagementService {
                 return settlements
                         .collectList()
                         .filter(list -> !list.isEmpty())
-                        .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)))
+                        .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                         .zipWith(eventMapMono)
                         .map(tuple -> {
                             List<RegistrationSettlement> settlementList = tuple.getT1();
@@ -287,14 +286,14 @@ public class EventManagementService {
 
     public Mono<ApiResponse<List<SettlementHistoryResponse>>> getCloserList(Users authUser, Map<String, String> params, int page, int limit) {
         String reqAgentId = params.getOrDefault("agentId", "");
-        String reqStatus = params.getOrDefault("status",null);
+        String reqStatus = params.getOrDefault("status", null);
         if (authUser.isOrganization()) {
             return orgRepository.findByUserId(authUser.getId())
                     .flatMap(org -> getSettlements(org.getId(), reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), reqStatus, page, limit));
         } else if (authUser.isAgent()) {
-            return agentRepository.findByUserId(authUser.getId()).flatMap(agents -> getSettlements(null, agents.getId(),reqStatus, page, limit));
+            return agentRepository.findByUserId(authUser.getId()).flatMap(agents -> getSettlements(null, agents.getId(), reqStatus, page, limit));
         } else
-            return getSettlements(null, reqAgentId.isBlank() ? null : new ObjectId(reqAgentId),reqStatus, page, limit);
+            return getSettlements(null, reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), reqStatus, page, limit);
     }
 
     public Mono<SettlementSummaryResponse> getSettlementSummary(Users authUser, String eventId) {
@@ -335,17 +334,17 @@ public class EventManagementService {
 
     public Mono<RegistrationSettlementResponse> getSettlementById(String id, Users authUser) {
         Mono<RegistrationSettlement> settlementMono = repository.findById(new ObjectId(id))
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(SETTLEMENT_NOT_FOUND)));
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
 
         if (authUser.isOrganization()) {
             return orgRepository.findByUserId(authUser.getId())
                     .flatMap(org -> settlementMono.filter(s -> s.getOrganizationId().equals(org.getId()))
-                            .switchIfEmpty(Mono.error(new UnAuthorizedException(SETTLEMENT_ACCESS_ERROR))))
+                            .switchIfEmpty(Mono.error(new UnAuthorizedException(messageUtil.get("settlement.access.error")))))
                     .map(s -> modelMapper.map(s, RegistrationSettlementResponse.class));
         } else if (authUser.isAgent()) {
             return agentRepository.findByUserId(authUser.getId())
                     .flatMap(agent -> settlementMono.filter(s -> s.getAgentId().equals(agent.getId()))
-                            .switchIfEmpty(Mono.error(new UnAuthorizedException(SETTLEMENT_ACCESS_ERROR))))
+                            .switchIfEmpty(Mono.error(new UnAuthorizedException(messageUtil.get("settlement.access.error")))))
                     .map(s -> modelMapper.map(s, RegistrationSettlementResponse.class));
         } else {
             return settlementMono.map(s -> modelMapper.map(s, RegistrationSettlementResponse.class));
@@ -381,10 +380,10 @@ public class EventManagementService {
                 aggregation,
                 "registration_settlement",
                 SettlementHistoryResponse.class
-        ).next().switchIfEmpty(Mono.error(new RecordNotFoundException(SETTLEMENT_NOT_FOUND)));
+        ).next().switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
     }
 
-    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getSettlements(ObjectId organizationId, ObjectId agentId, String status,  int page, int limit) {
+    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getSettlements(ObjectId organizationId, ObjectId agentId, String status, int page, int limit) {
         int skip = (page - 1) * limit;
         Criteria baseCriteria = Criteria.where("deleted_at").is(null);
         if (organizationId != null) {
@@ -393,7 +392,7 @@ public class EventManagementService {
         if (agentId != null) {
             baseCriteria = baseCriteria.and("agent_id").is(agentId);
         }
-        if(status != null){
+        if (status != null) {
             baseCriteria = baseCriteria.and("settlementHistory.status").is(status);
         }
         Aggregation aggregation = Aggregation.newAggregation(
@@ -439,17 +438,17 @@ public class EventManagementService {
                         .as("metadata")
         );
 
-        return template.aggregate(aggregation,"registration_settlement",SettlementHistoryWrapper.class)
+        return template.aggregate(aggregation, "registration_settlement", SettlementHistoryWrapper.class)
                 .next()
                 .defaultIfEmpty(new SettlementHistoryWrapper())
                 .map(wrapper -> {
-                    List<SettlementHistoryResponse> data =wrapper.getData() == null ? List.of() : wrapper.getData();
-                    long total =(wrapper.getMetadata() != null && !wrapper.getMetadata().isEmpty())
-                                    ? wrapper.getMetadata().get(0).getTotal() : 0;
+                    List<SettlementHistoryResponse> data = wrapper.getData() == null ? List.of() : wrapper.getData();
+                    long total = (wrapper.getMetadata() != null && !wrapper.getMetadata().isEmpty())
+                            ? wrapper.getMetadata().get(0).getTotal() : 0;
                     int totalPages = (int) Math.ceil((double) total / limit);
                     return ApiResponse.<List<SettlementHistoryResponse>>builder()
                             .status(200)
-                            .message(data.isEmpty() ? DATA_NOT_FOUND : DATA_FOUND)
+                            .message(data.isEmpty() ? messageUtil.get("record.not.found") : messageUtil.get("records.found"))
                             .data(data)
                             .meta(ApiResponse.Meta.builder()
                                     .page(page)
@@ -465,17 +464,17 @@ public class EventManagementService {
 
         if (authUser.isAgent()) {
             return agentRepository.findByUserId(authUser.getId())
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)));
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
         }
 
         if ((authUser.isSuperUser() || authUser.isOrganization())
                 && reqAgentId != null && !reqAgentId.isBlank()) {
 
             return agentRepository.findById(new ObjectId(reqAgentId))
-                    .switchIfEmpty(Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND)));
+                    .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
         }
 
-        return Mono.error(new RecordNotFoundException(RECORD_NOT_FOUND));
+        return Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")));
     }
 
 }

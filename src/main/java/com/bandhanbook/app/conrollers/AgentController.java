@@ -1,5 +1,6 @@
 package com.bandhanbook.app.conrollers;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.AgentRequest;
@@ -8,8 +9,8 @@ import com.bandhanbook.app.payload.response.base.ApiResponse;
 import com.bandhanbook.app.service.AgentService;
 import com.bandhanbook.app.wrappers.AgentWrapper;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,18 +19,18 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 
 @RestController
 @RequestMapping("/agent")
+@RequiredArgsConstructor
 public class AgentController {
-    @Autowired
-    private AgentService agentService;
+    private final AgentService agentService;
+    private final MessageUtil messageUtil;
 
     @PostMapping()
     public Mono<ResponseEntity<ApiResponse<String>>> createAgent(@Valid @RequestBody AgentRequest request, @CurrentUser Users authUser) {
         return agentService.createAgent(request, authUser).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                AGENT_CREATED,
+                messageUtil.get("organization.not.fount"),
                 HttpStatus.OK.value()
         )));
     }
@@ -39,7 +40,7 @@ public class AgentController {
         return agentService.showAgent(new ObjectId(id), authUser).map(response -> ResponseEntity.ok(
                 ApiResponse.<AgentResponse>builder()
                         .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .data(response)
                         .build()
         ));
@@ -48,7 +49,7 @@ public class AgentController {
     @PutMapping("/{id}")
     public Mono<ResponseEntity<ApiResponse<String>>> updateAgent(@Valid @RequestBody AgentRequest req, @PathVariable String id) {
         return agentService.updateAgent(req, new ObjectId(id)).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                AGENT_UPDATED,
+                messageUtil.get("agent.updated"),
                 HttpStatus.OK.value()
         )));
     }
@@ -68,7 +69,7 @@ public class AgentController {
 
             return ResponseEntity.ok().body(ApiResponse.<List<AgentResponse>>builder()
                     .status(HttpStatus.OK.value())
-                    .message(DATA_FOUND)
+                    .message(messageUtil.get("records.found"))
                     .data(data)
                     .meta(new ApiResponse.Meta(page, limit, totalRecords, total))
                     .isOtp(null)

@@ -15,6 +15,10 @@ spring:
     mongodb:
       uri: ${MONGO_URI}
       auto-index-creation: true
+
+  messages:
+    basename: messages
+    encoding: UTF-8
 # Optional: logging for Mongo queries
 logging:
   level:

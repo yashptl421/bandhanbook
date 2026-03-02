@@ -1,5 +1,6 @@
 package com.bandhanbook.app.conrollers;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.payload.request.PricingPlanRequest;
 import com.bandhanbook.app.payload.response.PricingPlanResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
@@ -11,21 +12,20 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.DATA_FOUND;
-
 @RestController
 @RequestMapping("/pricing-plans")
 @RequiredArgsConstructor
 public class PricingPlanController {
 
     private final PricingPlanService service;
+    private final MessageUtil messageUtil;
 
     @PostMapping
     public Mono<ApiResponse<PricingPlanResponse>> create(@RequestBody PricingPlanRequest request) {
         return service.create(request).map(response ->
                 ApiResponse.<PricingPlanResponse>builder()
                         .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .data(response)
                         .build()
         );
@@ -36,7 +36,7 @@ public class PricingPlanController {
         return service.getActivePlans().map(response ->
                 ApiResponse.<PricingPlanResponse>builder()
                         .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .data(response)
                         .build()
         );
@@ -47,7 +47,7 @@ public class PricingPlanController {
         return service.getAllPlans().map(response ->
                 ApiResponse.<PricingPlanResponse>builder()
                         .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .data(response)
                         .build()
         );
@@ -60,7 +60,7 @@ public class PricingPlanController {
         return service.update(new ObjectId(id), request).map(response ->
                 ApiResponse.<PricingPlanResponse>builder()
                         .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .data(response)
                         .build()
         );

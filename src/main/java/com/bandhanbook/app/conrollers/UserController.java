@@ -1,5 +1,6 @@
 package com.bandhanbook.app.conrollers;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Image;
 import com.bandhanbook.app.model.Users;
@@ -31,9 +32,6 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 import java.util.Map;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
-
-
 @Slf4j
 @Tag(name = "User & Candidate",
         description = "APIs for user registration as candidate, update and delete"
@@ -48,6 +46,8 @@ public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final ProfileService profileService;
     private final ImageUploadService ImageUploadService;
+    private final MessageUtil messageUtil;
+    private final String OTP_SENT = "OTP sent successfully";
 
     @Operation(summary = "Register a new Candidate", description = "Registers a new user with the provided details.")
     @PostMapping({"/signup", "/register"})
@@ -92,7 +92,7 @@ public class UserController {
                 .map(response -> ResponseEntity.ok(
                         ApiResponse.<CandidateResponse>builder()
                                 .status(HttpStatus.OK.value())
-                                .message(DATA_FOUND)
+                                .message(messageUtil.get("records.found"))
                                 .data(response)
                                 .build()
                 ));
@@ -104,7 +104,7 @@ public class UserController {
         return userService.myProfile(user)
                 .map(res -> ResponseEntity.ok(ApiResponse.<PhoneLoginResponse>builder()
                         .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .data(res)
                         .build()
                 ));
@@ -123,7 +123,7 @@ public class UserController {
                 .map(res -> ResponseEntity.ok(
                         ApiResponse.<MatrimonyCandidateResponse>builder()
                                 .status(HttpStatus.OK.value())
-                                .message(USER_UPDATED)
+                                .message(messageUtil.get("candidate.updated"))
                                 .data(res)
                                 .build()
                 ));
@@ -147,7 +147,7 @@ public class UserController {
         return userService.getFavorites(user)
                 .map(res -> ResponseEntity.ok(ApiResponse.<List<PhoneLoginResponse>>builder()
                         .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .data(res)
                         .build()
                 ));
@@ -170,8 +170,8 @@ public class UserController {
                 .thenReturn(
                         ResponseEntity.ok(
                                 ApiResponse.<String>builder()
-                                        .status(200)
-                                        .message("Account removed successfully")
+                                        .status(HttpStatus.OK.value())
+                                        .message(messageUtil.get("account.removed"))
                                         .build()
                         )
                 );
@@ -186,8 +186,8 @@ public class UserController {
         return profileService.uploadProfileImage(authUser, file)
                 .map(imageUrl -> ResponseEntity.ok(
                         ApiResponse.<Map<String, String>>builder()
-                                .status(200)
-                                .message(PROFILE_UPDATED)
+                                .status(HttpStatus.OK.value())
+                                .message(messageUtil.get("profile.updated"))
                                 .data(Map.of("image", imageUrl))
                                 .build()
                 ));
@@ -199,8 +199,8 @@ public class UserController {
         return profileService.removeProfileImage(authUser)
                 .thenReturn(
                         ApiResponse.<String>builder()
-                                .status(200)
-                                .message(PROFILE_IMAGE_REMOVED)
+                                .status(HttpStatus.OK.value())
+                                .message(messageUtil.get("profile.image.removed"))
                                 .build()
                 );
     }
@@ -214,8 +214,8 @@ public class UserController {
                 })
                 .collectList()
                 .map(list -> ApiResponse.<List<Image>>builder()
-                        .status(200)
-                        .message(IMAGE_UPLOADED)
+                        .status(HttpStatus.OK.value())
+                        .message(messageUtil.get("image.uploaded"))
                         .data(list)
                         .build()
                 );
@@ -230,8 +230,8 @@ public class UserController {
         return profileService.removeMatrimonyImages(id, authUser)
                 .thenReturn(
                         ApiResponse.<String>builder()
-                                .status(200)
-                                .message(IMAGES_REMOVED)
+                                .status(HttpStatus.OK.value())
+                                .message(messageUtil.get("image.removed"))
                                 .build()
                 );
     }
@@ -242,10 +242,9 @@ public class UserController {
         return userService.candidateSupport(user)
                 .map(res -> ResponseEntity.ok(ApiResponse.<List<SupportResponse>>builder()
                         .status(HttpStatus.OK.value())
-                        .message(DATA_FOUND)
+                        .message(messageUtil.get("records.found"))
                         .data(res)
                         .build()
                 ));
     }
-
 }

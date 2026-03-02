@@ -1,6 +1,7 @@
 package com.bandhanbook.app.conrollers;
 
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.*;
@@ -21,9 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
-
-
 @Slf4j
 @Tag(name = "User Authentication API",
         description = "APIs for user registration, login, and authentication"
@@ -34,6 +32,7 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final MessageUtil messageUtil;
 
     @Operation(summary = "Login from mobile application")
     @PostMapping("/login")
@@ -42,7 +41,7 @@ public class AuthController {
                 .map(res -> ResponseEntity.ok(ApiResponse.<Void>builder()
                         .status(HttpStatus.OK.value())
                         .message(res)
-                        .isOtp(res.equalsIgnoreCase(OTP_SENT))
+                        .isOtp(res.equalsIgnoreCase(messageUtil.get("otp.sent")))
                         .build()
                 ));
     }
@@ -53,7 +52,7 @@ public class AuthController {
         return authService.webLogin(loginRequest)
                 .map(res -> ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
                         .status(HttpStatus.OK.value())
-                        .message(LOGGED_IN)
+                        .message(messageUtil.get("login.successful"))
                         .data(res)
                         .build()
                 ));
@@ -63,7 +62,7 @@ public class AuthController {
     @PostMapping("/registerUser")
     public Mono<ResponseEntity<ApiResponse<Void>>> registerUser(@RequestBody @Valid UserRegisterRequest userRegisterRequest) {
         return authService.registerUser(userRegisterRequest).thenReturn(ResponseEntity.ok(new ApiResponse<>(
-                USER_REGISTERED,
+                messageUtil.get("candidate.registered"),
                 HttpStatus.OK.value()
         )));
     }
@@ -73,7 +72,7 @@ public class AuthController {
     public Mono<ResponseEntity<ApiResponse<Void>>> logout(@CurrentUser Users users) {
         return authService.logout(users).thenReturn(ResponseEntity.ok(ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
-                .message(LOGGED_OUT).build()));
+                .message(messageUtil.get("logout.successful")).build()));
         /*return authService.logout(request.getRefreshToken())
                 .thenReturn(ResponseEntity.ok().build());*/
     }
@@ -95,7 +94,7 @@ public class AuthController {
         return authService.verifyOtp(request)
                 .map(res -> ResponseEntity.ok(ApiResponse.<PhoneLoginResponse>builder()
                         .status(HttpStatus.OK.value())
-                        .message(OTP_VERIFIED)
+                        .message(messageUtil.get("otp.verified"))
                         .data(res)
                         .build()
                 ));
@@ -126,7 +125,7 @@ public class AuthController {
 
     @Operation(summary = "change password using otp")
     @PostMapping("/change-password")
-    public Mono<ResponseEntity<ApiResponse<Void>>> changePassword(@CurrentUser Users authUser,@RequestBody ChangePasswordRequest request) {
+    public Mono<ResponseEntity<ApiResponse<Void>>> changePassword(@CurrentUser Users authUser, @RequestBody ChangePasswordRequest request) {
         return authService.changePassword(authUser, request)
                 .map(res -> ResponseEntity.ok(ApiResponse.<Void>builder()
                         .status(HttpStatus.OK.value())

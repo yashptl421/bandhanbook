@@ -12,8 +12,6 @@ import org.springframework.web.reactive.result.method.HandlerMethodArgumentResol
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import static com.bandhanbook.app.utilities.ErrorResponseMessages.INVALID_RESOURCE;
-
 @Component
 public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolver {
 
@@ -29,7 +27,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
                 .map(SecurityContext::getAuthentication)
                 .map(Authentication::getPrincipal)
                 .cast(UserPrinciple.class)
-                .switchIfEmpty(Mono.error(new RecordNotFoundException(INVALID_RESOURCE)))
+                .switchIfEmpty(Mono.error(new RecordNotFoundException("without.login.access.error")))
                 .map(UserPrinciple::getUsers);
 
     }

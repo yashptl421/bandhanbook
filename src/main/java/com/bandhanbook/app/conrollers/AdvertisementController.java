@@ -1,5 +1,6 @@
 package com.bandhanbook.app.conrollers;
 
+import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.AdvertisementFilterRequest;
@@ -21,8 +22,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
-
 @Slf4j
 @Tag(name = "Advertisement API",
         description = "APIs for add update and delete Advertisement"
@@ -33,6 +32,7 @@ import static com.bandhanbook.app.utilities.SuccessResponseMessages.*;
 public class AdvertisementController {
 
     private final AdvertisementService advertisementService;
+    private final MessageUtil messageUtil;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<ResponseEntity<ApiResponse<String>>> createAdvertisement(
@@ -57,12 +57,12 @@ public class AdvertisementController {
         return advertisementService.advertisementList(filter, authUser)
                 .map(tuple -> ResponseEntity.ok(
                         ApiResponse.<List<AdvertisementResponse>>builder()
-                                .status(200)
-                                .message(DATA_FOUND)
+                                .status(HttpStatus.OK.value())
+                                .message(messageUtil.get("record.not.found"))
                                 .data(tuple.getT3())
                                 .meta(ApiResponse.Meta.builder().page(filter.getPage()).limit(filter.getLimit()).totalRecords(tuple.getT1()).totalPages((int) Math.ceil((double) tuple.getT1() / filter.getLimit())).build())
                                 .activeCount(tuple.getT2())
-                                .inactiveCount(tuple.getT1()-tuple.getT2())
+                                .inactiveCount(tuple.getT1() - tuple.getT2())
                                 .build()));
     }
 
@@ -74,11 +74,12 @@ public class AdvertisementController {
                 .thenReturn(ResponseEntity.ok(
                                 ApiResponse.<String>builder()
                                         .status(HttpStatus.OK.value())
-                                        .message(ADVERTISEMENT_UPDATED)
+                                        .message(messageUtil.get("advertisement.updated"))
                                         .build()
                         )
                 );
     }
+
     @PutMapping("/remove")
     public Mono<ResponseEntity<ApiResponse<String>>> deleteAdvertisement(
             @RequestBody List<String> requests
@@ -87,7 +88,7 @@ public class AdvertisementController {
                 .thenReturn(ResponseEntity.ok(
                                 ApiResponse.<String>builder()
                                         .status(HttpStatus.OK.value())
-                                        .message(ADVERTISEMENT_DELETED)
+                                        .message(messageUtil.get("advertisement.deleted"))
                                         .build()
                         )
                 );
