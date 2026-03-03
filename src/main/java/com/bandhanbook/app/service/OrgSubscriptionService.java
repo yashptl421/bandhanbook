@@ -143,29 +143,32 @@ public class OrgSubscriptionService {
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
                 .flatMap(sub -> {
                     sub.setActive(status);
-                    return checkExistingActiveSubscription(sub.getOrgId(), sub.getEventId(),status)
-                            .then(usageMetricsService.createDefault(sub.getOrgId(), sub.getEventId(),status))
+                    return checkExistingActiveSubscription(sub.getOrgId(), sub.getEventId(), status)
+                            .then(usageMetricsService.createDefault(sub.getOrgId(), sub.getEventId(), status))
                             .then(repository.save(sub));
                 })
                 .thenReturn(messageUtil.get("subscription.updated"));
     }
 
     private Mono<Boolean> checkExistingActiveSubscription(ObjectId orgId, ObjectId eventId, boolean status) {
-        if(!status){
+        if (!status) {
             return Mono.just(true);
         }
         return repository.existsByOrgIdAndEventIdAndActive(orgId, eventId, true)
                 .switchIfEmpty(Mono.just(false))
                 .flatMap(exists -> {
-            if (exists) {
-                return Mono.error(new ValidationExceptions(messageUtil.get("subscription.exist")));
-            }
-            return Mono.just(true);
-        });
+                    if (exists) {
+                        return Mono.error(new ValidationExceptions(messageUtil.get("subscription.exist")));
+                    }
+                    return Mono.just(true);
+                });
 
     }
 
     public Mono<String> buyAddon(SubscriptionAddonRequest request) {
+        if (pricingPlanService.getAddonTotalChanges(request.getLimits()) != request.getPrice()) {
+            return Mono.error(new ValidationExceptions("subtotal.error"));
+        }
         return repository.findById(new ObjectId(request.getSubscriptionId()))
                 .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("subscription.not.found"))))
                 .flatMap(sub -> {

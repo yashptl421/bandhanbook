@@ -73,6 +73,6 @@ public class GlobalExceptionHandler {
     public Mono<ResponseEntity<CommonApiResponse<String>>> handleRuntime(UnAuthorizedException ex) {
         return Mono.just(ResponseEntity.badRequest().body(CommonApiResponse.<String>builder().
                 status(HttpStatus.UNAUTHORIZED.value()).
-                error(ex.getMessage()).build()));
+                message(ex.getMessage()).build()));
     }
 }

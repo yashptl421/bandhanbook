@@ -1,6 +1,9 @@
 package com.bandhanbook.app.conrollers;
 
 import com.bandhanbook.app.config.MessageUtil;
+import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
+import com.bandhanbook.app.model.AddonCharges;
+import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.PricingPlanRequest;
 import com.bandhanbook.app.payload.response.PricingPlanResponse;
 import com.bandhanbook.app.payload.response.base.ApiResponse;
@@ -69,5 +72,17 @@ public class PricingPlanController {
     @PatchMapping("/{id}/status")
     public Mono<Void> updateStatus(@PathVariable String id, @RequestParam boolean active) {
         return service.updateStatus(new ObjectId(id), active);
+    }
+
+    @GetMapping("/addon")
+    public Mono<ApiResponse<AddonCharges>> getAddonPricing(@CurrentUser Users authUser) {
+        return service.getAddonPricing(authUser)
+                .map(res ->
+                        ApiResponse.<AddonCharges>builder()
+                                .status(HttpStatus.OK.value())
+                                .data(res)
+                                .message(messageUtil.get("records.found"))
+                                .build()
+                );
     }
 }

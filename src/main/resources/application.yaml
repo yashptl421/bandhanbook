@@ -78,3 +78,9 @@ app:
   mail:
     from: no-reply@bandhanbook.com
     support: support@bandhanbook.com
+
+max:
+  candidate: 100
+  agent: 150
+  banner: 50
+  advertisement: 500
