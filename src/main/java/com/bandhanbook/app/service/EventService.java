@@ -10,6 +10,7 @@ import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.EventRequest;
 import com.bandhanbook.app.payload.response.EventResponse;
 import com.bandhanbook.app.repository.*;
+import com.bandhanbook.app.wrappers.BannerWrapper;
 import com.bandhanbook.app.wrappers.EventWrapper;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
@@ -134,7 +135,9 @@ public class EventService {
                                     ).as("data")
                                     .and(Aggregation.count().as("total"))
                                     .as("totalRecords")
-                    );
+                                    .and(Aggregation.match(Criteria.where("status").is("active")),
+                                            Aggregation.count().as("count")
+                                    ).as("activeCount"));
 
                     Aggregation aggregation = Aggregation.newAggregation(pipeline);
 

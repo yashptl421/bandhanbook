@@ -853,22 +853,22 @@ public class UserService {
 
     private void applyCandidatePreference(MatrimonyCandidate.PartnerPreferences preferences, Document filter) {
         if (preferences.getManglik() != null && !preferences.getManglik().isBlank())
-            filter.put("partner_preferences.manglik", preferences.getManglik());
+            filter.put("personal_details.manglik", preferences.getManglik());
 
         if (preferences.getComplexion() != null)
-            filter.put("partner_preferences.complexion", preferences.getComplexion().name());
+            filter.put("personal_details.complexion", preferences.getComplexion().name());
 
         if (preferences.getDrinkingHabits() != null && !preferences.getDrinkingHabits().isBlank())
-            filter.put("partner_preferences.drinking_habits", preferences.getDrinkingHabits());
+            filter.put("lifestyle_interests.drinking_habits", preferences.getDrinkingHabits());
 
         if (preferences.getSmokingHabits() != null && !preferences.getSmokingHabits().isBlank())
-            filter.put("partner_preferences.smoking_habits", preferences.getSmokingHabits());
+            filter.put("lifestyle_interests.smoking_habits", preferences.getSmokingHabits());
 
         if (preferences.getDietaryHabits() != null && !preferences.getDietaryHabits().isBlank())
-            filter.put("partner_preferences.dietary_habits", preferences.getDietaryHabits());
+            filter.put("lifestyle_interests.dietary_habits", preferences.getDietaryHabits());
 
         if (preferences.getMaritalStatus() != null && !preferences.getMaritalStatus().isBlank())
-            filter.put("partner_preferences.marital_status", preferences.getMaritalStatus());
+            filter.put("personal_details.marital_status", preferences.getMaritalStatus());
 
         if (preferences.getAgeRange() != null) {
 
@@ -892,12 +892,14 @@ public class UserService {
         if (preferences.getSalaryRange() != null) {
             String minSalary = preferences.getSalaryRange().getMin();
             String maxSalary = preferences.getSalaryRange().getMax();
-            filter.put("occupation_details.annual_salary",
+            if (maxSalary == null || maxSalary.isBlank()) {
+                maxSalary = String.valueOf(Integer.MAX_VALUE-1);
+            }
+            filter.put("occupation_details.annual_income",
                     new Document("$gte", minSalary)
                             .append("$lte", maxSalary)
             );
         }
-
     }
 
     private Mono<Set<String>> getFavouriteIdsMono(Users authUser) {

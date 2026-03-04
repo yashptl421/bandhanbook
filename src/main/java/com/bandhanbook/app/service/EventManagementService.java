@@ -286,21 +286,23 @@ public class EventManagementService {
 
     public Mono<ApiResponse<List<SettlementHistoryResponse>>> getCloserList(Users authUser, Map<String, String> params, int page, int limit) {
         String reqAgentId = params.getOrDefault("agentId", "");
-        String reqStatus = params.getOrDefault("status", null);
         if (authUser.isOrganization()) {
             return orgRepository.findByUserId(authUser.getId())
-                    .flatMap(org -> getSettlements(org.getId(), reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), reqStatus, page, limit));
+                    .flatMap(org -> getSettlements(org.getId(), reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), params, page, limit));
         } else if (authUser.isAgent()) {
-            return agentRepository.findByUserId(authUser.getId()).flatMap(agents -> getSettlements(null, agents.getId(), reqStatus, page, limit));
+            return agentRepository.findByUserId(authUser.getId()).flatMap(agents -> getSettlements(null, agents.getId(), params, page, limit));
         } else
-            return getSettlements(null, reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), reqStatus, page, limit);
+            return getSettlements(null, reqAgentId.isBlank() ? null : new ObjectId(reqAgentId), params, page, limit);
     }
 
-    public Mono<SettlementSummaryResponse> getSettlementSummary(Users authUser, String eventId) {
+    public Mono<SettlementSummaryResponse> getSettlementSummary(Users authUser, Map<String, String> params) {
         Criteria criteria = Criteria.where("deleted_at").is(null);
-        if (eventId != null && !eventId.isBlank())
+        String eventId = params.getOrDefault("eventId", null);
+        String agentId = params.getOrDefault("agentId", null);
+        if (eventId != null)
             criteria.and("event_id").is(new ObjectId(eventId));
-
+        if(agentId!=null)
+            criteria.and("agent_id").is(new ObjectId(agentId));
         if (authUser.isOrganization()) {
             return orgRepository.findByUserId(authUser.getId())
                     .flatMap(org -> {
@@ -351,7 +353,7 @@ public class EventManagementService {
         }
     }
 
-    public Mono<SettlementHistoryResponse> getSettlementHistoryById(String id, Users authUser) {
+    public Mono<SettlementHistoryResponse> getSettlementHistoryById(String id) {
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(
                         Criteria.where("settlementHistory._id").is(new ObjectId(id))
@@ -383,7 +385,9 @@ public class EventManagementService {
         ).next().switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))));
     }
 
-    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getSettlements(ObjectId organizationId, ObjectId agentId, String status, int page, int limit) {
+    public Mono<ApiResponse<List<SettlementHistoryResponse>>> getSettlements(ObjectId organizationId, ObjectId agentId, Map<String, String> params, int page, int limit) {
+        String reqStatus = params.getOrDefault("status", null);
+        String reqEventId = params.getOrDefault("eventId", null);
         int skip = (page - 1) * limit;
         Criteria baseCriteria = Criteria.where("deleted_at").is(null);
         if (organizationId != null) {
@@ -392,12 +396,15 @@ public class EventManagementService {
         if (agentId != null) {
             baseCriteria = baseCriteria.and("agent_id").is(agentId);
         }
-        if (status != null) {
-            baseCriteria = baseCriteria.and("settlementHistory.status").is(status);
+        if (reqEventId != null) {
+            baseCriteria = baseCriteria.and("event_id").is(new ObjectId(reqEventId));
         }
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(baseCriteria),
                 Aggregation.unwind("settlementHistory"),
+                reqStatus != null
+                        ? Aggregation.match(Criteria.where("settlementHistory.status").is(reqStatus))
+                        : Aggregation.match(new Criteria()),
                 Aggregation.lookup(
                         "agents",
                         "agent_id",

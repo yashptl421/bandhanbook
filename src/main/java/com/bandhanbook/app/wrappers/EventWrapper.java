@@ -1,6 +1,5 @@
 package com.bandhanbook.app.wrappers;
 
-import com.bandhanbook.app.payload.response.CandidateResponse;
 import com.bandhanbook.app.payload.response.EventDbResponse;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
@@ -18,6 +17,8 @@ public class EventWrapper {
     private List<EventDbResponse> data = new ArrayList<>();
 
     private List<RecordCount> totalRecords = new ArrayList<>();
+    private List<RecordCount> activeCount = new ArrayList<>();
+    private List<RecordCount> inactiveCount = new ArrayList<>();
 
     @Data
     public static class RecordCount {

@@ -68,8 +68,9 @@ public class EventController {
         return eventService.eventsList(authUser, params, page, limit)
                 .map(res -> {
                     List<EventDbResponse> data = res.getData();
-                    List<EventWrapper.RecordCount> recordCount = res.getTotalRecords();
-                    long total = recordCount.isEmpty() ? 0 : recordCount.get(0).getTotal();
+                    long total = extractCount(res.getTotalRecords());
+                    long activeCount = extractCount(res.getActiveCount());
+                    long inactiveCount = total - activeCount;
                     int totalPage = (int) Math.ceil((double) total / limit);
                     return ResponseEntity.ok(
                             ApiResponse.<List<EventDbResponse>>builder()
@@ -82,8 +83,13 @@ public class EventController {
                                             .totalRecords(total)
                                             .totalPages(totalPage)
                                             .build())
+                                    .activeCount(activeCount)
+                                    .inactiveCount(inactiveCount)
                                     .build()
                     );
                 });
+    }
+    private long extractCount(List<EventWrapper.RecordCount> list) {
+        return (list == null || list.isEmpty()) ? 0 : list.get(0).getTotal();
     }
 }

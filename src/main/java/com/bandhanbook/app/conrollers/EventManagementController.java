@@ -78,7 +78,7 @@ public class EventManagementController {
 
     @GetMapping("/settlement/history/{id}")
     public Mono<ResponseEntity<ApiResponse<SettlementHistoryResponse>>> getSettlementHistoryById(@PathVariable String id, @CurrentUser Users authUser) {
-        return eventManagementService.getSettlementHistoryById(id, authUser)
+        return eventManagementService.getSettlementHistoryById(id)
                 .map(res -> ResponseEntity.ok(ApiResponse.<SettlementHistoryResponse>builder()
                         .message(messageUtil.get("records.found"))
                         .data(res)
@@ -95,8 +95,8 @@ public class EventManagementController {
     }
 
     @GetMapping("/settlement/summary")
-    public Mono<ResponseEntity<ApiResponse<SettlementSummaryResponse>>> getSettlementSummary(@CurrentUser Users authUser, @RequestParam(required = false) String eventId) {
-        return eventManagementService.getSettlementSummary(authUser, eventId)
+    public Mono<ResponseEntity<ApiResponse<SettlementSummaryResponse>>> getSettlementSummary(@CurrentUser Users authUser, @RequestParam Map<String, String> params) {
+        return eventManagementService.getSettlementSummary(authUser, params)
                 .map(res -> ResponseEntity.ok(ApiResponse.<SettlementSummaryResponse>builder()
                         .message(messageUtil.get("records.found"))
                         .data(res)
