@@ -10,7 +10,6 @@ import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.EventRequest;
 import com.bandhanbook.app.payload.response.EventResponse;
 import com.bandhanbook.app.repository.*;
-import com.bandhanbook.app.wrappers.BannerWrapper;
 import com.bandhanbook.app.wrappers.EventWrapper;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
@@ -96,10 +95,10 @@ public class EventService {
                     if (!id.isBlank()) {
                         criteria.and("organization_id").is(new ObjectId(id));
                     }
-                    if(eventType!=null){
+                    if (eventType != null) {
                         criteria.and("event_type").is(eventType);
                     }
-                    if(status!=null){
+                    if (status != null) {
                         criteria.and("status").is(status);
                     }
                     if (createdBy != null && !createdBy.isBlank()) {
@@ -135,8 +134,8 @@ public class EventService {
                                     ).as("data")
                                     .and(Aggregation.count().as("total"))
                                     .as("totalRecords")
-                                    .and(Aggregation.match(Criteria.where("status").is("active")),
-                                            Aggregation.count().as("count")
+                                    .and(Aggregation.match(Criteria.where("status").is(Status.active)),
+                                            Aggregation.count().as("total")
                                     ).as("activeCount"));
 
                     Aggregation aggregation = Aggregation.newAggregation(pipeline);
@@ -146,6 +145,7 @@ public class EventService {
                             .defaultIfEmpty(new EventWrapper());
                 });
     }
+
     public Mono<List<ObjectId>> getEventIdMono(Users authUser) {
         if (authUser.isOrganization()) {
             return orgRepository.findByUserId(authUser.getId())

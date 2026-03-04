@@ -18,7 +18,6 @@ public class EventWrapper {
 
     private List<RecordCount> totalRecords = new ArrayList<>();
     private List<RecordCount> activeCount = new ArrayList<>();
-    private List<RecordCount> inactiveCount = new ArrayList<>();
 
     @Data
     public static class RecordCount {
