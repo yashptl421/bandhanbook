@@ -31,8 +31,8 @@ public class Agents {
     private ObjectId id;
 
     @Field("user_id")
+    @Indexed
     private ObjectId userId;
-
     @Field("organization_id")
     @Indexed
     private ObjectId organizationId;

@@ -20,11 +20,16 @@ import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -49,8 +54,12 @@ public class BannerService {
     private String organizationImagePath;
 
     public Mono<BannerResponse> createBanner(BannerRequest request, FilePart file, Users authUser) {
-        if (file == null || file.headers().getContentType() == null ||
-                !Objects.requireNonNull(file.headers().getContentType()).toString().startsWith("image/")) {
+
+        if (file == null || file.headers().getContentType() == null) {
+            return Mono.error(new ValidationExceptions(messageUtil.get("banner.image.required")));
+        }
+        MediaType type = file.headers().getContentType();
+        if (type == null || !type.getType().equals("image")) {
             return Mono.error(new ValidationExceptions(messageUtil.get("banner.image.required")));
         }
         Map<String, String> params = new HashMap<>();
@@ -65,66 +74,65 @@ public class BannerService {
             String folder = basePath + orgId + bannerPath;
             return limitEnforcementComponent.checkBannerLimit(new ObjectId(orgId))
                     .then(imageUploadService.upload(file, filename, folder)
-                    .flatMap(image -> {
+                            .flatMap(image -> {
 
-                        Banners banner = Banners.builder()
-                                .title(request.getTitle())
-                                .description(request.getDescription())
-                                .active(Boolean.TRUE.equals(request.getIsActive()))
-                                .image(image)
-                                .organizationId(new ObjectId(orgId))
-                                .createdBy(authUser.getId())
-                                .build();
-                        return bannerRepository.save(banner)
-                                .doOnSuccess(banners ->
-                                        triggerBannerMetrics(banners.getOrganizationId())
-                                ).thenReturn(modelMapper.map(banner, BannerResponse.class));
-                    }));
+                                Banners banner = Banners.builder()
+                                        .title(request.getTitle())
+                                        .description(request.getDescription())
+                                        .active(Boolean.TRUE.equals(request.getIsActive()))
+                                        .image(image)
+                                        .organizationId(new ObjectId(orgId))
+                                        .createdBy(authUser.getId())
+                                        .build();
+                                return bannerRepository.save(banner)
+                                        .flatMap(saved ->
+                                                usageMetricsService.incrementBanners(saved.getOrganizationId())
+                                                        .thenReturn(modelMapper.map(saved, BannerResponse.class))
+                                        );
+                            }));
         });
     }
-    private void triggerBannerMetrics(ObjectId orgId) {
-        usageMetricsService.incrementBanners(orgId)
-                .doOnError(e -> log.error("Failed to increment Banner metrics", e))
-                .subscribe();
-    }
+
     public Mono<ApiResponse<List<BannerResponse>>> listBanners(Users authUser, int page, int limit) {
-        Mono<String> orgIdMono = agentService.getOrgIdMono(authUser, new HashMap<>());
-        if (authUser.isCandidate()) {
-            orgIdMono = userService.getCandidateOrgId(authUser);
-        }
+        Mono<String> orgIdMono = authUser.isCandidate()
+                ? userService.getCandidateOrgId(authUser)
+                : agentService.getOrgIdMono(authUser, new HashMap<>());
+
         List<AggregationOperation> pipeline = new ArrayList<>();
-        Criteria baseCriteria = new Criteria();
         return orgIdMono.flatMap(orgId -> {
             int skip = (page - 1) * limit;
+            Criteria criteria = new Criteria();
             if (!orgId.isEmpty()) {
-                baseCriteria.and("organization_id")
-                        .is(new ObjectId(orgId));
+                criteria.and("organization_id").is(new ObjectId(orgId));
             }
             if (authUser.isAgent() || authUser.isCandidate()) {
-                baseCriteria.and("is_active").is(true);
+                criteria.and("is_active").is(true);
             }
-            pipeline.add(Aggregation.match(baseCriteria));
+            Aggregation aggregation = Aggregation.newAggregation(
 
-            pipeline.add(Aggregation.facet(
-                            Aggregation.sort(Sort.Direction.DESC, "created_at"),
-                            Aggregation.skip(skip),
-                            Aggregation.limit(limit)
-                    ).as("data")
+                    Aggregation.match(criteria),
 
-                    .and(Aggregation.count().as("count"))
-                    .as("total")
-                    .and(Aggregation.match(Criteria.where("is_active").is(true)),
-                            Aggregation.count().as("count")
-                    ).as("activeCount"));
+                    Aggregation.sort(Sort.Direction.DESC, "created_at"),
 
-            Aggregation aggregation = Aggregation.newAggregation(pipeline);
+                    Aggregation.facet(
+                                    Aggregation.skip(skip),
+                                    Aggregation.limit(limit)
+                            ).as("data")
 
+                            .and(Aggregation.count().as("count"))
+                            .as("total")
+
+                            .and(
+                                    Aggregation.match(Criteria.where("is_active").is(true)),
+                                    Aggregation.count().as("count")
+                            )
+                            .as("activeCount")
+            );
             return mongoTemplate
                     .aggregate(aggregation, "banners", BannerWrapper.class)
-                    .collectList()
-                    //.defaultIfEmpty(new BannerWrapper())
-                    .map(wrapper1 -> {
-                        BannerWrapper wrapper = wrapper1.get(0);
+                    .next()
+                    .defaultIfEmpty(new BannerWrapper())
+                    .map(wrapper -> {
                         List<BannerResponse> data = wrapper.getData();
 
                         long total = extractCount(wrapper.getTotal());
@@ -134,7 +142,7 @@ public class BannerService {
                         int totalPages = (int) Math.ceil((double) total / limit);
 
                         return ApiResponse.<List<BannerResponse>>builder()
-                                .status(200)
+                                .status(HttpStatus.OK.value())
                                 .message(data.isEmpty() ? messageUtil.get("record.not.found") : messageUtil.get("records.found"))
                                 .data(data)
                                 .meta(ApiResponse.Meta.builder()

@@ -37,8 +37,8 @@ public class AgentController {
     }
 
     @GetMapping("/{id}")
-    public Mono<ResponseEntity<ApiResponse<AgentResponse>>> showAgent(@PathVariable String id, @CurrentUser Users authUser) {
-        return agentService.showAgent(new ObjectId(id), authUser).map(response -> ResponseEntity.ok(
+    public Mono<ResponseEntity<ApiResponse<AgentResponse>>> showAgent(@PathVariable String id) {
+        return agentService.showAgent(new ObjectId(id)).map(response -> ResponseEntity.ok(
                 ApiResponse.<AgentResponse>builder()
                         .status(HttpStatus.OK.value())
                         .message(messageUtil.get("records.found"))

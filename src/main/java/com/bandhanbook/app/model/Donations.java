@@ -9,6 +9,10 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.IndexDirection;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -21,17 +25,38 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 @Document(collection = "donations")
+@CompoundIndexes({
+
+        @CompoundIndex(
+                name = "org_event_agent_created_idx",
+                def = "{'organization_id':1,'event_id':1,'agent_id':1,'deleted_at':1,'created_at':-1}"
+        ),
+
+        @CompoundIndex(
+                name = "org_status_created_idx",
+                def = "{'organization_id':1,'status':1,'created_at':-1}"
+        ),
+
+        @CompoundIndex(
+                name = "agent_created_idx",
+                def = "{'agent_id':1,'created_at':-1}"
+        )
+
+})
 public class Donations {
     @Id
     private ObjectId id;
 
     @Field("event_id")
+    @Indexed
     private ObjectId eventId;
 
     @Field("organization_id")
+    @Indexed
     private ObjectId organizationId;
 
     @Field("agent_id")
+    @Indexed
     private ObjectId agentId;
 
     @Field("event_type")
@@ -64,6 +89,7 @@ public class Donations {
 
     @Field("deleted_at")
     @Builder.Default
+    @Indexed(direction = IndexDirection.DESCENDING)
     private LocalDateTime deletedAt = null;
 
 }

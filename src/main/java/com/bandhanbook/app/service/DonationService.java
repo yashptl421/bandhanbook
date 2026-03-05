@@ -71,55 +71,68 @@ public class DonationService {
                 }));
     }
 
-    public Mono<Tuple2<Long, List<DonationResponse>>> listDonations(Users authUser, int page, int limit, Map<String, String> params) {
+    public Mono<Tuple2<Long, List<DonationResponse>>> listDonations(
+            Users authUser,
+            int page,
+            int limit,
+            Map<String, String> params) {
+
         int skip = Math.max(page - 1, 0) * limit;
+
         Criteria criteria = Criteria.where("deleted_at").is(null);
-        Mono<Criteria> criteriaMono = resolveUserCriteria(authUser, criteria);
-        return criteriaMono.flatMap(c -> {
-            applyFilters(c, params);
-            Aggregation aggregation = Aggregation.newAggregation(
-                    Aggregation.match(c),
-                    Aggregation.lookup("events", "event_id", "_id", "event"),
-                    Aggregation.unwind("event", true),
 
-                    Aggregation.lookup("agents", "agent_id", "_id", "agent"),
-                    Aggregation.unwind("agent", true),
+        return resolveUserCriteria(authUser, criteria)
+                .flatMap(c -> {
 
-                    Aggregation.lookup("users", "agent.user_id", "_id", "agentUser"),
-                    Aggregation.unwind("agentUser", true),
+                    applyFilters(c, params);
 
-                    Aggregation.sort(Sort.Direction.DESC, "created_at"),
+                    Aggregation aggregation = Aggregation.newAggregation(
 
-                    Aggregation.facet(
-                                    Aggregation.skip(skip),
-                                    Aggregation.limit(limit),
-                                    Aggregation.project()
-                                            .and("_id").as("id")
-                                            .and("agent_id").as("agentId")
-                                            .and("organization_id").as("organizationId")
-                                            .and("event_id").as("eventId")
-                                            .and("event.event_type").as("eventType")
-                                            .and("event.name").as("eventName")
-                                            .and("agentUser.full_name").as("submittedTo")
-                                            .and("amount").as("amount")
-                                            .and("donor_name").as("donorName")
-                                            .and("address").as("address")
-                                            .and("email").as("email")
-                                            .and("phone_number").as("phoneNumber")
-                                            .and("donor_type").as("donorType")
-                                            .and("status").as("status")
-                                            .and("remark").as("remark")
-                                            .and("payment_mode").as("paymentMode")
-                                            .and("created_at").as("createdAt")
-                            ).as("data")
-                            .and(Aggregation.count().as("total")).as("metadata")
-            );
+                            Aggregation.match(c),
+                            Aggregation.sort(Sort.Direction.DESC, "created_at"),
+                            Aggregation.facet(
+                                            Aggregation.skip(skip),
+                                            Aggregation.limit(limit),
 
-            return template.aggregate(aggregation, "donations", DonationWrapper.class)
-                    .next()
-                    .defaultIfEmpty(new DonationWrapper())
-                    .map(wrapper -> Tuples.of(wrapper.getTotal(), wrapper.getData()));
-        });
+                                            Aggregation.lookup("events", "event_id", "_id", "event"),
+                                            Aggregation.unwind("event", true),
+
+                                            Aggregation.lookup("agents", "agent_id", "_id", "agent"),
+                                            Aggregation.unwind("agent", true),
+
+                                            Aggregation.lookup("users", "agent.user_id", "_id", "agentUser"),
+                                            Aggregation.unwind("agentUser", true),
+
+                                            Aggregation.project()
+                                                    .and("_id").as("id")
+                                                    .and("agent_id").as("agentId")
+                                                    .and("organization_id").as("organizationId")
+                                                    .and("event_id").as("eventId")
+                                                    .and("event.event_type").as("eventType")
+                                                    .and("event.name").as("eventName")
+                                                    .and("agentUser.full_name").as("submittedTo")
+                                                    .and("amount").as("amount")
+                                                    .and("donor_name").as("donorName")
+                                                    .and("address").as("address")
+                                                    .and("email").as("email")
+                                                    .and("phone_number").as("phoneNumber")
+                                                    .and("donor_type").as("donorType")
+                                                    .and("status").as("status")
+                                                    .and("remark").as("remark")
+                                                    .and("payment_mode").as("paymentMode")
+                                                    .and("created_at").as("createdAt")
+
+                                    ).as("data")
+                                    .and(
+                                            Aggregation.count().as("total")
+                                    ).as("metadata")
+                    );
+
+                    return template.aggregate(aggregation, "donations", DonationWrapper.class)
+                            .next()
+                            .defaultIfEmpty(new DonationWrapper())
+                            .map(wrapper -> Tuples.of(wrapper.getTotal(), wrapper.getData()));
+                });
     }
 
     public Mono<DonationResponse> updateDonation(String id, DonationUpdateRequest request) {

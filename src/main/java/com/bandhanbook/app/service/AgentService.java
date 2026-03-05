@@ -67,7 +67,7 @@ public class AgentService {
                 });
     }
 
-    public Mono<AgentResponse> showAgent(ObjectId agentId, Users authUser) {
+    public Mono<AgentResponse> showAgent(ObjectId agentId) {
 
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("_id").is(agentId)),

@@ -7,6 +7,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.IndexDirection;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -25,15 +27,18 @@ public class EventParticipants {
     private ObjectId id;
 
     @Field("candidate_id")
+    @Indexed
     private ObjectId candidateId;
 
     @Field("event_id")
+    @Indexed
     private ObjectId eventId;
 
     @Field("added_by")
     private ObjectId addedBy;
 
     @Field("organization_id")
+    @Indexed
     private ObjectId organizationId;
 
     @Field("created_at")
@@ -48,6 +53,7 @@ public class EventParticipants {
 
     @Field("deleted_at")
     @Builder.Default
+    @Indexed(direction = IndexDirection.DESCENDING)
     private LocalDateTime deletedAt = null;
 
 }

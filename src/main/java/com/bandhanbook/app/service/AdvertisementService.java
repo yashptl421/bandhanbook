@@ -193,8 +193,8 @@ public class AdvertisementService {
         }
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(criteria),
-                Aggregation.sort(Sort.Direction.DESC, "created_at"),
                 Aggregation.facet(
+                                Aggregation.sort(Sort.Direction.DESC, "created_at"),
                                 Aggregation.skip(skip),
                                 Aggregation.limit(filter.getLimit())
                         ).as("data")
