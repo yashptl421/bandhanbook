@@ -6,6 +6,8 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.IndexDirection;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -18,13 +20,12 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 @Document(collection = "organizations")
-//@CompoundIndex(name = "phone_role_otp_idx", def = "{'phone_number': 1, 'role': 1}", unique = true)
+@CompoundIndex(name = "user_id_idx", def = "{'user_id': 1}", unique = true)
 public class Organization {
 
     @Id
     private ObjectId id;
 
-    @Indexed(unique = true)
     @Field("user_id")
     private ObjectId userId;
 
@@ -52,6 +53,7 @@ public class Organization {
 
     @Field("created_at")
     @CreatedDate
+    @Indexed(direction = IndexDirection.DESCENDING)
     private LocalDateTime createdAt;
 
     @Field("updated_at")

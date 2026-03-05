@@ -23,7 +23,8 @@ import java.time.LocalDateTime;
 @Builder
 @Document(collection = "agents")
 @CompoundIndexes({
-        @CompoundIndex(name = "org_created_idx", def = "{'organization_id': 1, 'created_at': -1}")
+        @CompoundIndex(name = "org_created_idx", def = "{'organization_id': 1, 'created_at': -1}"),
+        @CompoundIndex( name = "userId_idx", def = "{'user_id': 1}", unique = true)
 })
 public class Agents {
 
@@ -31,8 +32,8 @@ public class Agents {
     private ObjectId id;
 
     @Field("user_id")
-    @Indexed
     private ObjectId userId;
+
     @Field("organization_id")
     @Indexed
     private ObjectId organizationId;

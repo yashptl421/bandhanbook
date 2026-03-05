@@ -5,6 +5,8 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -16,6 +18,29 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 @Document(collection = "orgsubscriptions")
+@CompoundIndexes({
+
+        @CompoundIndex(
+                name = "org_event_active_idx",
+                def = "{'org_id':1,'event_id':1,'active':1}"
+        ),
+
+        @CompoundIndex(
+                name = "event_active_idx",
+                def = "{'event_id':1,'active':1}"
+        ),
+
+        @CompoundIndex(
+                name = "org_idx",
+                def = "{'org_id':1}"
+        ),
+
+        @CompoundIndex(
+                name = "org_event_active_partial_idx",
+                def = "{'org_id':1,'event_id':1}",
+                partialFilter = "{ 'active': true }"
+        )
+})
 public class OrgSubscriptions {
 
     @Id

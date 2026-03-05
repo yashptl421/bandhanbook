@@ -8,6 +8,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Transient;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -21,7 +22,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 @Document(collection = "users")
-//@CompoundIndex( name = "phone_role_otp_idx", def = "{'phone_number': 1, 'role': 1}", unique = true)
+@CompoundIndex( name = "phone_email_idx", def = "{'phone_number': 1, 'email': 1}", unique = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Users {
 

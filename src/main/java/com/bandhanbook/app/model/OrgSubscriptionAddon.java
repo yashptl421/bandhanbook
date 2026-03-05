@@ -6,6 +6,8 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -17,15 +19,18 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 @Document(collection = "org_subscription_addons")
+@CompoundIndex(name = "subscription_id_status_idx", def = "{'subscription_id': 1, 'status': 1}")
 public class OrgSubscriptionAddon {
 
     @Id
     private ObjectId id;
 
     @Field("org_id")
+    @Indexed
     private ObjectId orgId;
 
     @Field("subscription_id")
+    @Indexed
     private ObjectId subscriptionId;
 
     @Field("price")

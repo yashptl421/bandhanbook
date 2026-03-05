@@ -6,6 +6,9 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.IndexDirection;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -19,6 +22,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 @Document(collection = "matrimonyprofiles")
+@CompoundIndex(name = "user_id_idx", def = "{'user_id': 1}", unique = true)
 public class MatrimonyCandidate {
 
     @Id
@@ -63,6 +67,7 @@ public class MatrimonyCandidate {
 
     @CreatedDate
     @Field("created_at")
+    @Indexed(direction = IndexDirection.DESCENDING)
     private LocalDateTime createdAt;
 
     @Field("profile_completed")
@@ -130,16 +135,6 @@ public class MatrimonyCandidate {
 
         private String kuldevi;
     }
-
-   /* @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class Image {
-        private String url;
-        private String id; // cloudinary unique ID for the image
-    }*/
 
     @Getter
     @Setter

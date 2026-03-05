@@ -43,6 +43,7 @@ public class EventParticipants {
 
     @Field("created_at")
     @CreatedDate
+    @Indexed(direction = IndexDirection.DESCENDING)
     private LocalDateTime createdAt;
 
     private double registrationFee;
@@ -53,7 +54,6 @@ public class EventParticipants {
 
     @Field("deleted_at")
     @Builder.Default
-    @Indexed(direction = IndexDirection.DESCENDING)
     private LocalDateTime deletedAt = null;
 
 }

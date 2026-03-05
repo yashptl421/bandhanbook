@@ -7,6 +7,9 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -18,6 +21,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 @Document(collection = "events")
+@CompoundIndexes({
+        @CompoundIndex(name = "organization_event_type_idx", def = "{'organization_id': 1, 'event_type' : 1 , 'created_at': -1}")
+})
 public class Events {
 
     @Id
@@ -29,6 +35,7 @@ public class Events {
     private ObjectId createdBy;
 
     @Field("organization_id")
+    @Indexed
     private ObjectId organizationId;
 
     private String location;
@@ -46,6 +53,7 @@ public class Events {
     private double registrationFee;
 
     @Field("event_type")
+    @Indexed
     private EventType eventType;
 
     @Field("created_at")
