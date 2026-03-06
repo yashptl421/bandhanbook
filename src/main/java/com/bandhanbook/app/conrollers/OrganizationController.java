@@ -1,6 +1,8 @@
 package com.bandhanbook.app.conrollers;
 
 import com.bandhanbook.app.config.MessageUtil;
+import com.bandhanbook.app.config.currentUserConfig.CurrentUser;
+import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.PricingPlanResponse;
@@ -71,8 +73,8 @@ public class OrganizationController {
     }
 
     @PutMapping("/{id}")
-    public Mono<ResponseEntity<ApiResponse<String>>> updateOrganization(@Valid @RequestBody OrganizationRequest req, @PathVariable String id) {
-        return organizationService.updateOrganization(req, new ObjectId(id)).thenReturn(ResponseEntity.ok(new ApiResponse<>(
+    public Mono<ResponseEntity<ApiResponse<String>>> updateOrganization(@Valid @RequestBody OrganizationRequest req, @PathVariable String id, @CurrentUser Users authUser) {
+        return organizationService.updateOrganization(req, new ObjectId(id), authUser).thenReturn(ResponseEntity.ok(new ApiResponse<>(
                 messageUtil.get("organization.updated"),
                 HttpStatus.OK.value()
         )));

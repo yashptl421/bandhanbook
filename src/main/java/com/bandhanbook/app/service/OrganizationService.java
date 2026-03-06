@@ -7,13 +7,12 @@ import com.bandhanbook.app.model.OrgSubscriptions;
 import com.bandhanbook.app.model.Organization;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
+import com.bandhanbook.app.model.constants.Status;
 import com.bandhanbook.app.payload.request.OrganizationRequest;
 import com.bandhanbook.app.payload.response.OrgSubscriptionsResponse;
 import com.bandhanbook.app.payload.response.OrganizationResponse;
 import com.bandhanbook.app.payload.response.UserResponse;
-import com.bandhanbook.app.repository.OrgSubscriptionsRepository;
-import com.bandhanbook.app.repository.OrganizationRepository;
-import com.bandhanbook.app.repository.UserRepository;
+import com.bandhanbook.app.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
@@ -34,8 +33,10 @@ public class OrganizationService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
     private final OrgSubscriptionsRepository orgSubscriptionsRepository;
+    private final EventsRepository eventsRepository;
     private final CommonService commonService;
     private final MessageUtil messageUtil;
+    private final AgentRepository agentRepository;
 
     public Mono<Tuple2<Long, List<OrganizationResponse>>> listOrganizations(Map<String, String> params) {
 
@@ -101,7 +102,6 @@ public class OrganizationService {
     @Transactional
     public Mono<Void> createOrganization(OrganizationRequest organizationRequest) {
         String role = RoleNames.Organization.name();
-
         return userRepository
                 .existsByPhoneNumber(organizationRequest.getPhoneNumber())
                 .flatMap(exists -> {
@@ -130,35 +130,47 @@ public class OrganizationService {
                 .then();
     }
 
+    public Mono<Void> updateOrganization(OrganizationRequest request, ObjectId id, Users authUser) {
 
-    @Transactional
-    public Mono<Void> updateOrganization(OrganizationRequest organizationRequest, ObjectId id) {
-        return organizationRepository.findById(id).switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))).flatMap(existingOrg -> userRepository.findById(existingOrg.getUserId()).switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found")))).flatMap(existingUser -> {
+        return organizationRepository.findById(id)
+                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
 
-            Mono<Void> phoneCheck = userRepository.existsByPhoneNumber(organizationRequest.getPhoneNumber()).flatMap(exists -> {
-                if (exists && !organizationRequest.getPhoneNumber().equals(existingUser.getPhoneNumber())) {
-                    return Mono.error(new PhoneNumberNotFoundException(messageUtil.get("phone.exist")));
-                }
-                return Mono.empty();
-            });
+                .flatMap(org ->
+                        userRepository.findById(org.getUserId())
+                                .switchIfEmpty(Mono.error(new RecordNotFoundException(messageUtil.get("record.not.found"))))
+                                .flatMap(user -> processUpdate(user, org, request, authUser))
+                )
+                .then();
+    }
 
-            Mono<Void> emailCheck = userRepository.existsByEmail(organizationRequest.getEmail()).flatMap(exists -> {
-                if (exists && !organizationRequest.getEmail().equals(existingUser.getEmail())) {
-                    return Mono.error(new PhoneNumberNotFoundException(messageUtil.get("email.exist")));
-                }
-                return Mono.empty();
-            });
-            return Mono.when(phoneCheck, emailCheck)
-                    .then(Mono.defer(() -> {
-                        existingUser.setFullName(organizationRequest.getFullName());
-                        existingUser.setPhoneNumber(organizationRequest.getPhoneNumber());
-                        existingUser.setEmail(organizationRequest.getEmail());
-                        return userRepository.save(existingUser);
-                    })).flatMap(updatedUser -> {
-                        modelMapper.map(organizationRequest, existingOrg);
-                        return organizationRepository.save(existingOrg);
-                    });
-        })).then();
+    private Mono<Void> processUpdate(Users user, Organization org, OrganizationRequest request, Users authUser) {
+        Mono<Void> statusOperation = Mono.empty();
+        if (authUser.isSuperUser() && request.getStatus() != null) {
+            if (Status.inactive.name().equals(request.getStatus())) {
+                statusOperation = Mono.when(
+                        agentRepository.deactivateAgentsByOrganizationId(org.getId()),
+                        eventsRepository.deactivateEventsByOrganizationId(org.getId()),
+                        organizationRepository.deactivateOrganizationById(org.getId())
+                );
+            } else if (Status.active.name().equals(request.getStatus())) {
+                statusOperation = Mono.when(
+                        agentRepository.activateAgentsByOrganizationId(org.getId()),
+                        eventsRepository.activateEventsByOrganizationId(org.getId()),
+                        organizationRepository.activateOrganizationById(org.getId())
+                );
+            }
+
+            user.setPhoneNumber(request.getPhoneNumber());
+            user.setEmail(request.getEmail());
+        }
+
+        user.setFullName(request.getFullName());
+        modelMapper.map(request, org);
+        Mono<Users> saveUser = userRepository.save(user);
+        Mono<Organization> saveOrg = organizationRepository.save(org);
+        return statusOperation
+                .then(Mono.when(saveUser, saveOrg))
+                .then();
     }
 
     private Users getOrgRequestUser(OrganizationRequest request, String role) {

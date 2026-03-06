@@ -17,5 +17,10 @@ public interface EventsRepository extends ReactiveMongoRepository<Events, Object
 
     @Query("{ 'organization_id': ?0 }")
     @Update("{ '$set': { 'status': 'inactive' } }")
-    Mono<Long> deactivateEventsByOrganizationId(ObjectId orgId);
+    Mono<Long> deactivateEventsByOrganizationId(ObjectId organizationId);
+
+    @Query("{ 'organization_id': ?0 }")
+    @Update("{ '$set': { 'status': 'active' } }")
+    Mono<Long> activateEventsByOrganizationId(ObjectId organizationId);
+
 }

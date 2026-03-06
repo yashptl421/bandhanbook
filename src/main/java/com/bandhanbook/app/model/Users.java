@@ -23,6 +23,7 @@ import java.util.List;
 @Builder
 @Document(collection = "users")
 @CompoundIndex( name = "phone_email_idx", def = "{'phone_number': 1, 'email': 1}", unique = true)
+@CompoundIndex(name = "role_created_at_idx", def = "{'role':1,'created_at':-1}")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Users {
 

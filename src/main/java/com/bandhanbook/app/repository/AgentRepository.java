@@ -20,6 +20,10 @@ public interface AgentRepository extends ReactiveMongoRepository<Agents, ObjectI
 
     @Query("{ 'organization_id': ?0 }")
     @Update("{ '$set': { 'status': 'inactive' } }")
-    Mono<Long> deactivateAgentsByOrganizationId(ObjectId orgId);
+    Mono<Long> deactivateAgentsByOrganizationId(ObjectId organizationId);
+
+    @Query("{ 'organization_id': ?0 }")
+    @Update("{ '$set': { 'status': 'active' } }")
+    Mono<Long> activateAgentsByOrganizationId(ObjectId organizationId);
 
 }

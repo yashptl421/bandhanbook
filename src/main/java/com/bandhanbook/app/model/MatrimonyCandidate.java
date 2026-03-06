@@ -23,6 +23,10 @@ import java.util.List;
 @Builder
 @Document(collection = "matrimonyprofiles")
 @CompoundIndex(name = "user_id_idx", def = "{'user_id': 1}", unique = true)
+@CompoundIndex(
+        name = "user_status_profile_idx",
+        def = "{'user_id':1,'status':1,'profile_completed':1,'privacy_settings.hide_profile':1}"
+)
 public class MatrimonyCandidate {
 
     @Id

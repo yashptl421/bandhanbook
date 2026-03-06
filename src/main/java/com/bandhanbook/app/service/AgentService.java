@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -109,7 +110,6 @@ public class AgentService {
                 .flatMap(agent ->
 
                         updateUserIfRequired(agent.getUserId(), request)
-
                                 .then(updateAgentFields(agent, request))
                                 .flatMap(agentRepository::save)
                 )
@@ -125,11 +125,14 @@ public class AgentService {
                     }
                     //block or unblock user based on status
                     if (request.getStatus() != null) {
-                        user.setLocked(request.getStatus().equals(ProfileStatus.blocked));
-                    }
-                    // active user if removed_at is not null
-                    if (null != request.getStatus() && user.getDeletedAt() != null && request.getStatus().equals(ProfileStatus.active)) {
-                        user.setDeletedAt(null);
+                        switch (request.getStatus()) {
+                            case blocked -> user.setLocked(true);
+                            case inactive -> user.setDeletedAt(LocalDateTime.now());
+                            case active -> {
+                                user.setLocked(false);
+                                user.setDeletedAt(null);
+                            }
+                        }
                     }
                     return userRepository.save(user);
                 })

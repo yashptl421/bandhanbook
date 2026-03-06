@@ -13,7 +13,11 @@ import reactor.core.publisher.Mono;
 public interface OrganizationRepository extends ReactiveMongoRepository<Organization, ObjectId> {
     Mono<Organization> findByUserId(ObjectId user_id);
 
-    @Query("{ 'user_id': ?0 }")
+    @Query("{ '_id': ?0 }")
     @Update("{ '$set': { 'status': 'inactive' } }")
-    Mono<Long> deactivateOrganizationByUserId(ObjectId userId);
+    Mono<Long> deactivateOrganizationById(ObjectId id);
+
+    @Query("{ '_id': ?0 }")
+    @Update("{ '$set': { 'status': 'active' } }")
+    Mono<Long> activateOrganizationById(ObjectId id);
 }

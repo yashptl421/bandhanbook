@@ -21,6 +21,10 @@ import java.time.LocalDateTime;
 @Builder
 @Document(collection = "eventparticipants")
 @CompoundIndex(name = "candidate_event_id_idx", def = "{'candidate_id': 1, 'event_id': 1}", unique = true)
+@CompoundIndex(
+        name = "candidate_event_added_idx",
+        def = "{'candidate_id':1,'event_id':1,'added_by':1}"
+)
 public class EventParticipants {
 
     @Id
