@@ -234,8 +234,8 @@ public class AgentService {
     public Mono<String> getOrgIdMono(Users authUser, Map<String, String> filterReq) {
         // SUPERUSER rule
         if (authUser.isSuperUser()) {
-            if (filterReq.get("organizationId") != null) {
-                return Mono.just(filterReq.get("organizationId"));
+            if (filterReq.get("organization") != null) {
+                return Mono.just(filterReq.get("organization"));
             }
             return Mono.just("");
         } else if (authUser.isAgent()) {

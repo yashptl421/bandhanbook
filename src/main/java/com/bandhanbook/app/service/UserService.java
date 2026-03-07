@@ -324,118 +324,121 @@ public class UserService {
     }
 
     private Mono<ApiResponse<List<CandidateResponse>>> runListPipeline(int page, int limit, Document userFilters, Document matrimonyFilters, Document eventFilters, Document organizationFilters, Users authUser) {
-
         int skip = (page - 1) * limit;
-
         List<Document> pipeline = List.of(
+
                 new Document("$match", userFilters),
-                new Document("$sort", new Document("created_at", -1)),
+
+                new Document("$lookup", new Document()
+                        .append("from", "matrimonyprofiles")
+                        .append("localField", "_id")
+                        .append("foreignField", "user_id")
+                        .append("as", "matrimony_data")
+                        .append("pipeline", List.of(
+
+                                new Document("$match", matrimonyFilters),
+
+                                new Document("$lookup", new Document()
+                                        .append("from", "eventparticipants")
+                                        .append("localField", "_id")
+                                        .append("foreignField", "candidate_id")
+                                        .append("as", "event_participant")
+                                        .append("pipeline", List.of(
+
+                                                new Document("$match", eventFilters),
+
+                                                new Document("$lookup", new Document()
+                                                        .append("from", "events")
+                                                        .append("localField", "event_id")
+                                                        .append("foreignField", "_id")
+                                                        .append("as", "event")
+                                                        .append("pipeline", List.of(
+                                                                new Document("$match",
+                                                                        new Document("$and", List.of(
+                                                                                organizationFilters,
+                                                                                new Document("status", "active")   // or is_active:true
+                                                                        ))
+                                                                )
+                                                        ))
+                                                ),
+                                                new Document("$match",
+                                                        new Document("event.0",
+                                                                new Document("$exists", true)))
+                                        ))
+                                ),
+                                new Document("$match",
+                                        new Document("event_participant.0",
+                                                new Document("$exists", true)))
+                        ))
+                ),
+
+                new Document("$match",
+                        new Document("matrimony_data.0",
+                                new Document("$exists", true))),
+
                 new Document("$facet", new Document()
-                        .append("metadata",
-                                List.of(new Document("$count", "total")))
-                        .append("data",
-                                List.of(
-                                        new Document("$skip", skip),
-                                        new Document("$limit", limit),
-
-                                        new Document("$lookup", new Document()
-                                                .append("from", "matrimonyprofiles")
-                                                .append("localField", "_id")
-                                                .append("foreignField", "user_id")
-                                                .append("as", "matrimony_data")
-                                                .append("pipeline", List.of(
-                                                        new Document("$match", matrimonyFilters),
-
-                                                        new Document("$lookup", new Document()
-                                                                .append("from", "eventparticipants")
-                                                                .append("localField", "_id")
-                                                                .append("foreignField", "candidate_id")
-                                                                .append("as", "event_participant")
-                                                                .append("pipeline", List.of(
-
-                                                                        new Document("$match", eventFilters),
-
-                                                                        new Document("$lookup", new Document()
-                                                                                .append("from", "events")
-                                                                                .append("localField", "event_id")
-                                                                                .append("foreignField", "_id")
-                                                                                .append("as", "event")
-                                                                                .append("pipeline", List.of(
-                                                                                        new Document("$match",
-                                                                                                new Document("$and", List.of(
-                                                                                                        organizationFilters,
-                                                                                                        new Document("status", "active")   // or is_active:true
-                                                                                                ))
-                                                                                        )
-                                                                                ))
-                                                                        ),
-                                                                        new Document("$match",
-                                                                                new Document("event.0",
-                                                                                        new Document("$exists", true)))
-                                                                ))
-                                                        ),
-                                                        new Document("$match",
-                                                                new Document("event_participant.0",
-                                                                        new Document("$exists", true)))
-                                                ))
-                                        ),
-                                        new Document("$match",
-                                                new Document("matrimony_data.0",
-                                                        new Document("$exists", true))),
-
-                                        new Document("$project",
-                                                new Document("full_name", 1)
-                                                        .append("phone_number", 1)
-                                                        .append("email", 1)
-                                                        .append("matrimony_data",
-                                                                new Document("$arrayElemAt",
-                                                                        List.of("$matrimony_data", 0))))
+                        .append("metadata", List.of(
+                                new Document("$count", "total")
+                        ))
+                        .append("data", List.of(
+                                new Document("$sort", new Document("created_at", -1)),
+                                new Document("$skip", skip),
+                                new Document("$limit", limit),
+                                new Document("$project", new Document()
+                                        .append("full_name", "$full_name")
+                                        .append("phone_number", "$phone_number")
+                                        .append("email", "$email")
+                                        .append("matrimony_data",
+                                                new Document("$arrayElemAt",
+                                                        List.of("$matrimony_data", 0)))
                                 )
-                        )
+                        ))
                 )
         );
 
-        Aggregation aggregation = Aggregation.newAggregation(
-                pipeline.stream()
-                        .map(d -> (AggregationOperation) ctx -> d)
-                        .toList()
-        );
+        List<AggregationOperation> ops = pipeline.stream()
+                .map(d -> (AggregationOperation) ctx -> d)
+                .toList();
 
-        return getFavouriteIdsMono(authUser)
-                .flatMap(favouriteIds ->
-                        reactiveMongoTemplate.aggregate(
-                                        aggregation,
-                                        "users",
-                                        CandidateWrapper.class
-                                )
-                                .next()
-                                .defaultIfEmpty(new CandidateWrapper())
-                                .map(result -> buildCandidateResponse(result, favouriteIds, authUser, page, limit))
-                );
-    }
+        Aggregation aggregation = Aggregation.newAggregation(ops);
 
-    private ApiResponse<List<CandidateResponse>> buildCandidateResponse(CandidateWrapper result, Set<String> favouriteIds, Users authUser, int page, int limit) {
-        List<CandidateResponse> res = result.getData();
-        res.forEach(candidate -> {
-            if (candidate.getMatrimony_data() != null && candidate.getMatrimony_data().get_id() != null) {
-                maskPII(candidate, authUser);
-                candidate.setIsFavorite(favouriteIds.contains(candidate.getMatrimony_data().get_id())
-                );
-            }
-        });
-        long total = result.getMetadata().isEmpty() ? 0 : result.getMetadata().get(0).getTotal();
-        int totalPages = (int) Math.ceil((double) total / limit);
-        return ApiResponse.<List<CandidateResponse>>builder()
-                .status(HttpStatus.OK.value())
-                .message(res.isEmpty() ? messageUtil.get("record.not.found") : messageUtil.get("records.found"))
-                .meta(ApiResponse.Meta.builder()
-                        .page(page)
-                        .limit(limit)
-                        .totalRecords(total)
-                        .totalPages(totalPages)
-                        .build())
-                .data(res)
-                .build();
+        return getFavouriteIdsMono(authUser).flatMap(favouriteIds ->
+                reactiveMongoTemplate.aggregate(aggregation, "users", CandidateWrapper.class)
+                        .next()
+                        .defaultIfEmpty(new CandidateWrapper())
+                        .map(result -> {
+                            List<CandidateResponse> res = result.getData();
+                            List<CandidateWrapper.RecordCount> metadata = result.getMetadata();
+                            res.forEach(candidateRes -> {
+                                if (candidateRes.getMatrimony_data() != null &&
+                                        candidateRes.getMatrimony_data().get_id() != null) {
+                                    maskPII(candidateRes, authUser);
+                                    String candidateMatrimonyId =
+                                            candidateRes.getMatrimony_data().get_id();
+
+                                    candidateRes.setIsFavorite(
+                                            favouriteIds.contains(candidateMatrimonyId)
+                                    );
+                                }
+                            });
+                            long total = metadata.isEmpty()
+                                    ? 0
+                                    : metadata.get(0).getTotal();
+
+                            int totalPages = (int) Math.ceil((double) total / limit);
+
+                            return ApiResponse.<List<CandidateResponse>>builder()
+                                    .status(HttpStatus.OK.value())
+                                    .message(res.isEmpty() ? messageUtil.get("record.not.found") : messageUtil.get("records.found"))
+                                    .meta(ApiResponse.Meta.builder()
+                                            .page(page)
+                                            .limit(limit)
+                                            .totalRecords(total)
+                                            .totalPages(totalPages)
+                                            .build())
+                                    .data(res)
+                                    .build();
+                        }));
     }
 
     public Mono<List<SupportResponse>> candidateSupport(Users authUser) {
@@ -686,7 +689,7 @@ public class UserService {
         } else if (authUser.isAgent()) {
             roleDeactivation =
                     agentRepository.deactivateAgentByUserId(userId).then();
-        } else {
+        }  else {
             roleDeactivation = Mono.empty(); // SuperUser
         }
 
@@ -884,7 +887,7 @@ public class UserService {
             String minSalary = preferences.getSalaryRange().getMin();
             String maxSalary = preferences.getSalaryRange().getMax();
             if (maxSalary == null || maxSalary.isBlank()) {
-                maxSalary = String.valueOf(Integer.MAX_VALUE - 1);
+                maxSalary = String.valueOf(Integer.MAX_VALUE-1);
             }
             filter.put("occupation_details.annual_income",
                     new Document("$gte", minSalary)
