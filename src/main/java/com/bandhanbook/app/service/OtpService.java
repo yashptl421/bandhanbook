@@ -73,7 +73,8 @@ public class OtpService {
     }
 
     public Mono<String> sendLoginOtp(String phoneNumber, String role) {
-        return requestOtp(phoneNumber, role, false).thenReturn(messageUtil.get("otp.sent"))
+        return requestOtp(phoneNumber, role, false)
+                .thenReturn(messageUtil.get("otp.sent"))
                 /* .flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))*/;
     }
 

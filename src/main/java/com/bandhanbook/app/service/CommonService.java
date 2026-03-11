@@ -7,7 +7,6 @@ import com.bandhanbook.app.model.Country;
 import com.bandhanbook.app.model.States;
 import com.bandhanbook.app.payload.request.ContactUsRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -23,11 +22,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class CommonService {
-
+    @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
     private ResourceLoader resourceLoader;
     private List<Country> cachedCountry = null;
     private static List<States> states = null;

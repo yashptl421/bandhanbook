@@ -38,4 +38,8 @@ public interface UserRepository extends ReactiveMongoRepository<Users, ObjectId>
     @Query("{ '_id': ?0, 'deleted_at': null }")
     @Update("{ '$set': { 'deleted_at': ?1, 'token': null } }")
     Mono<Long> deactivateUser(ObjectId userId, LocalDateTime deletedAt);
+
+    @Query("{ '_id': ?0, 'deleted_at': null }")
+    @Update("{ '$set': { 'deleted_at': ?1, 'token': null } }")
+    Mono<Long> updateToken(ObjectId userId, LocalDateTime deletedAt);
 }

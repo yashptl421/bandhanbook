@@ -1,5 +1,6 @@
 package com.bandhanbook.app.config;
 
+import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.security.jwt.JwtService;
 import com.bandhanbook.app.security.userprinciple.UserDetailService;
@@ -56,7 +57,9 @@ public class JwtAuthenticationWebFilter implements WebFilter {
                                     user, null, List.of(authority));
 
                     SecurityContext context = new SecurityContextImpl(auth);
-
+                    if (userPrinciple.getUsers().getToken() == null || !userPrinciple.getUsers().getToken().equals(token)) {
+                        return Mono.error(new UnAuthorizedException("Session expired. Please login again."));
+                    }
                     return chain.filter(exchange)
                             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(context)));
                 })

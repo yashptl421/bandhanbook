@@ -59,7 +59,7 @@ public class AuthService {
                     }
                     if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {
                         String role = loginRequest.getRole();
-                        return Mono.error(new RecordNotFoundException( messageUtil.get(role)+ " " + messageUtil.get("user.not.registered")));
+                        return Mono.error(new RecordNotFoundException(messageUtil.get(role) + " " + messageUtil.get("user.not.registered")));
                     }
                     return otpService.sendLoginOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
                 });
@@ -85,11 +85,8 @@ public class AuthService {
                     Users user = userPrincipal.getUsers();
                     if (!user.getRoles().contains(request.getRole())) {
                         return Mono.error(
-                                new RecordNotFoundException(messageUtil.get(request.getRole())  + " " + messageUtil.get("user.not.registered"))
+                                new RecordNotFoundException(messageUtil.get(request.getRole()) + " " + messageUtil.get("user.not.registered"))
                         );
-                    }
-                    if (user.getRoles().size() > 1) {
-                        user.setRoles(List.of(request.getRole()));
                     }
                     Mono<PhoneLoginResponse> responseMono;
                     if (request.getRole().equals(RoleNames.Candidate.name())) {
@@ -99,7 +96,7 @@ public class AuthService {
                     } else {
                         responseMono = getOrganizationDetails(request.getRole(), user);
                     }
-                    return responseMono.map(res -> {
+                    return responseMono.flatMap(res -> {
                         String accessToken = jwtService.generateToken(userPrincipal, request.getRole());
                         String refreshToken = jwtService.generateRefreshToken(userPrincipal.getUsername());
                         RefreshToken refToken = RefreshToken.builder()
@@ -111,7 +108,8 @@ public class AuthService {
                         res.setAccessToken(accessToken);
                         res.setRefreshToken(refreshToken);
                         res.setRole(request.getRole());
-                        return res;
+                        user.setToken(accessToken);
+                        return userRepository.save(user).thenReturn(res);
                     });
                 }).switchIfEmpty(Mono.error(new RuntimeException("Error occurred during login")));
     }
@@ -261,7 +259,7 @@ public class AuthService {
                         return otpService.verifyOtp(user.getPhoneNumber(), role, req.getOtp()).flatMap(s ->
                                 userRepository.save(user)).thenReturn(messageUtil.get("password.updated"));
                     } else {
-                        return otpService.sendForgotPasswordOtp(user,role);
+                        return otpService.sendForgotPasswordOtp(user, role);
                     }
                 }).switchIfEmpty(Mono.error(new EmailNotFoundException(messageUtil.get("user.not.found"))));
     }

@@ -84,7 +84,7 @@ public class Users {
     @Builder.Default
     private boolean locked = false;
 
-    @Builder.Default
+    @Indexed
     private String token = null;
 
     private LocalDateTime expiryDate;
