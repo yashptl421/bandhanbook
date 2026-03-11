@@ -7,7 +7,7 @@ spring:
     host: ${SMTP_HOST}
     port: ${SMTP_PORT}
     username: ${EMAIL_USER_NAME}
-    password: ${EMIAL_PASS}
+    password: ${EMAIL_PASS}
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true

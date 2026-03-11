@@ -54,27 +54,31 @@ public class OtpService {
         return requestOtp(user.getPhoneNumber(), role, true)
                 .flatMap(token -> {
                     String otp = token.getOtp();
-                    return emailService.sendForgotPasswordOtp(user.getEmail(), user.getFullName(), otp)
-                            //.flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))
-                            .thenReturn(messageUtil.get("otp.sent"));
-                });
+                    //emailService.sendForgotPasswordOtp(user.getEmail(), user.getFullName(), otp)
+                    //.flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))
+                    return Mono.empty();
+
+                }).thenReturn(messageUtil.get("otp.sent"));
     }
 
     public Mono<String> sentRegistrationOtp(Users user, String role) {
         return requestOtp(user.getPhoneNumber(), role, true)
-                .flatMap(token ->
-                        emailService.sendCandidateRegistrationOtp(user.getEmail(), user.getFullName(), token.getOtp())
-                                //.flatMap(smsSender.sendSms(user.getPhoneNumber(), "Your OTP: " + token.getOtp()))
-                                .thenReturn(messageUtil.get("otp.sent")));
+                .flatMap(token -> {
+                    //emailService.sendCandidateRegistrationOtp(user.getEmail(), user.getFullName(), token.getOtp());
+                    log.info("otp request for phone {}", user.getEmail());
+                    //.flatMap(smsSender.sendSms(user.getPhoneNumber(), "Your OTP: " + token.getOtp())
+                    return Mono.empty();
+                })
+                .thenReturn(messageUtil.get("otp.sent"));
     }
 
     public Mono<String> sendLoginOtp(String phoneNumber, String role) {
-        return requestOtp(phoneNumber, role,false).thenReturn(messageUtil.get("otp.sent"));
+        return requestOtp(phoneNumber, role, false).thenReturn(messageUtil.get("otp.sent"))
+                /* .flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))*/;
     }
 
     public Mono<Token> requestOtp(String phoneNumber, String role, boolean isRegisterOrResetOtp) {
         Instant now = Instant.now();
-        log.info("otp request for phone {}", phoneNumber);
         return tokensRepository.findByPhoneNumberAndRole(phoneNumber, role)
                 .flatMap(existing -> {
                     if (existing.getLastSentAt() != null && existing.getLastSentAt().plus(otpCooldown).isAfter(now)) {
@@ -98,9 +102,9 @@ public class OtpService {
                     existing.setOtp(otp);
                     existing.setLastSentAt(now);
                     existing.setRequestCountInWindow(existing.getRequestCountInWindow() + 1);
-                    if(isRegisterOrResetOtp) {
+                    if (isRegisterOrResetOtp) {
                         existing.setExpiresAt(now.plusSeconds(registerOtpExpiration));
-                    }else {
+                    } else {
                         existing.setExpiresAt(now.plusSeconds(otpExpiration));
                     }
                     // save otp
