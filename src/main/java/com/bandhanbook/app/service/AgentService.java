@@ -3,6 +3,7 @@ package com.bandhanbook.app.service;
 import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
+import com.bandhanbook.app.exception.ValidationExceptions;
 import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.model.constants.RoleNames;
@@ -63,7 +64,8 @@ public class AgentService {
                                 user.getRoles().add(RoleNames.Agent.name());
                                 return userRepository.save(user);
                             })
-                            .flatMap(savedUser -> saveAgentRecord(request, savedUser));
+                            .flatMap(savedUser -> saveAgentRecord(request, savedUser))
+                            .thenReturn(messageUtil.get("agent.created"));
                 });
     }
 
@@ -90,15 +92,14 @@ public class AgentService {
                 );
     }
 
-    private Mono<String> saveAgentRecord(AgentRequest request, Users savedUser) {
+    private Mono<Void> saveAgentRecord(AgentRequest request, Users savedUser) {
 
         Agents agent = modelMapper.map(request, Agents.class);
         agent.setUserId(savedUser.getId());
         agent.setOrganizationId(new ObjectId(request.getOrganizationId()));
 
         return agentRepository.save(agent)
-                .then(usageMetricsService.incrementAgents(agent.getOrganizationId()))
-                .thenReturn(messageUtil.get("agent.created"));
+                .then(usageMetricsService.incrementAgents(agent.getOrganizationId()));
     }
 
     @Transactional
@@ -228,6 +229,18 @@ public class AgentService {
                     .next()
                     .defaultIfEmpty(new AgentWrapper());
         });
+    }
+
+    public Mono<String> deleteAgent(ObjectId agentId, Users authUser) {
+        if (authUser.isAgent() || authUser.isCandidate()) {
+            Mono.error(new ValidationExceptions("Don't have access"));
+        }
+        return agentRepository.findById(agentId)
+                .flatMap(agents ->
+                        userRepository.deleteById(agents.getUserId())
+                                .then(agentRepository.delete(agents))
+                                .then(usageMetricsService.decrementAgents(agents.getOrganizationId())))
+                .thenReturn(messageUtil.get("agent.deleted"));
     }
 
     public Mono<String> getOrgIdMono(Users authUser, Map<String, String> filterReq) {

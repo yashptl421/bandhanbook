@@ -30,10 +30,12 @@ public class AgentController {
     @PostMapping()
     public Mono<ResponseEntity<ApiResponse<String>>> createAgent(@Valid @RequestBody AgentRequest request, @CurrentUser Users authUser) {
         return agentService.createAgent(request, authUser)
-                .map(res -> ResponseEntity.ok(new ApiResponse<>(
-                        messageUtil.get(res),
-                        HttpStatus.OK.value()
-                )));
+                .map(res -> ResponseEntity.ok(
+                        ApiResponse.<String>builder()
+                                .status(HttpStatus.OK.value())
+                                .message(res)
+                                .build()
+                ));
     }
 
     @GetMapping("/{id}")
@@ -77,5 +79,14 @@ public class AgentController {
                     .isFavorite(null)
                     .build());
         });
+    }
+
+    @DeleteMapping("/{id}")
+    public Mono<ResponseEntity<ApiResponse<String>>> updateAgent(@PathVariable String id, @CurrentUser Users authUser) {
+        return agentService.deleteAgent(new ObjectId(id), authUser).map(res -> ResponseEntity.ok(
+                ApiResponse.<String>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(res)
+                        .build()));
     }
 }

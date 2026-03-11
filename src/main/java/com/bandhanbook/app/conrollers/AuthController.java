@@ -70,9 +70,10 @@ public class AuthController {
     @Operation(summary = "Logout from Application")
     @PostMapping("/logout")
     public Mono<ResponseEntity<ApiResponse<Void>>> logout(@CurrentUser Users users) {
-        return authService.logout(users).thenReturn(ResponseEntity.ok(ApiResponse.<Void>builder()
-                .status(HttpStatus.OK.value())
-                .message(messageUtil.get("logout.successful")).build()));
+        return authService.logout(users)
+                .thenReturn(ResponseEntity.ok(ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message(messageUtil.get("logout.successful")).build()));
         /*return authService.logout(request.getRefreshToken())
                 .thenReturn(ResponseEntity.ok().build());*/
     }

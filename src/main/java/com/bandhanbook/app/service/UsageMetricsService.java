@@ -70,7 +70,7 @@ public class UsageMetricsService {
         return updateMetric(orgId, null, "current_agents", 1);
     }
 
-    public Mono<Void> decrementAgents(ObjectId orgId, ObjectId eventId) {
+    public Mono<Void> decrementAgents(ObjectId orgId) {
         return updateMetric(orgId, null, "current_agents", -1);
     }
 
