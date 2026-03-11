@@ -61,7 +61,7 @@ public class AuthService {
                         String role = loginRequest.getRole();
                         return Mono.error(new RecordNotFoundException( messageUtil.get(role)+ " " + messageUtil.get("user.not.registered")));
                     }
-                    return otpService.requestOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
+                    return otpService.sendLoginOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
                 });
     }
 
@@ -245,7 +245,7 @@ public class AuthService {
                     if (!user.getUsers().getRoles().contains(loginRequest.getRole())) {
                         return Mono.error(new RecordNotFoundException(messageUtil.get(loginRequest.getRole()) + " " + messageUtil.get("user.not.registered")));
                     }
-                    return otpService.requestOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
+                    return otpService.sendLoginOtp(loginRequest.getPhoneNumber(), loginRequest.getRole());
                 });
     }
 
@@ -261,7 +261,7 @@ public class AuthService {
                         return otpService.verifyOtp(user.getPhoneNumber(), role, req.getOtp()).flatMap(s ->
                                 userRepository.save(user)).thenReturn(messageUtil.get("password.updated"));
                     } else {
-                        return otpService.requestOtp(user.getPhoneNumber(), role);
+                        return otpService.sendForgotPasswordOtp(user,role);
                     }
                 }).switchIfEmpty(Mono.error(new EmailNotFoundException(messageUtil.get("user.not.found"))));
     }

@@ -57,4 +57,66 @@ public class EmailService {
             mailSender.send(mail);
         }).subscribeOn(Schedulers.boundedElastic()).then();
     }
+
+    public Mono<Void> sendForgotPasswordOtp(String to, String name, String otp) {
+
+        return Mono.fromRunnable(() -> {
+
+            SimpleMailMessage mail = new SimpleMailMessage();
+            mail.setFrom(fromEmail);
+            mail.setTo(to);
+            mail.setSubject("BandhanBook Password Reset OTP");
+
+            mail.setText("""
+                Hello %s,
+
+                We received a request to reset your password.
+
+                Your One-Time Password (OTP) is:
+
+                %s
+
+                This OTP will expire in 10 minutes.
+
+                If you did not request a password reset, please ignore this email.
+
+                Regards,
+                BandhanBook Team
+                """.formatted(name, otp));
+
+            mailSender.send(mail);
+
+        }).subscribeOn(Schedulers.boundedElastic()).then();
+    }
+
+    public Mono<Void> sendCandidateRegistrationOtp(String to, String name, String otp) {
+
+        return Mono.fromRunnable(() -> {
+
+            SimpleMailMessage mail = new SimpleMailMessage();
+            mail.setFrom(fromEmail);
+            mail.setTo(to);
+            mail.setSubject("BandhanBook Registration OTP");
+
+            mail.setText("""
+                Hello %s,
+
+                Welcome to BandhanBook!
+
+                Your One-Time Password (OTP) for registration is:
+
+                %s
+
+                This OTP will expire in 10 minutes.
+
+                Please do not share this OTP with anyone.
+
+                Regards,
+                BandhanBook Team
+                """.formatted(name, otp));
+
+            mailSender.send(mail);
+
+        }).subscribeOn(Schedulers.boundedElastic()).then();
+    }
 }

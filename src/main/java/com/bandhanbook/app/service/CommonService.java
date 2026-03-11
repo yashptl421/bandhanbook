@@ -23,11 +23,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class CommonService {
-    @Autowired
+
     private ObjectMapper objectMapper;
 
-    @Autowired
     private ResourceLoader resourceLoader;
     private List<Country> cachedCountry = null;
     private static List<States> states = null;

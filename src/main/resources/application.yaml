@@ -39,6 +39,7 @@ jwt:
 #otp config
 otp:
   expiration: 300
+  register_expiration: 600
   duration: 60s
   windowDuration : 1m
   maxRequestsPerWindow: 5

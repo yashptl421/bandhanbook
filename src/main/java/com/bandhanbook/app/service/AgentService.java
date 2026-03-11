@@ -5,7 +5,6 @@ import com.bandhanbook.app.exception.RecordNotFoundException;
 import com.bandhanbook.app.exception.UnAuthorizedException;
 import com.bandhanbook.app.model.Agents;
 import com.bandhanbook.app.model.Users;
-import com.bandhanbook.app.model.constants.ProfileStatus;
 import com.bandhanbook.app.model.constants.RoleNames;
 import com.bandhanbook.app.payload.request.AgentRequest;
 import com.bandhanbook.app.payload.response.AgentResponse;

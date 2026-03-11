@@ -535,8 +535,8 @@ public class UserService {
         // If no OTP → Send OTP
         if (request.getOtp() == null || request.getOtp().isBlank()) {
             return authService.getValidatedUser(request.getPhoneNumber(), request.getEmail(), role)
-                    .then(validateRegistrationLimit(request))
-                    .then(otpService.requestOtp(request.getPhoneNumber(), role));
+                    .flatMap(user ->validateRegistrationLimit(request)
+                    .then(otpService.sentRegistrationOtp(user, role)));
         }
         Mono<String> verifiedOtp = otpService.verifyOtp(request.getPhoneNumber(), role, request.getOtp());
 

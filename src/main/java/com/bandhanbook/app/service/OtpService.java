@@ -3,6 +3,7 @@ package com.bandhanbook.app.service;
 import com.bandhanbook.app.config.MessageUtil;
 import com.bandhanbook.app.exception.ValidationExceptions;
 import com.bandhanbook.app.model.Token;
+import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.repository.TokensRepository;
 import com.bandhanbook.app.utilities.UtilityHelper;
 import lombok.RequiredArgsConstructor;
@@ -26,12 +27,15 @@ public class OtpService {
     private final PasswordEncoder passwordEncoder;
     private final TokensRepository tokensRepository;
     private final MessageUtil messageUtil;
+    private final EmailService emailService;
 
     /* @Autowired
      private final SmsSender smsSender;
  */
     @Value("${otp.expiration}")
     private int otpExpiration;
+    @Value("${otp.register_expiration}")
+    private int registerOtpExpiration;
     @Value("${otp.duration}")
     private Duration otpCooldown;
     @Value("${otp.windowDuration}")
@@ -45,7 +49,30 @@ public class OtpService {
    /* private final Duration otpCooldown = Duration.ofSeconds(duration); // min seconds between sends
     private final Duration windowDuration = Duration.ofHours(windowDurations); // window for maxRequests*/
 
-    public Mono<String> requestOtp(String phoneNumber, String role) {
+    public Mono<String> sendForgotPasswordOtp(Users user, String role) {
+
+        return requestOtp(user.getPhoneNumber(), role, true)
+                .flatMap(token -> {
+                    String otp = token.getOtp();
+                    return emailService.sendForgotPasswordOtp(user.getEmail(), user.getFullName(), otp)
+                            //.flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))
+                            .thenReturn(messageUtil.get("otp.sent"));
+                });
+    }
+
+    public Mono<String> sentRegistrationOtp(Users user, String role) {
+        return requestOtp(user.getPhoneNumber(), role, true)
+                .flatMap(token ->
+                        emailService.sendCandidateRegistrationOtp(user.getEmail(), user.getFullName(), token.getOtp())
+                                //.flatMap(smsSender.sendSms(user.getPhoneNumber(), "Your OTP: " + token.getOtp()))
+                                .thenReturn(messageUtil.get("otp.sent")));
+    }
+
+    public Mono<String> sendLoginOtp(String phoneNumber, String role) {
+        return requestOtp(phoneNumber, role,false).thenReturn(messageUtil.get("otp.sent"));
+    }
+
+    public Mono<Token> requestOtp(String phoneNumber, String role, boolean isRegisterOrResetOtp) {
         Instant now = Instant.now();
         log.info("otp request for phone {}", phoneNumber);
         return tokensRepository.findByPhoneNumberAndRole(phoneNumber, role)
@@ -71,10 +98,13 @@ public class OtpService {
                     existing.setOtp(otp);
                     existing.setLastSentAt(now);
                     existing.setRequestCountInWindow(existing.getRequestCountInWindow() + 1);
-                    existing.setExpiresAt(now.plusSeconds(otpExpiration));
-
-                    // save then send
-                    return tokensRepository.save(existing).thenReturn(messageUtil.get("otp.sent"));
+                    if(isRegisterOrResetOtp) {
+                        existing.setExpiresAt(now.plusSeconds(registerOtpExpiration));
+                    }else {
+                        existing.setExpiresAt(now.plusSeconds(otpExpiration));
+                    }
+                    // save otp
+                    return tokensRepository.save(existing);
                     /* .flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))*/
 
                 })
@@ -94,9 +124,7 @@ public class OtpService {
                             .expiresAt(Instant.now().plusSeconds(otpExpiration))
                             .build();
 
-                    return tokensRepository.save(token).thenReturn(messageUtil.get("otp.sent"));
-                    /* .flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))*/
-
+                    return tokensRepository.save(token);
                 }));
     }
 
