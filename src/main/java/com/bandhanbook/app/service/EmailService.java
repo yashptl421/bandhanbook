@@ -24,7 +24,7 @@ public class EmailService {
     public Mono<Void> sendThankYouMail(String to, String name) {
         return Mono.fromRunnable(() -> {
             SimpleMailMessage mail = new SimpleMailMessage();
-            mail.setFrom(fromEmail);
+            mail.setFrom(supportEmail);
             mail.setTo(to);
             mail.setSubject("Thank you for contacting us");
             mail.setText("""

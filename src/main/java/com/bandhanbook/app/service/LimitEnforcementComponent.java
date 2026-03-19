@@ -1,7 +1,7 @@
 package com.bandhanbook.app.service;
 
 import com.bandhanbook.app.config.MessageUtil;
-import com.bandhanbook.app.exception.UnAuthorizedException;
+import com.bandhanbook.app.exception.ValidationExceptions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -23,7 +23,7 @@ public class LimitEnforcementComponent {
                         usageService.getUsageMetrics(null, eventId)
                                 .flatMap(usage -> {
                                     if (usage.getCurrentUsers() >= limits.getMaxUsers()) {
-                                        return Mono.error(new UnAuthorizedException(messageUtil.get("candidate.limit.exceed")));
+                                        return Mono.error(new ValidationExceptions(messageUtil.get("candidate.limit.exceed")));
                                     }
                                     return Mono.empty();
                                 })
@@ -36,7 +36,7 @@ public class LimitEnforcementComponent {
                         usageService.getUsageMetrics(orgId, null)
                                 .flatMap(usage -> {
                                     if (usage.getCurrentAgents() >= limits.getMaxAgents()) {
-                                        return Mono.error(new UnAuthorizedException(messageUtil.get("agent.limit.exceed")));
+                                        return Mono.error(new ValidationExceptions(messageUtil.get("agent.limit.exceed")));
                                     }
                                     return Mono.empty();
                                 })
@@ -50,7 +50,7 @@ public class LimitEnforcementComponent {
                                 .flatMap(usage -> {
                                     int total = usage.getCurrentAdvertisements() + newAdsCount;
                                     if (total > limits.getMaxAdvertisements()) {
-                                        return Mono.error(new UnAuthorizedException(messageUtil.get("advertisement.limit.exceed")));
+                                        return Mono.error(new ValidationExceptions(messageUtil.get("advertisement.limit.exceed")));
                                     }
                                     return Mono.empty();
                                 })
@@ -63,7 +63,7 @@ public class LimitEnforcementComponent {
                         usageService.getUsageMetrics(orgId, null)
                                 .flatMap(usage -> {
                                     if (usage.getCurrentBanners() >= limits.getMaxBanners()) {
-                                        return Mono.error(new UnAuthorizedException(messageUtil.get("banner.limit.exceed")));
+                                        return Mono.error(new ValidationExceptions(messageUtil.get("banner.limit.exceed")));
                                     }
                                     return Mono.empty();
                                 })
