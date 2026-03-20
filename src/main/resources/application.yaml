@@ -85,3 +85,12 @@ max:
   agent: 150
   banner: 50
   advertisement: 500
+
+zoho:
+  client:
+    id:  ${ZOHO_CLIENT_ID}
+    secret: ${ZOHO_CLIENT_SECRET}
+  refresh:
+    token: ${ZOHO_REFRESH_TOKEN}
+  mail:
+    account.id: ${ZOHO_ACCOUNT_ID}

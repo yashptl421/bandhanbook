@@ -5,6 +5,7 @@ import com.bandhanbook.app.exception.ValidationExceptions;
 import com.bandhanbook.app.model.Token;
 import com.bandhanbook.app.model.Users;
 import com.bandhanbook.app.repository.TokensRepository;
+import com.bandhanbook.app.utilities.EmailUtilities;
 import com.bandhanbook.app.utilities.UtilityHelper;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class OtpService {
     private final TokensRepository tokensRepository;
     private final MessageUtil messageUtil;
     private final EmailService emailService;
+    private final EmailUtilities emailUtilities;
 
     /* @Autowired
      private final SmsSender smsSender;
@@ -54,7 +57,8 @@ public class OtpService {
         return requestOtp(user.getPhoneNumber(), role, true)
                 .flatMap(token -> {
                     String otp = token.getOtp();
-                    //emailService.sendForgotPasswordOtp(user.getEmail(), user.getFullName(), otp)
+                    Map<String, String> mailContent = emailUtilities.getForgotPasswordContent(user.getFullName(), otp);
+                    //emailService.sendEmail(user.getEmail(), mailContent.get("subject"), mailContent.get("message"));
                     //.flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))
                     return Mono.empty();
 
@@ -64,7 +68,8 @@ public class OtpService {
     public Mono<String> sentRegistrationOtp(Users user, String role) {
         return requestOtp(user.getPhoneNumber(), role, true)
                 .flatMap(token -> {
-                    //emailService.sendCandidateRegistrationOtp(user.getEmail(), user.getFullName(), token.getOtp());
+                    Map<String, String> mailContent = emailUtilities.getRegistrationMailContent(user.getFullName(), token.getOtp());
+                    //emailService.sendEmail(user.getEmail(), mailContent.get("subject"), mailContent.get("message"));
                     log.info("otp request for phone {}", user.getEmail());
                     //.flatMap(smsSender.sendSms(user.getPhoneNumber(), "Your OTP: " + token.getOtp())
                     return Mono.empty();

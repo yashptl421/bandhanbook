@@ -6,6 +6,7 @@ import com.bandhanbook.app.model.City;
 import com.bandhanbook.app.model.Country;
 import com.bandhanbook.app.model.States;
 import com.bandhanbook.app.payload.request.ContactUsRequest;
+import com.bandhanbook.app.utilities.EmailUtilities;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -19,13 +20,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class CommonService {
     @Autowired
     private ObjectMapper objectMapper;
-
+    @Autowired
+    private EmailUtilities emailUtilities;
     @Autowired
     private ResourceLoader resourceLoader;
     private List<Country> cachedCountry = null;
@@ -33,7 +36,7 @@ public class CommonService {
     private static List<City> cities = null;
     private static List<Country> countries = null;
     @Autowired
-    private  EmailService emailService;
+    private EmailService emailService;
 
     private CommonService(ObjectMapper objectMapper, ResourceLoader resourceLoader) throws IOException {
         Resource CountryResource =
@@ -97,10 +100,12 @@ public class CommonService {
 
         return address;
     }
-    public Mono<String> contactUs(ContactUsRequest request) {
 
-        return emailService.sendThankYouMail(request.getEmail(), request.getName())
-               // .then(emailService.notifyAdmin(request)) // optional
+    public Mono<String> contactUs(ContactUsRequest request) {
+        Map<String, String> thanYouMail = emailUtilities.getThankYouEmail(request.getName());
+        Map<String, String> notifyMail = emailUtilities.getNotifyAdminContent(request);
+        return emailService.sendEmail(request.getEmail(), thanYouMail.get("subject"), thanYouMail.get("message"))
+                // .then(emailService.notifyAdmin(request)) // optional
                 .thenReturn("Thank you for contacting us. We will reach you shortly.");
     }
 }

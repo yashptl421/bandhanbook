@@ -12,6 +12,7 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 
 @Configuration
@@ -20,7 +21,10 @@ public class WebSecurityConfig {
     private final JwtAuthenticationManager authManager;
     private final JwtSecurityContextRepository contextRepository;
     private final JwtAuthenticationWebFilter jwtFilter;
-
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
     public WebSecurityConfig(JwtAuthenticationManager authManager,
                              JwtSecurityContextRepository contextRepository, JwtAuthenticationWebFilter jwtFilter,CorsConfigurationSource corsConfigurationSource) {
         this.authManager = authManager;
