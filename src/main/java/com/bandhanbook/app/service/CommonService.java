@@ -104,7 +104,7 @@ public class CommonService {
     public Mono<String> contactUs(ContactUsRequest request) {
         Map<String, String> thanYouMail = emailUtilities.getThankYouEmail(request.getName());
         Map<String, String> notifyMail = emailUtilities.getNotifyAdminContent(request);
-        return emailService.sendEmail(request.getEmail(), thanYouMail.get("subject"), thanYouMail.get("message"))
+        return emailService.sendSupportEmail(request.getEmail(), thanYouMail.get("subject"), thanYouMail.get("message"))
                 // .then(emailService.notifyAdmin(request)) // optional
                 .thenReturn("Thank you for contacting us. We will reach you shortly.");
     }

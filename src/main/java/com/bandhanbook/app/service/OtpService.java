@@ -58,7 +58,7 @@ public class OtpService {
                 .flatMap(token -> {
                     String otp = token.getOtp();
                     Map<String, String> mailContent = emailUtilities.getForgotPasswordContent(user.getFullName(), otp);
-                    //emailService.sendEmail(user.getEmail(), mailContent.get("subject"), mailContent.get("message"));
+                    //emailService.sendNoReplyEmail(user.getEmail(), mailContent.get("subject"), mailContent.get("message"));
                     //.flatMap(saved -> smsSender.sendSms(phoneNumber, "Your OTP: " + otp).thenReturn(saved))
                     return Mono.empty();
 
@@ -69,7 +69,7 @@ public class OtpService {
         return requestOtp(user.getPhoneNumber(), role, true)
                 .flatMap(token -> {
                     Map<String, String> mailContent = emailUtilities.getRegistrationMailContent(user.getFullName(), token.getOtp());
-                    //emailService.sendEmail(user.getEmail(), mailContent.get("subject"), mailContent.get("message"));
+                    //emailService.sendNoReplyEmail(user.getEmail(), mailContent.get("subject"), mailContent.get("message"));
                     log.info("otp request for phone {}", user.getEmail());
                     //.flatMap(smsSender.sendSms(user.getPhoneNumber(), "Your OTP: " + token.getOtp())
                     return Mono.empty();

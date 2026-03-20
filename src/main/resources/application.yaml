@@ -77,7 +77,7 @@ images:
   blog.path : /blogs/
 app:
   mail:
-    from: no-reply@bandhanbook.com
+    from: noreply@bandhanbook.com
     support: support@bandhanbook.com
 
 max:

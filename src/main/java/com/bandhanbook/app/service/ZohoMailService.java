@@ -56,8 +56,13 @@ public class ZohoMailService implements EmailService{
 
         return (String) response.getBody().get("access_token");
     }
-
-    public Mono<Void> sendEmail(String to, String subject, String content) {
+    public Mono<Void> sendSupportEmail(String to, String subject, String content) {
+    return sendEmail(supportEmail,to,subject,content);
+    }
+    public Mono<Void> sendNoReplyEmail(String to, String subject, String content) {
+        return sendEmail(fromEmail,to,subject,content);
+    }
+    public Mono<Void> sendEmail(String from, String to, String subject, String content) {
         String accessToken = getAccessToken();
 
         String url = "https://mail.zoho.in/api/accounts/" + accountId + "/messages";
@@ -67,7 +72,7 @@ public class ZohoMailService implements EmailService{
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("fromAddress", supportEmail);
+        body.put("fromAddress", from);
         body.put("toAddress", to);
         body.put("subject", subject);
         body.put("content", content);

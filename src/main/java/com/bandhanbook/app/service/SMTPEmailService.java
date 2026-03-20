@@ -11,7 +11,7 @@ import reactor.core.scheduler.Schedulers;
 
 @Service
 @RequiredArgsConstructor
-public class SMTPEmailService implements EmailService{
+public class SMTPEmailService implements EmailService {
 
     private final JavaMailSender mailSender;
 
@@ -21,10 +21,18 @@ public class SMTPEmailService implements EmailService{
     @Value("${app.mail.support}")
     private String supportEmail;
 
-    public Mono<Void> sendEmail(String to, String subject, String message) {
+    public Mono<Void> sendSupportEmail(String to, String subject, String content) {
+        return sendEmail(supportEmail, to, subject, content);
+    }
+
+    public Mono<Void> sendNoReplyEmail(String to, String subject, String content) {
+        return sendEmail(fromEmail, to, subject, content);
+    }
+
+    public Mono<Void> sendEmail(String from, String to, String subject, String message) {
         return Mono.fromRunnable(() -> {
             SimpleMailMessage mail = new SimpleMailMessage();
-            mail.setFrom(supportEmail);
+            mail.setFrom(from);
             mail.setTo(to);
             mail.setSubject(subject);
             mail.setText(message);
